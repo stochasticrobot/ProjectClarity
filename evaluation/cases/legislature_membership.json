@@ -1,0 +1,574 @@
+{
+  "schema_version": "1.2",
+  "suite_id": "legislature_membership",
+  "reference_date": "2026-10-22",
+  "prepared_by": "AI-assisted source inspection",
+  "human_reference_review": "not_performed",
+  "scope": "Small named constituencies/states, not complete national rosters.",
+  "reference_policy": "Official legislative records are primary; Wikipedia is a cross-check with historical distractors. Reference answers are fixed to the preparation date; review source changes before updating them. No expected answer is passed to the research model.",
+  "entity_aliases": {
+    "House of Commons of Canada": [
+      "Canadian House of Commons",
+      "House of Commons",
+      "Canada House of Commons"
+    ],
+    "United States House of Representatives": [
+      "US House of Representatives",
+      "U.S. House of Representatives",
+      "U.S. House",
+      "US House"
+    ],
+    "United States Senate": [
+      "US Senate",
+      "U.S. Senate"
+    ],
+    "Vermont": [
+      "Vermont at-large",
+      "Vermont’s at-large congressional district",
+      "Vermont's at-large congressional district",
+      "Vermont at-large congressional district"
+    ]
+  },
+  "cases": [
+    {
+      "case_id": "canada_northern_mps",
+      "title": "Canadian MPs: Yukon and Nunavut",
+      "question": "As of 2026-10-22, identify the sitting members of Canada's House of Commons representing Yukon and Nunavut. Use only the supplied sources. Extract atomic current-office facts: a MEMBER_OF relationship from each person to their federal legislative chamber, and a REPRESENTS relationship from that person to their constituency or state. Name the chamber and constituency/state explicitly. Exclude former members, election candidates and members of other chambers from current-office findings. Preserve uncertainty if current service cannot be established. No web search or link following.",
+      "sources": [
+        {
+          "url": "https://www.ourcommons.ca/Members/en/111109",
+          "kind": "official",
+          "reference_note": "Current Roles: Member of Parliament; constituency Yukon; profile Brendan Hanley.",
+          "acquisition_check": {
+            "status": "retrieved",
+            "error_code": null,
+            "acquired_at": "2026-10-22T19:20:26.703900+00:00",
+            "attempted_at": "2026-10-22T19:20:24.106203+00:00",
+            "final_url": "https://www.ourcommons.ca/Members/en/111109",
+            "raw_sha256": "045963eb0eb799719826b7a26c8270670ada86922adbfb4a5053f3b88e4afe70",
+            "text_sha256": "6e2be69317acd391e44d9dd19fbd009d08709d9e193dc33966af280a0fbf4018",
+            "character_count": 4563
+          }
+        },
+        {
+          "url": "https://www.ourcommons.ca/Members/en/111116",
+          "kind": "official",
+          "reference_note": "Current Roles: Member of Parliament; constituency Nunavut; profile Lori Idlout.",
+          "acquisition_check": {
+            "status": "retrieved",
+            "error_code": null,
+            "acquired_at": "2026-10-22T19:20:27.640098+00:00",
+            "attempted_at": "2026-10-22T19:20:26.807076+00:00",
+            "final_url": "https://www.ourcommons.ca/Members/en/111116",
+            "raw_sha256": "8e2e7bf1b9d98e5f95e8bd89e313e23e664a291df60d8837b1914f6ce2c0202d",
+            "text_sha256": "bb8dd7ce3227280e1846e6878f4f70acbed1fcd4278770590fe43971683ab31b",
+            "character_count": 13549
+          }
+        },
+        {
+          "url": "https://en.wikipedia.org/wiki/Brendan_Hanley",
+          "kind": "wikipedia",
+          "reference_note": "Infobox and biography identify incumbent MP for Yukon; distinguishes predecessor Larry Bagnell.",
+          "acquisition_check": {
+            "status": "retrieved",
+            "error_code": null,
+            "acquired_at": "2026-10-22T19:20:39.294130+00:00",
+            "attempted_at": "2026-10-22T19:20:37.879418+00:00",
+            "final_url": "https://en.wikipedia.org/wiki/Brendan_Hanley",
+            "raw_sha256": "98215fd7d86c237b60bb2c0daf7496b09a00dfb663d29c48041ebd5e3a95f968",
+            "text_sha256": "c7bb6b7ceb96365ce4b31ca30c1c3c9bfa41a67c0f7aef1aceb98fe93fa050a7",
+            "character_count": 8087
+          }
+        },
+        {
+          "url": "https://en.wikipedia.org/wiki/Lori_Idlout",
+          "kind": "wikipedia",
+          "reference_note": "Infobox and biography identify incumbent MP for Nunavut; distinguishes predecessor Mumilaaq Qaqqaq.",
+          "acquisition_check": {
+            "status": "retrieved",
+            "error_code": null,
+            "acquired_at": "2026-10-22T19:20:40.277074+00:00",
+            "attempted_at": "2026-10-22T19:20:39.415270+00:00",
+            "final_url": "https://en.wikipedia.org/wiki/Lori_Idlout",
+            "raw_sha256": "dffa29534c54a9e252c4b8449cb385c2f94f11d29f5839fbb9c94de482d76e03",
+            "text_sha256": "f1c2c2b2edbe784ac5633cc5d70c25b98d7a7aebb6b93e37343bd2a1c5b1d5f7",
+            "character_count": 15901
+          }
+        }
+      ],
+      "expected_members": [
+        {
+          "name": "Brendan Hanley",
+          "aliases": [],
+          "chamber": "House of Commons of Canada",
+          "region": "Yukon",
+          "official_id": "111109"
+        },
+        {
+          "name": "Lori Idlout",
+          "aliases": [],
+          "chamber": "House of Commons of Canada",
+          "region": "Nunavut",
+          "official_id": "111116"
+        }
+      ],
+      "negative_controls": [
+        "Larry Bagnell",
+        "Mumilaaq Qaqqaq"
+      ],
+      "interpretation_notes": [
+        "Do not count predecessors as sitting MPs.",
+        "Historical election results do not establish current party affiliation; party is not scored here."
+      ]
+    },
+    {
+      "case_id": "us_vermont_house",
+      "title": "US House: Vermont at-large",
+      "question": "As of 2026-10-22, identify the sitting members of the United States House of Representatives representing Vermont. Use only the supplied sources. Extract atomic current-office facts: a MEMBER_OF relationship from each person to their federal legislative chamber, and a REPRESENTS relationship from that person to their constituency or state. Name the chamber and constituency/state explicitly. Exclude former members, election candidates and members of other chambers from current-office findings. Preserve uncertainty if current service cannot be established. No web search or link following.",
+      "sources": [
+        {
+          "url": "https://clerk.house.gov/members/B001318",
+          "kind": "official",
+          "reference_note": "119th Congress member profile: Becca Balint, Vermont at-large.",
+          "acquisition_check": {
+            "status": "retrieved",
+            "error_code": null,
+            "acquired_at": "2026-10-22T19:20:42.248814+00:00",
+            "attempted_at": "2026-10-22T19:20:40.670588+00:00",
+            "final_url": "https://clerk.house.gov/members/B001318",
+            "raw_sha256": "f1fc4da5590a74e8481ec28121ce7f46498585cb4343b47ad13c85ce0d263ecf",
+            "text_sha256": "a62e85522959afd84f8522f1ad047a14cb996b29e47c8c3c24dc906613a19ad2",
+            "character_count": 815
+          }
+        },
+        {
+          "url": "https://en.wikipedia.org/wiki/Vermont%27s_congressional_delegations",
+          "kind": "wikipedia",
+          "reference_note": "Current delegation separates Becca Balint in the House from the two senators; historical tables are distractors.",
+          "acquisition_check": {
+            "status": "retrieved",
+            "error_code": null,
+            "acquired_at": "2026-10-22T19:20:42.926237+00:00",
+            "attempted_at": "2026-10-22T19:20:42.333641+00:00",
+            "final_url": "https://en.wikipedia.org/wiki/Vermont%27s_congressional_delegations",
+            "raw_sha256": "d89f463428345255dade2db373691cf4279d3f0573c91614aaf516816479cf93",
+            "text_sha256": "154da103609cc238e36500a039f6824889f11b0f8095e852d2d25307c654be29",
+            "character_count": 25759
+          }
+        }
+      ],
+      "expected_members": [
+        {
+          "name": "Becca Balint",
+          "aliases": [
+            "Rebecca Balint",
+            "Rebecca A. Balint"
+          ],
+          "chamber": "United States House of Representatives",
+          "region": "Vermont",
+          "official_id": "B001318"
+        }
+      ],
+      "negative_controls": [
+        "Peter Welch",
+        "Bernie Sanders",
+        "Patrick Leahy"
+      ],
+      "interpretation_notes": [
+        "Peter Welch and Bernie Sanders are not current House members.",
+        "Vermont at-large and Vermont refer to the same covered constituency in this case."
+      ]
+    },
+    {
+      "case_id": "us_vermont_senate",
+      "title": "US Senate: Vermont",
+      "question": "As of 2026-10-22, identify the sitting members of the United States Senate representing Vermont. Use only the supplied sources. Extract atomic current-office facts: a MEMBER_OF relationship from each person to their federal legislative chamber, and a REPRESENTS relationship from that person to their constituency or state. Name the chamber and constituency/state explicitly. Exclude former members, election candidates and members of other chambers from current-office findings. Preserve uncertainty if current service cannot be established. No web search or link following.",
+      "sources": [
+        {
+          "url": "https://www.senate.gov/states/VT/intro.htm",
+          "kind": "official",
+          "reference_note": "Official page viewed via web research lists Bernard Sanders and Peter Welch. Production retriever could not fetch robots.txt; do not claim live acquisition succeeded.",
+          "acquisition_check": {
+            "status": "failed",
+            "error_code": "robots_unavailable",
+            "acquired_at": null,
+            "attempted_at": "2026-10-22T19:20:40.430240+00:00",
+            "final_url": null,
+            "raw_sha256": null,
+            "text_sha256": null,
+            "character_count": 0
+          }
+        },
+        {
+          "url": "https://en.wikipedia.org/wiki/Vermont%27s_congressional_delegations",
+          "kind": "wikipedia",
+          "reference_note": "Current senators: Bernie Sanders and Peter Welch; Becca Balint is in the House.",
+          "acquisition_check": {
+            "status": "retrieved",
+            "error_code": null,
+            "acquired_at": "2026-10-22T19:20:42.926237+00:00",
+            "attempted_at": "2026-10-22T19:20:42.333641+00:00",
+            "final_url": "https://en.wikipedia.org/wiki/Vermont%27s_congressional_delegations",
+            "raw_sha256": "d89f463428345255dade2db373691cf4279d3f0573c91614aaf516816479cf93",
+            "text_sha256": "154da103609cc238e36500a039f6824889f11b0f8095e852d2d25307c654be29",
+            "character_count": 25759
+          }
+        }
+      ],
+      "expected_members": [
+        {
+          "name": "Bernie Sanders",
+          "aliases": [
+            "Bernard Sanders"
+          ],
+          "chamber": "United States Senate",
+          "region": "Vermont",
+          "official_id": "S000033"
+        },
+        {
+          "name": "Peter Welch",
+          "aliases": [
+            "Peter Francis Welch"
+          ],
+          "chamber": "United States Senate",
+          "region": "Vermont",
+          "official_id": "W000800"
+        }
+      ],
+      "negative_controls": [
+        "Becca Balint",
+        "Patrick Leahy"
+      ],
+      "interpretation_notes": [
+        "Do not count a House member or former senator as a sitting senator.",
+        "Official-source acquisition failed during preparation; distinguish source access from model quality."
+      ]
+    },
+    {
+      "case_id": "combined_five_members",
+      "title": "Combine Canada and Vermont sources into one five-person roster",
+      "question": "As of 2026-10-22, identify the sitting members of Canada's House of Commons representing Yukon and Nunavut, and the sitting members of the United States House of Representatives and United States Senate representing Vermont. Combine the findings across the supplied sources into one deduplicated result. Use only the supplied sources. Extract atomic current-office facts: a MEMBER_OF relationship from each person to their federal legislative chamber, and a REPRESENTS relationship from that person to their constituency or state. Name the chamber and constituency/state explicitly. Exclude former members, election candidates and other offices. Preserve uncertainty if current service cannot be established. No web search or link following.",
+      "sources": [
+        {
+          "url": "https://www.ourcommons.ca/Members/en/111109",
+          "kind": "official",
+          "reference_note": "Current Roles: Member of Parliament; constituency Yukon; profile Brendan Hanley.",
+          "acquisition_check": {
+            "status": "retrieved",
+            "error_code": null,
+            "acquired_at": "2026-10-22T19:20:26.703900+00:00",
+            "attempted_at": "2026-10-22T19:20:24.106203+00:00",
+            "final_url": "https://www.ourcommons.ca/Members/en/111109",
+            "raw_sha256": "045963eb0eb799719826b7a26c8270670ada86922adbfb4a5053f3b88e4afe70",
+            "text_sha256": "6e2be69317acd391e44d9dd19fbd009d08709d9e193dc33966af280a0fbf4018",
+            "character_count": 4563
+          }
+        },
+        {
+          "url": "https://www.ourcommons.ca/Members/en/111116",
+          "kind": "official",
+          "reference_note": "Current Roles: Member of Parliament; constituency Nunavut; profile Lori Idlout.",
+          "acquisition_check": {
+            "status": "retrieved",
+            "error_code": null,
+            "acquired_at": "2026-10-22T19:20:27.640098+00:00",
+            "attempted_at": "2026-10-22T19:20:26.807076+00:00",
+            "final_url": "https://www.ourcommons.ca/Members/en/111116",
+            "raw_sha256": "8e2e7bf1b9d98e5f95e8bd89e313e23e664a291df60d8837b1914f6ce2c0202d",
+            "text_sha256": "bb8dd7ce3227280e1846e6878f4f70acbed1fcd4278770590fe43971683ab31b",
+            "character_count": 13549
+          }
+        },
+        {
+          "url": "https://clerk.house.gov/members/B001318",
+          "kind": "official",
+          "reference_note": "119th Congress member profile: Becca Balint, Vermont at-large.",
+          "acquisition_check": {
+            "status": "retrieved",
+            "error_code": null,
+            "acquired_at": "2026-10-22T19:20:42.248814+00:00",
+            "attempted_at": "2026-10-22T19:20:40.670588+00:00",
+            "final_url": "https://clerk.house.gov/members/B001318",
+            "raw_sha256": "f1fc4da5590a74e8481ec28121ce7f46498585cb4343b47ad13c85ce0d263ecf",
+            "text_sha256": "a62e85522959afd84f8522f1ad047a14cb996b29e47c8c3c24dc906613a19ad2",
+            "character_count": 815
+          }
+        },
+        {
+          "url": "https://en.wikipedia.org/wiki/Vermont%27s_congressional_delegations",
+          "kind": "wikipedia",
+          "reference_note": "Current delegation separates Becca Balint in the House from the two senators; historical tables are distractors.",
+          "acquisition_check": {
+            "status": "retrieved",
+            "error_code": null,
+            "acquired_at": "2026-10-22T19:20:42.926237+00:00",
+            "attempted_at": "2026-10-22T19:20:42.333641+00:00",
+            "final_url": "https://en.wikipedia.org/wiki/Vermont%27s_congressional_delegations",
+            "raw_sha256": "d89f463428345255dade2db373691cf4279d3f0573c91614aaf516816479cf93",
+            "text_sha256": "154da103609cc238e36500a039f6824889f11b0f8095e852d2d25307c654be29",
+            "character_count": 25759
+          }
+        }
+      ],
+      "expected_members": [
+        {
+          "name": "Brendan Hanley",
+          "aliases": [],
+          "chamber": "House of Commons of Canada",
+          "region": "Yukon",
+          "official_id": "111109"
+        },
+        {
+          "name": "Lori Idlout",
+          "aliases": [],
+          "chamber": "House of Commons of Canada",
+          "region": "Nunavut",
+          "official_id": "111116"
+        },
+        {
+          "name": "Becca Balint",
+          "aliases": [
+            "Rebecca Balint",
+            "Rebecca A. Balint"
+          ],
+          "chamber": "United States House of Representatives",
+          "region": "Vermont",
+          "official_id": "B001318"
+        },
+        {
+          "name": "Bernie Sanders",
+          "aliases": [
+            "Bernard Sanders"
+          ],
+          "chamber": "United States Senate",
+          "region": "Vermont",
+          "official_id": "S000033"
+        },
+        {
+          "name": "Peter Welch",
+          "aliases": [
+            "Peter Francis Welch"
+          ],
+          "chamber": "United States Senate",
+          "region": "Vermont",
+          "official_id": "W000800"
+        }
+      ],
+      "negative_controls": [
+        "Larry Bagnell",
+        "Mumilaaq Qaqqaq",
+        "Patrick Leahy"
+      ],
+      "reference_case_ids": [
+        "canada_northern_mps",
+        "us_vermont_house",
+        "us_vermont_senate"
+      ],
+      "acceptance": {
+        "minimum_contributing_sources": 2
+      },
+      "interpretation_notes": [
+        "This combines the five independently verified people; it does not add new reference facts.",
+        "The four supplied pages cover different parts of the roster. The House profile and Wikipedia delegation overlap on Balint; count that person once.",
+        "Pass requires exactly the expected people and ten reviewed relationships, evidence contributed by at least two distinct source URLs, and completed source/extraction/review work.",
+        "The official Senate page is not an input to this combined case because of its recorded crawler limitation. Senate membership is obtained from the supplied Wikipedia delegation; the independent answer-key audit still cites official Senate evidence.",
+        "The model sees the question and source URLs, not the expected names or target count."
+      ]
+    }
+  ],
+  "reference_validation": {
+    "status": "source_verified",
+    "reviewer": "assistant",
+    "verified_on": "2026-10-22",
+    "method": "Independent inspection of official current rosters/profiles, cross-checked against Wikipedia current-office entries; not inferred from the research model output.",
+    "scope": "All 5 expected members, 10 MEMBER_OF/REPRESENTS relationships, identifiers, explicit aliases and case-specific exclusions.",
+    "expected_members_checked": 5,
+    "expected_relationships_checked": 10,
+    "checked_members": [
+      {
+        "case_id": "canada_northern_mps",
+        "name": "Brendan Hanley",
+        "aliases": [],
+        "chamber": "House of Commons of Canada",
+        "region": "Yukon",
+        "official_id": "111109",
+        "outcome": "confirmed",
+        "official_sources": [
+          "https://www.ourcommons.ca/Members/en/111109",
+          "https://www.ourcommons.ca/Members/en/search?province=YT"
+        ],
+        "cross_check_sources": [
+          "https://en.wikipedia.org/wiki/Brendan_Hanley"
+        ]
+      },
+      {
+        "case_id": "canada_northern_mps",
+        "name": "Lori Idlout",
+        "aliases": [],
+        "chamber": "House of Commons of Canada",
+        "region": "Nunavut",
+        "official_id": "111116",
+        "outcome": "confirmed",
+        "official_sources": [
+          "https://www.ourcommons.ca/Members/en/111116",
+          "https://www.ourcommons.ca/Members/en/search?province=NU"
+        ],
+        "cross_check_sources": [
+          "https://en.wikipedia.org/wiki/Lori_Idlout"
+        ]
+      },
+      {
+        "case_id": "us_vermont_house",
+        "name": "Becca Balint",
+        "aliases": [
+          "Rebecca Balint",
+          "Rebecca A. Balint"
+        ],
+        "chamber": "United States House of Representatives",
+        "region": "Vermont",
+        "official_id": "B001318",
+        "outcome": "confirmed",
+        "official_sources": [
+          "https://clerk.house.gov/members/B001318",
+          "https://clerk.house.gov/Members/ViewMemberList"
+        ],
+        "cross_check_sources": [
+          "https://en.wikipedia.org/wiki/Vermont%27s_congressional_delegations",
+          "https://en.wikipedia.org/wiki/Becca_Balint"
+        ]
+      },
+      {
+        "case_id": "us_vermont_senate",
+        "name": "Bernie Sanders",
+        "aliases": [
+          "Bernard Sanders"
+        ],
+        "chamber": "United States Senate",
+        "region": "Vermont",
+        "official_id": "S000033",
+        "outcome": "confirmed",
+        "official_sources": [
+          "https://www.senate.gov/states/VT/intro.htm",
+          "https://history.house.gov/People/Listing/S/SANDERS,-Bernard-(S000033)/"
+        ],
+        "cross_check_sources": [
+          "https://en.wikipedia.org/wiki/Vermont%27s_congressional_delegations"
+        ]
+      },
+      {
+        "case_id": "us_vermont_senate",
+        "name": "Peter Welch",
+        "aliases": [
+          "Peter Francis Welch"
+        ],
+        "chamber": "United States Senate",
+        "region": "Vermont",
+        "official_id": "W000800",
+        "outcome": "confirmed",
+        "official_sources": [
+          "https://www.senate.gov/states/VT/intro.htm",
+          "https://history.house.gov/People/Detail/24183"
+        ],
+        "cross_check_sources": [
+          "https://en.wikipedia.org/wiki/Vermont%27s_congressional_delegations",
+          "https://en.wikipedia.org/wiki/Peter_Welch"
+        ]
+      }
+    ],
+    "excluded_members_checked": [
+      {
+        "case_id": "canada_northern_mps",
+        "names": [
+          "Larry Bagnell",
+          "Mumilaaq Qaqqaq"
+        ],
+        "reason": "Predecessors, not the two current MPs in the scoped official rosters.",
+        "sources": [
+          "https://www.ourcommons.ca/Members/en/111109",
+          "https://www.ourcommons.ca/Members/en/search?province=YT",
+          "https://www.ourcommons.ca/Members/en/111116",
+          "https://www.ourcommons.ca/Members/en/search?province=NU",
+          "https://en.wikipedia.org/wiki/Brendan_Hanley",
+          "https://en.wikipedia.org/wiki/Lori_Idlout"
+        ]
+      },
+      {
+        "case_id": "us_vermont_house",
+        "names": [
+          "Peter Welch",
+          "Bernie Sanders",
+          "Patrick Leahy"
+        ],
+        "reason": "Current Vermont House roster contains only Becca Balint. Welch and Sanders are senators; Leahy is a former senator.",
+        "sources": [
+          "https://clerk.house.gov/members/B001318",
+          "https://clerk.house.gov/Members/ViewMemberList",
+          "https://www.senate.gov/states/VT/intro.htm",
+          "https://en.wikipedia.org/wiki/Vermont%27s_congressional_delegations"
+        ]
+      },
+      {
+        "case_id": "us_vermont_senate",
+        "names": [
+          "Becca Balint",
+          "Patrick Leahy"
+        ],
+        "reason": "Balint serves in the House; Leahy is listed in the Senate history through 2023, not among the current senators.",
+        "sources": [
+          "https://www.senate.gov/states/VT/intro.htm",
+          "https://en.wikipedia.org/wiki/Vermont%27s_congressional_delegations"
+        ]
+      }
+    ],
+    "alias_notes": [
+      "Bernard Sanders is the official roster name; Bernie Sanders is used in the Wikipedia current delegation.",
+      "Peter Francis Welch is recorded in the Peter Welch biography.",
+      "Rebecca A. Balint is recorded in the Becca Balint biography. Rebecca Balint is retained as its explicit middle-initial-omitted variant, not as a fuzzy identity match.",
+      "Vermont at-large aliases refer to the same whole-state geographic coverage as Vermont in this small suite. MEMBER_OF independently distinguishes the House from the Senate; this is not a general district-to-state rule.",
+      "Chamber abbreviations are explicit naming conventions, not additional offices or people."
+    ],
+    "audit_document": "evaluation/cases/reference_validation.md",
+    "additional_source_snapshots": [
+      {
+        "original_location": "https://www.ourcommons.ca/Members/en/search?province=YT",
+        "acquired_at": "2026-10-22T20:44:42.513397+00:00",
+        "raw_sha256": "bffa868688826b61db81bfef375fe4fde3942666ae223656f07a59edf2fd7171",
+        "text_sha256": "0e414f86d433274bb0f396f02c3b0d846e104681640efa7e7b7d658d93b4e00b",
+        "character_count": 1996
+      },
+      {
+        "original_location": "https://www.ourcommons.ca/Members/en/search?province=NU",
+        "acquired_at": "2026-10-22T20:44:43.437900+00:00",
+        "raw_sha256": "e957d978a1225199e3f51a5512a78ed9bd41faa7f0211dd3ed6201f0531fd384",
+        "text_sha256": "8398138bd1aa4abd07ed2155b11e453e75543845707534237c84a0801d6fbc35",
+        "character_count": 1998
+      },
+      {
+        "original_location": "https://clerk.house.gov/Members/ViewMemberList",
+        "acquired_at": "2026-10-22T20:44:45.091091+00:00",
+        "raw_sha256": "82a4d0c24a14c6b0b7f244cea46211e9549f38075796f7f6ede92f4d66e0d512",
+        "text_sha256": "4270c380e51f2fef8cf7b1559753501af4f524f4ce816644c8e56c6048e99e01",
+        "character_count": 25946
+      },
+      {
+        "original_location": "https://en.wikipedia.org/wiki/Becca_Balint",
+        "acquired_at": "2026-10-22T20:44:46.716894+00:00",
+        "raw_sha256": "6099d5292795897d3d2e499d4664a757c1beed9f87c939dacac89007b447d3fa",
+        "text_sha256": "4419e3dabe5ff00b1abf89a88ebc485bfeec89502f8ce5fede4a45ff8b879ec0",
+        "character_count": 40727
+      },
+      {
+        "original_location": "https://en.wikipedia.org/wiki/Peter_Welch",
+        "acquired_at": "2026-10-22T20:44:47.711607+00:00",
+        "raw_sha256": "4622e57eb4e07c1dfd59154bad00ece58e5387248c74ea4617c270ab5db2de2c",
+        "text_sha256": "eef44431ae12e964d9d3012b09fa3e9e4f3ebc1e561744fa0b483cd65f326f07",
+        "character_count": 32495
+      }
+    ],
+    "limitations": [
+      "Official Senate content was inspected through web research. ProjectClarity acquisition still reports robots_unavailable; this verification does not mark that fetch successful.",
+      "Verification applies to the dated small scopes, not whole national rosters, party affiliation, or future membership.",
+      "No human labelling or paid live-model quality evaluation was performed."
+    ]
+  }
+}

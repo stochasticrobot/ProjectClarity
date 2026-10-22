@@ -1,0 +1,16 @@
+# Direct dependencies for planning, retrieval, extraction, review and discovery.
+# requirements.txt is the generated, hashed lock; edit dependencies here and
+# regenerate deliberately instead of hand-editing the lock's generated comments.
+langgraph==1.2.16
+# Durable human-review interrupts; SQLite is local, replaceable by a server store later.
+langgraph-checkpoint-sqlite==3.1.2
+langchain-anthropic==1.7.6
+pydantic==2.14.1
+langsmith==0.14.11
+python-dotenv==1.2.4
+# Retrieval uses existing libraries for HTTP, robots rules, HTML, and PDF text.
+urllib3==2.8.0
+certifi==2026.10.19
+protego==0.7.0
+beautifulsoup4==4.15.0
+pypdf==6.21.2

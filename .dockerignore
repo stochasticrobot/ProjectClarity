@@ -1,0 +1,7 @@
+# Never send local credentials or research output into a Docker build context.
+.env
+.env.*
+.git
+.venv
+.projectclarity
+**/__pycache__
