@@ -36,10 +36,25 @@ class RetrievalLimits:
 class RetrievalError(Exception):
     """A short, application-written reason safe to save without exception payloads."""
 
-    def __init__(self, code: str, message: str):
-        """Keep a machine-readable failure code beside our safe explanation for the user."""
+    def __init__(self, code: str, message: str, *, retry_after_seconds=None, http_status=None):
+        """Keep a machine-readable failure code beside our safe explanation for the user.
+
+        Args:
+            self: Retrieval exception instance being initialized with a stable code and safe
+                message.
+            code: Stable machine-readable retrieval failure code.
+            retry_after_seconds: Optional server-requested delay before a permitted retry.
+            http_status: Optional HTTP status received for this failed attempt.
+            message: Safe human-readable explanation that does not contain an unfiltered
+                provider response.
+
+        Returns:
+            None. Initialize the exception with a stable code and application-owned explanation.
+        """
         super().__init__(message)
         self.code = code
+        self.retry_after_seconds = retry_after_seconds
+        self.http_status = http_status
 
 
 class RunCancelled(Exception):
@@ -60,15 +75,34 @@ class RetrievalBudget:
     on_event: Callable[..., None] | None = None
 
     def emit(self, event: str, **details) -> None:
-        """Report only application-selected metadata, never response bodies/headers."""
+        """Report only application-selected metadata, never response bodies/headers.
+
+        Args:
+            self: Mutable retrieval-budget instance holding cumulative usage and optional
+                monitoring/control callbacks.
+            event: Application event name describing a retrieval operation.
+            **details: Application-selected counters and status fields to attach to the event;
+                do not supply source bodies or headers.
+
+        Returns:
+            None. Forward the selected event metadata to the optional observer.
+        """
         if self.on_event:
             self.on_event(event, **details, **self.summary())
 
     def check_time(self) -> None:
         """Observe cancellation and reject further work after the elapsed-time allowance.
 
-        Callers invoke this between operations; it cannot interrupt a blocking
-        DNS/HTTP call by itself. Network and parser timeouts provide other bounds.
+        Callers invoke this between operations; it cannot interrupt a blocking DNS/HTTP call by
+        itself. Network and parser timeouts provide other bounds.
+
+        Args:
+            self: Mutable retrieval-budget instance holding cumulative usage and optional
+                monitoring/control callbacks.
+
+        Returns:
+            None while work is allowed; raise on an observed cancellation or expired elapsed-
+            time allowance.
         """
         if self.check_control:
             self.check_control()
@@ -78,8 +112,18 @@ class RetrievalBudget:
     def charge_bytes(self, count: int) -> None:
         """Count bytes already read, then stop if all sources together exceeded the cap.
 
-        The counter includes the last over-limit chunk and robots.txt traffic;
-        failed downloads do not get their consumed bytes refunded.
+        The counter includes the last over-limit chunk and robots.txt traffic; failed downloads
+        do not get their consumed bytes refunded.
+
+        Args:
+            self: Mutable retrieval-budget instance holding cumulative usage and optional
+                monitoring/control callbacks.
+            count: Number of bytes just consumed, including bytes from failed requests or robots
+                responses.
+
+        Returns:
+            None if the accumulated byte count remains allowed; raise RetrievalError after
+            counting an over-limit chunk.
         """
         self.check_time()
         self.bytes_read += count
@@ -88,14 +132,34 @@ class RetrievalBudget:
             raise RetrievalError("total_size_limit", "The retrieval run exceeded its total byte allowance.")
 
     def reserve_request(self) -> None:
-        """Charge an HTTP attempt before sending it, so failures still consume the limit."""
+        """Charge an HTTP attempt before sending it, so failures still consume the limit.
+
+        Args:
+            self: Mutable retrieval-budget instance holding cumulative usage and optional
+                monitoring/control callbacks.
+
+        Returns:
+            None after reserving one allowed HTTP attempt; raise RetrievalError when no attempt
+            remains.
+        """
         self.check_time()
         if self.http_requests >= self.limits.max_http_requests:
             raise RetrievalError("request_limit", "The retrieval HTTP request allowance is exhausted.")
         self.http_requests += 1
+        self.emit("request_reserved")
 
     def wait(self, seconds: float) -> None:
-        """Honor site pacing while checking stop/deadline requests every quarter second."""
+        """Honor site pacing while checking stop/deadline requests every quarter second.
+
+        Args:
+            self: Mutable retrieval-budget instance holding cumulative usage and optional
+                monitoring/control callbacks.
+            seconds: Requested pacing delay in seconds; waited in short interruptible intervals.
+
+        Returns:
+            None after the requested delay, or raise if cancellation/deadline is observed during
+            polling.
+        """
         while seconds > 0:
             self.check_time()
             interval = min(seconds, 0.25)
@@ -104,7 +168,16 @@ class RetrievalBudget:
         self.check_time()
 
     def summary(self) -> dict[str, int | float]:
-        """Return counters/limits for receipts and monitoring, without any source content."""
+        """Return counters/limits for receipts and monitoring, without any source content.
+
+        Args:
+            self: Mutable retrieval-budget instance holding cumulative usage and optional
+                monitoring/control callbacks.
+
+        Returns:
+            A dictionary of consumed bytes, HTTP attempts, elapsed time and configured retrieval
+            limits; no source content.
+        """
         return {"bytes_read": self.bytes_read, "http_requests": self.http_requests,
                 "elapsed_seconds": round(time.monotonic() - self.started, 3),
                 "max_total_bytes": self.limits.max_total_bytes,

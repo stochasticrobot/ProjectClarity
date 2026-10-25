@@ -20,13 +20,31 @@ class ParsingTests(unittest.TestCase):
     """Use actual bytes and parser libraries, not canned parser return values."""
 
     def test_text_normalizes_line_endings_without_dropping_words(self):
-        """Text remains readable and line-based after Windows newlines and extra spaces."""
+        """Text remains readable and line-based after Windows newlines and extra spaces.
+
+        Args:
+            self: This unittest case instance, holding its isolated fixtures and assertion
+                methods.
+
+        Returns:
+            None. Assertions fail if the documented behavior regresses; unittest records the
+            result.
+        """
         text, parser = parse_document(b"  First   line\r\nSecond\tline\r\n", "text/plain", RetrievalLimits())
         self.assertEqual(text, "First line\nSecond line\n")
         self.assertIn("normalize-v1", parser)
 
     def test_html_keeps_main_text_and_removes_scripts_and_navigation(self):
-        """Article text survives; script/nav markup must not appear as article evidence."""
+        """Article text survives; script/nav markup must not appear as article evidence.
+
+        Args:
+            self: This unittest case instance, holding its isolated fixtures and assertion
+                methods.
+
+        Returns:
+            None. Assertions fail if the documented behavior regresses; unittest records the
+            result.
+        """
         raw = b"<html><nav>Menu junk</nav><main><h1>Research</h1><p>Useful source text.</p></main><script>run_bad_action()</script></html>"
         text, parser = parse_document(raw, "text/html", RetrievalLimits())
         self.assertIn("Useful source text.", text)
@@ -35,13 +53,31 @@ class ParsingTests(unittest.TestCase):
         self.assertIn("beautifulsoup4-", parser)
 
     def test_pdf_text_is_extracted_from_a_real_pdf(self):
-        """The PDF path exercises pypdf, not a fixture pretending to be parsed output."""
+        """The PDF path exercises pypdf, not a fixture pretending to be parsed output.
+
+        Args:
+            self: This unittest case instance, holding its isolated fixtures and assertion
+                methods.
+
+        Returns:
+            None. Assertions fail if the documented behavior regresses; unittest records the
+            result.
+        """
         text, parser = parse_document(text_pdf(), "application/pdf", RetrievalLimits())
         self.assertIn("Canadian AI security", text)
         self.assertIn("pypdf-", parser)
 
     def test_empty_encrypted_malformed_and_oversized_outputs_fail_explicitly(self):
-        """Unusable or over-limit material cannot silently become successful empty text."""
+        """Unusable or over-limit material cannot silently become successful empty text.
+
+        Args:
+            self: This unittest case instance, holding its isolated fixtures and assertion
+                methods.
+
+        Returns:
+            None. Assertions fail if the documented behavior regresses; unittest records the
+            result.
+        """
         cases = [(b"  \n", "text/plain", RetrievalLimits(), "no_text"),
                  (text_pdf(""), "application/pdf", RetrievalLimits(), "no_text"),
                  (text_pdf(encrypted=True), "application/pdf", RetrievalLimits(), "encrypted_pdf"),
@@ -58,7 +94,16 @@ class ParsingTests(unittest.TestCase):
                 self.assertEqual(caught.exception.code, expected)
 
     def test_parser_timeout_becomes_a_controlled_failure(self):
-        """A stuck parser has a finite wait and cannot print document-bearing exceptions."""
+        """A stuck parser has a finite wait and cannot print document-bearing exceptions.
+
+        Args:
+            self: This unittest case instance, holding its isolated fixtures and assertion
+                methods.
+
+        Returns:
+            None. Assertions fail if the documented behavior regresses; unittest records the
+            result.
+        """
         process = MagicMock()
         process.__enter__.return_value = process
         process.communicate.side_effect = [subprocess.TimeoutExpired("parser", 0.25), (b"", None)]
@@ -75,14 +120,35 @@ class ParsingTests(unittest.TestCase):
         self.assertEqual(process.communicate.call_count, 2)
 
     def test_cancelling_a_busy_parser_kills_and_reaps_its_child_process(self):
-        """A cooperative stop cannot leave an expensive parsing child running in the background."""
+        """A cooperative stop cannot leave an expensive parsing child running in the background.
+
+        Args:
+            self: This unittest case instance, holding its isolated fixtures and assertion
+                methods.
+
+        Returns:
+            None. Assertions fail if the documented behavior regresses; unittest records the
+            result.
+        """
         real_popen = subprocess.Popen
         children = []
 
         def slow_child(command, **options):
             # Use a real OS child with a deterministic delay instead of relying
             # on a particular PDF being slow. The production supervisor is real.
-            """Substitute a sleeping OS child to test the real parser supervisor's cancellation cleanup."""
+            """Substitute a sleeping OS child to test the real parser supervisor's cancellation
+            cleanup.
+
+            Args:
+                command: Parser-child argument vector accepted for patch compatibility; deliberately
+                    replaced by a sleeping Python child.
+                **options: Popen options forwarded to the sleeping child, preserving its
+                    pipe/environment supervision.
+
+            Returns:
+                The owned sleeping subprocess used to exercise the real parser supervisor's
+                cancellation and reaping.
+            """
             child = real_popen([sys.executable, "-I", "-c", "import time; time.sleep(30)"], **options)
             children.append(child)
             return child

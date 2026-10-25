@@ -17,12 +17,21 @@ from pathlib import Path
 from unittest.mock import patch
 
 import httpx2
+from tests.planning.planning_fixtures import planning_reply
 
 from tests.retrieval.retrieval_test_fixtures import FakeHTTP, public_dns
 
 
 def main():
-    """Accept a temporary output folder; never use a developer's real credential file."""
+    """Accept a temporary output folder; never use a developer's real credential file.
+
+    Args:
+        None.
+
+    Returns:
+        Never returns normally on the CLI path; the production __main__ raises SystemExit
+        with its command result. Fixture setup errors propagate.
+    """
     parser = argparse.ArgumentParser()
     parser.add_argument("--output-dir", type=Path, required=True)
     args = parser.parse_args()
@@ -39,18 +48,47 @@ def main():
     })
 
     def source_pool(host, **options):
-        """Wrap the fake connection pool so one chosen document downloads slowly enough to cancel."""
+        """Wrap the fake connection pool so one chosen document downloads slowly enough to cancel.
+
+        Args:
+            host: Host name passed to the DNS or HTTP-pool interface under test.
+            **options: Connection-pool options passed through to the existing fake HTTP pool.
+
+        Returns:
+            A fixture connection-pool object whose second source stream is deliberately slowed.
+        """
         pool = http.pool(host, **options)
         original_request = pool.request
 
         def request(method, path, **kwargs):
-            """Use normal fixture routing, adding a slow read only for the second source."""
+            """Use normal fixture routing, adding a slow read only for the second source.
+
+            Args:
+                method: HTTP method passed by the production fetcher to the fixture connection pool.
+                path: HTTP request path used to look up the permitted fixture route.
+                **kwargs: HTTP request options forwarded to the original fake-pool request method.
+
+            Returns:
+                A fixture HTTPResponse, with a delayed read method only for the selected slow
+                source.
+            """
             response = original_request(method, path, **kwargs)
             if path == "/slow":
                 original_read = response.read
 
                 def slow_read(amount, **read_options):
-                    """Deliver small delayed chunks so the production worker can observe a stop between reads."""
+                    """Deliver small delayed chunks so the production worker can observe a stop between reads.
+
+                    Args:
+                        amount: Maximum bytes requested from the slow fixture stream; chunks are further
+                            capped to expose cancellation polls.
+                        **read_options: Stream-read keyword options forwarded to the original response
+                            reader.
+
+                    Returns:
+                        The next fixture-body bytes, at most 1,024 bytes per read, after the short
+                        deliberate delay.
+                    """
                     time.sleep(0.05)
                     return original_read(min(amount, 1024), **read_options)
 
@@ -61,10 +99,20 @@ def main():
         return pool
 
     def model_reply(request):
-        """Return a no-clarification plan so worker-control tests reach document acquisition."""
+        """Return a no-clarification plan so worker-control tests reach document acquisition.
+
+        Args:
+            request: Actual httpx2.Request emitted by the SDK; inspected locally and answered
+                with fixture data.
+
+        Returns:
+            A synthetic httpx2.Response with initial-planning scope fields passed through
+            the real provider SDK; no network request
+            is made by this responder.
+        """
         return httpx2.Response(200, json={
             "id": "msg_monitor_fixture", "type": "message", "role": "assistant",
-            "model": "claude-haiku-5-5", "content": [{"type": "text", "text": json.dumps(plan)}],
+            "model": "claude-haiku-5-5", "content": [{"type": "text", "text": json.dumps(planning_reply(plan))}],
             "stop_reason": "end_turn", "stop_sequence": None,
             "usage": {"input_tokens": 100, "output_tokens": 200},
         })
@@ -73,7 +121,7 @@ def main():
         httpx2.Client(transport=httpx2.MockTransport(model_reply)) as client,
         patch("langchain_anthropic.chat_models._get_default_httpx_client", return_value=client),
         patch.dict("os.environ", {"ANTHROPIC_API_KEY": "SYNTHETIC_KEY_DO_NOT_LOG"}),
-        patch("projectclarity.research_planner.PROJECT_ENV_FILE", args.output_dir.parent / "no-real-env"),
+        patch("projectclarity.nodes.plan_research.research_planner.PROJECT_ENV_FILE", args.output_dir.parent / "no-real-env"),
         patch("projectclarity.retrieval.public_url_fetcher.urllib3.HTTPSConnectionPool", side_effect=source_pool),
         patch("socket.getaddrinfo", side_effect=public_dns),
         patch("socket.socket.connect", side_effect=AssertionError("No network allowed")),

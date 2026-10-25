@@ -2,7 +2,7 @@
 
 Only link IDs from Python's observed inventory may be selected. Reasons explain
 how a page might help a goal; they do not claim the page has already been read.
-Python validates the entire proposal before registering any new URL.
+Python validates each proposed choice independently before registering its URL.
 """
 from pydantic import Field
 from projectclarity.research_schemas import Contract, Identifier, Text
@@ -16,7 +16,7 @@ class FollowupChoice(Contract):
 
 
 class FollowupPlan(Contract):
-    """Explain evidence gaps and choose zero to three links from the supplied inventory."""
-    gaps: list[Text] = Field(max_length=8)
-    selections: list[FollowupChoice] = Field(max_length=3)
-    stop_reason: Text
+    """Explain evidence gaps and rank useful links from the supplied inventory."""
+    gaps: list[Text]
+    selections: list[FollowupChoice]
+    stop_reason: Text = Field(description="Why this selection is useful or empty; not a decision to stop the overall research.")

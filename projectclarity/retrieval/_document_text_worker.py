@@ -23,10 +23,22 @@ import unicodedata
 def extract(raw: bytes, media_type: str, charset: str, max_chars: int, max_pages: int) -> tuple[str, str]:
     """Convert one supported document into normalized text and a parser-version label.
 
-    Format libraries extract text; the final cleanup standardizes whitespace and
-    Unicode for exact quotation matching later. Limits reject excessive/empty
-    output rather than returning a silently truncated document. HTML links are
-    reduced to visible text here; html_links() separately captures observed targets.
+    Format libraries extract text; the final cleanup standardizes whitespace and Unicode for
+    exact quotation matching later. Limits reject excessive/empty output rather than
+    returning a silently truncated document. HTML links are reduced to visible text here;
+    html_links() separately captures observed targets.
+
+    Args:
+        raw: Original document bytes read by the parent process.
+        media_type: Normalized document media type selecting the HTML, PDF or plain-text
+            parser.
+        charset: Declared text encoding, or None when the parser must use its default.
+        max_chars: Maximum permitted number of extracted text characters.
+        max_pages: Maximum permitted number of PDF pages.
+
+    Returns:
+        A pair of normalized document text ending in a newline and the parser/version label
+        used to produce it.
     """
     if media_type == "application/pdf":
         import pypdf
@@ -70,23 +82,43 @@ def extract(raw: bytes, media_type: str, charset: str, max_chars: int, max_pages
 
 
 def html_links(raw: bytes, media_type: str, charset: str) -> dict:
-    """Retain up to 100 observed anchors before text cleanup removes navigation.
+    """Retain observed anchors before text cleanup removes navigation.
 
-    Targets are raw attributes, not permissions. The parent resolves them against
-    the final fetched URL; HTML base tags are deliberately ignored. PDF/text link
-    discovery is not implemented. Labels are untrusted hints, not source claims.
+    Targets are raw attributes, not permissions. The parent resolves them against the final
+    fetched URL; HTML base tags are deliberately ignored. PDF/text link discovery is not
+    implemented. Labels are untrusted hints, not source claims.
+
+    Args:
+        raw: Original document bytes; HTML parsing observes anchors without following them.
+        media_type: Normalized document media type selecting the HTML, PDF or plain-text
+            parser.
+        charset: Declared text encoding, or None when the parser must use its default.
+
+    Returns:
+        A dictionary of href/label records within the source-byte/parser-resource bounds;
+        there is no first-N anchor cutoff. Overlong URLs are excluded and disclosed by
+        the truncation flag. Non-HTML documents produce an empty inventory.
     """
     if media_type not in {"text/html", "application/xhtml+xml"}:
         return {"links": [], "links_truncated": False}
     import bs4
     soup = bs4.BeautifulSoup(raw, "html.parser", from_encoding=charset or None)
-    anchors = soup.find_all("a", href=True, limit=101)
+    anchors = soup.find_all("a", href=True)
     return {"links": [{"href": str(a["href"])[:2048], "label": a.get_text(" ", strip=True)[:240]}
-        for a in anchors[:100] if len(str(a["href"])) <= 2048], "links_truncated": len(anchors) > 100}
+        for a in anchors if len(str(a["href"])) <= 2048],
+        "links_truncated": any(len(str(a["href"])) > 2048 for a in anchors)}
 
 
 def main() -> None:
-    """Apply resource limits, parse one input, and never print raw exception details."""
+    """Apply resource limits, parse one input, and never print raw exception details.
+
+    Args:
+        None.
+
+    Returns:
+        None on normal completion after writing the worker JSON response to stdout; parsing
+        failures are represented without raw exception text.
+    """
     errors = {"encrypted_pdf": "Encrypted PDFs are not supported.",
               "page_limit": "The PDF exceeds the page limit.",
               "text_size_limit": "Extracted text exceeds the character limit.",

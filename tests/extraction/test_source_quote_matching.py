@@ -11,7 +11,16 @@ class SourceQuoteMatchingTests(unittest.TestCase):
     """Require original Unicode character offsets and unchanged non-whitespace text."""
 
     def test_layout_whitespace_maps_back_to_unchanged_source(self):
-        """Newlines, tabs and nonbreaking spaces collapse only in the matching view."""
+        """Newlines, tabs and nonbreaking spaces collapse only in the matching view.
+
+        Args:
+            self: This unittest case instance, holding its isolated fixtures and assertion
+                methods.
+
+        Returns:
+            None. Assertions fail if the documented behavior regresses; unittest records the
+            result.
+        """
         source = "Préface. Élodie\nworks\t at\u00a0Lab X. Fin."
         found = match_source_quote(source, "Élodie works at Lab X.")
         self.assertEqual(found.start, len("Préface. "))
@@ -20,12 +29,30 @@ class SourceQuoteMatchingTests(unittest.TestCase):
         self.assertEqual(found.match_method, "whitespace_normalized")
 
     def test_exact_match_remains_exact(self):
-        """Already-exact quotes keep their original location and explicit match label."""
+        """Already-exact quotes keep their original location and explicit match label.
+
+        Args:
+            self: This unittest case instance, holding its isolated fixtures and assertion
+                methods.
+
+        Returns:
+            None. Assertions fail if the documented behavior regresses; unittest records the
+            result.
+        """
         found = match_source_quote("Alice works here.", "Alice works here.")
         self.assertEqual((found.start, found.end, found.match_method), (0, 17, "exact"))
 
     def test_changed_words_punctuation_case_and_word_boundaries_are_not_repaired(self):
-        """Whitespace tolerance must not become fuzzy matching or erase a negation."""
+        """Whitespace tolerance must not become fuzzy matching or erase a negation.
+
+        Args:
+            self: This unittest case instance, holding its isolated fixtures and assertion
+                methods.
+
+        Returns:
+            None. Assertions fail if the documented behavior regresses; unittest records the
+            result.
+        """
         source = "Alice does not work at Lab-X."
         for quote in ["Alice does work at Lab-X.", "Alice does not work at Lab X.",
                       "alice does not work at Lab-X.", "Alicedoes not work at Lab-X.", "   "]:
@@ -33,11 +60,29 @@ class SourceQuoteMatchingTests(unittest.TestCase):
                 match_source_quote(source, quote)
 
     def test_layout_variants_are_ambiguous_even_if_one_is_exact(self):
-        """An exact occurrence cannot hide another equally plausible normalized location."""
+        """An exact occurrence cannot hide another equally plausible normalized location.
+
+        Args:
+            self: This unittest case instance, holding its isolated fixtures and assertion
+                methods.
+
+        Returns:
+            None. Assertions fail if the documented behavior regresses; unittest records the
+            result.
+        """
         with self.assertRaisesRegex(QuoteMatchError, "ambiguous_quote"):
             match_source_quote("Alice works here. Alice\nworks here.", "Alice works here.")
 
     def test_overlapping_occurrences_are_ambiguous(self):
-        """Count overlapping locations as well as separated repetitions."""
+        """Count overlapping locations as well as separated repetitions.
+
+        Args:
+            self: This unittest case instance, holding its isolated fixtures and assertion
+                methods.
+
+        Returns:
+            None. Assertions fail if the documented behavior regresses; unittest records the
+            result.
+        """
         with self.assertRaisesRegex(QuoteMatchError, "ambiguous_quote"):
             match_source_quote("aaa", "aa")

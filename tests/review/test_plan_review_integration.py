@@ -19,9 +19,9 @@ import sys
 import unittest
 from unittest.mock import patch
 
-from projectclarity.plan_review_contracts import PlanReviewDecision, ReviewAnswer
-from projectclarity.plan_review_service import get_plan_review, submit_plan_review
-from projectclarity.research_planner import ResearchError
+from projectclarity.nodes.review_plan.plan_review_contracts import PlanReviewDecision, ReviewAnswer
+from projectclarity.nodes.review_plan.plan_review_service import get_plan_review, submit_plan_review
+from projectclarity.nodes.plan_research.research_planner import ResearchError
 from projectclarity.run_monitor import RunMonitor
 from projectclarity.run_status_commands import read_status
 from tests.planning import test_planning_cli_integration as planning_tests
@@ -31,7 +31,16 @@ class PlanReviewIntegrationTests(unittest.TestCase):
     """Use real persisted interrupts rather than pretending a saved plan can resume."""
 
     def setUp(self):
-        """Prepare a local document and two blocking questions to exercise durable review pauses."""
+        """Prepare a local document and two blocking questions to exercise durable review pauses.
+
+        Args:
+            self: This unittest case instance, holding its isolated fixtures and assertion
+                methods.
+
+        Returns:
+            None. Initialize this test instance's fixtures; unittest calls setUp before each
+            test method.
+        """
         self.cli = planning_tests.PlanningCLIIntegrationTests()
         self.cli.setUp()
         self.addCleanup(self.cli.doCleanups)
@@ -40,7 +49,18 @@ class PlanReviewIntegrationTests(unittest.TestCase):
         self.cli.plan["clarifications"] = ["PRIVATE_REVIEW_QUESTION: which years?", "Include organizations?"]
 
     def pause(self, *options):
-        """Run the real research entry point; require zero acquisition before review."""
+        """Run the real research entry point; require zero acquisition before review.
+
+        Args:
+            self: This unittest case instance, holding its isolated fixtures and assertion
+                methods.
+            *options: Additional command-line argument strings appended to this helper's base
+                invocation.
+
+        Returns:
+            None. Save the actual pending run and review on this fixture, asserting retrieval
+            has not yet started.
+        """
         code, _, _ = self.cli.run_cli(lambda request: self.cli.response(),
             "--document", str(self.document), *options, include_urls=False, plan_only=False)
         self.assertEqual(code, 2)
@@ -50,24 +70,68 @@ class PlanReviewIntegrationTests(unittest.TestCase):
         self.review = get_plan_review(self.cli.output, self.directory.name)
 
     def command(self, name, *options):
-        """A fresh interpreter must load the checkpoint, not reuse in-memory graph state."""
+        """A fresh interpreter must load the checkpoint, not reuse in-memory graph state.
+
+        Args:
+            self: This unittest case instance, holding its isolated fixtures and assertion
+                methods.
+            name: Production CLI subcommand to invoke through the network-denying review-process
+                fixture.
+            *options: Additional command-line argument strings appended to this helper's base
+                invocation.
+
+        Returns:
+            A subprocess.CompletedProcess containing the separate interpreter's review-command
+            output and exit code.
+        """
         env = dict(os.environ, ANTHROPIC_API_KEY="", LANGSMITH_TRACING="false")
         return subprocess.run([sys.executable, "-m", "tests.review.review_cli_process", name, self.directory.name,
             "--output-dir", str(self.cli.output), *options], capture_output=True, text=True, env=env, timeout=20)
 
     def decision(self, action="accept_assumptions", **fields):
-        """Construct the same response object that an HTTP adapter would validate."""
+        """Construct the same response object that an HTTP adapter would validate.
+
+        Args:
+            self: This unittest case instance, holding its isolated fixtures and assertion
+                methods.
+            action: Explicit decision action, such as answer, accept_assumptions or reject.
+            **fields: Additional decision fields, such as answers or note, validated by
+                PlanReviewDecision.
+
+        Returns:
+            A PlanReviewDecision bound to this fixture's exact run and pending review.
+        """
         return PlanReviewDecision(run_id=self.directory.name, review_id=self.review.review_id, action=action, **fields)
 
     def submit(self, decision):
-        """Deny model setup/credentials/network while exercising the real resume path."""
-        with patch("projectclarity.agentic_workflow.create_planner", side_effect=AssertionError("Review reran planning")), \
-             patch("projectclarity.research_planner.read_api_key", side_effect=AssertionError("Review read a key")), \
+        """Deny model setup/credentials/network while exercising the real resume path.
+
+        Args:
+            self: This unittest case instance, holding its isolated fixtures and assertion
+                methods.
+            decision: PlanReviewDecision submitted to this fixture's saved run; model and
+                network access are blocked.
+
+        Returns:
+            The ResearchSession returned by the actual resume service for the fixture's paused
+            run.
+        """
+        with patch("projectclarity.nodes.plan_research.node.create_planner", side_effect=AssertionError("Review reran planning")), \
+             patch("projectclarity.nodes.plan_research.research_planner.read_api_key", side_effect=AssertionError("Review read a key")), \
              patch("socket.socket.connect", side_effect=AssertionError("Review used the network")):
             return submit_plan_review(self.cli.output, decision)
 
     def test_separate_cli_processes_inspect_and_resume_the_same_run(self):
-        """Durability means the original process can exit before approval and acquisition."""
+        """Durability means the original process can exit before approval and acquisition.
+
+        Args:
+            self: This unittest case instance, holding its isolated fixtures and assertion
+                methods.
+
+        Returns:
+            None. Assertions fail if the documented behavior regresses; unittest records the
+            result.
+        """
         self.pause()
         inspected = self.command("review", "--json")
         self.assertEqual(inspected.returncode, 0, inspected.stderr)
@@ -85,7 +149,7 @@ class PlanReviewIntegrationTests(unittest.TestCase):
         self.assertEqual(saved["status"], "sources_retrieved")
         self.assertEqual(saved["session_id"], self.session["session_id"])
         self.assertEqual(saved["usage"], self.session["usage"])
-        self.assertEqual(saved["visited_nodes"], ["initialize_research", "plan_research", "review_plan", "retrieve_sources"])
+        self.assertEqual(saved["visited_nodes"], ["initialize_research", "plan_research", "review_plan", "schedule_work", "retrieve_sources", "schedule_work"])
         self.assertEqual((self.directory / "documents/S1/text.txt").read_text(), self.document.read_text())
         self.assertEqual(len(self.cli.requests), 1)
         final = read_status(self.directory)
@@ -93,7 +157,16 @@ class PlanReviewIntegrationTests(unittest.TestCase):
         self.assertFalse(final["waiting_for_input"])
 
     def test_cli_answers_are_recorded_as_human_guidance_without_another_call(self):
-        """Answers survive in the decision and readable plan, not only terminal output."""
+        """Answers survive in the decision and readable plan, not only terminal output.
+
+        Args:
+            self: This unittest case instance, holding its isolated fixtures and assertion
+                methods.
+
+        Returns:
+            None. Assertions fail if the documented behavior regresses; unittest records the
+            result.
+        """
         self.pause()
         answers = self.cli.directory / "answers.json"
         answers.write_text(json.dumps({"Q1": "PRIVATE_ANSWER: 2024–2026", "Q2": "Yes, organizations and people."}))
@@ -107,7 +180,16 @@ class PlanReviewIntegrationTests(unittest.TestCase):
         self.assertNotIn("PRIVATE_ANSWER", (self.directory / "events.jsonl").read_text())
 
     def test_service_can_accept_a_manually_revised_plan_without_cli_code(self):
-        """The future web adapter has a callable transport-neutral revision interface."""
+        """The future web adapter has a callable transport-neutral revision interface.
+
+        Args:
+            self: This unittest case instance, holding its isolated fixtures and assertion
+                methods.
+
+        Returns:
+            None. Assertions fail if the documented behavior regresses; unittest records the
+            result.
+        """
         self.pause()
         revised = self.review.plan.model_copy(deep=True)
         revised.objective = "The reviewer's narrower objective"
@@ -122,7 +204,16 @@ class PlanReviewIntegrationTests(unittest.TestCase):
         self.assertEqual(json.loads((self.directory / "plan.json").read_text()), revised.model_dump())
 
     def test_rejection_finishes_without_fetching_or_rerunning_the_planner(self):
-        """Reject is a real graph branch, not a label attached to successful retrieval."""
+        """Reject is a real graph branch, not a label attached to successful retrieval.
+
+        Args:
+            self: This unittest case instance, holding its isolated fixtures and assertion
+                methods.
+
+        Returns:
+            None. Assertions fail if the documented behavior regresses; unittest records the
+            result.
+        """
         self.pause()
         result = self.submit(self.decision("reject", note="Scope is unsuitable."))
         self.assertEqual(result.status, "rejected")
@@ -131,7 +222,16 @@ class PlanReviewIntegrationTests(unittest.TestCase):
         self.assertTrue(read_status(self.directory)["finished"])
 
     def test_stale_and_incomplete_answers_leave_the_pause_unchanged(self):
-        """Invalid responses do not consume the interrupt, create events, or start work."""
+        """Invalid responses do not consume the interrupt, create events, or start work.
+
+        Args:
+            self: This unittest case instance, holding its isolated fixtures and assertion
+                methods.
+
+        Returns:
+            None. Assertions fail if the documented behavior regresses; unittest records the
+            result.
+        """
         self.pause()
         before = (self.directory / "events.jsonl").read_bytes()
         stale = self.decision()
@@ -147,7 +247,16 @@ class PlanReviewIntegrationTests(unittest.TestCase):
                 self.assertFalse((self.directory / "documents.json").exists())
 
     def test_duplicate_submission_cannot_fetch_documents_twice(self):
-        """A repeated click after success is refused without changing receipts/events."""
+        """A repeated click after success is refused without changing receipts/events.
+
+        Args:
+            self: This unittest case instance, holding its isolated fixtures and assertion
+                methods.
+
+        Returns:
+            None. Assertions fail if the documented behavior regresses; unittest records the
+            result.
+        """
         self.pause()
         decision = self.decision()
         self.submit(decision)
@@ -158,7 +267,16 @@ class PlanReviewIntegrationTests(unittest.TestCase):
             self.assertEqual((self.directory / name).read_bytes(), content)
 
     def test_concurrent_submission_cannot_take_the_active_worker_lock(self):
-        """A second process must fail before consuming the current review decision."""
+        """A second process must fail before consuming the current review decision.
+
+        Args:
+            self: This unittest case instance, holding its isolated fixtures and assertion
+                methods.
+
+        Returns:
+            None. Assertions fail if the documented behavior regresses; unittest records the
+            result.
+        """
         self.pause()
         monitor = RunMonitor(self.cli.output)
         try:
@@ -172,7 +290,16 @@ class PlanReviewIntegrationTests(unittest.TestCase):
         self.assertFalse((self.directory / "documents.json").exists())
 
     def test_operational_events_identify_reviews_without_containing_their_text(self):
-        """A UI can react to metadata and separately request authorized private details."""
+        """A UI can react to metadata and separately request authorized private details.
+
+        Args:
+            self: This unittest case instance, holding its isolated fixtures and assertion
+                methods.
+
+        Returns:
+            None. Assertions fail if the documented behavior regresses; unittest records the
+            result.
+        """
         self.pause()
         self.submit(self.decision())
         events = [json.loads(line) for line in (self.directory / "events.jsonl").read_text().splitlines()]
@@ -187,7 +314,16 @@ class PlanReviewIntegrationTests(unittest.TestCase):
         self.assertEqual(sum(item["event"] == "planning_started" for item in events), 1)
 
     def test_approval_keeps_original_fetch_limits(self):
-        """A human approval is not permission to bypass the run's byte allowance."""
+        """A human approval is not permission to bypass the run's byte allowance.
+
+        Args:
+            self: This unittest case instance, holding its isolated fixtures and assertion
+                methods.
+
+        Returns:
+            None. Assertions fail if the documented behavior regresses; unittest records the
+            result.
+        """
         self.pause("--max-source-bytes", "1")
         result = self.submit(self.decision())
         self.assertEqual(result.status, "retrieval_failed")
@@ -196,7 +332,16 @@ class PlanReviewIntegrationTests(unittest.TestCase):
         self.assertFalse((self.directory / "documents/S1/text.txt").exists())
 
     def test_changed_local_source_is_rechecked_after_review(self):
-        """A previously registered file replaced by a symlink cannot inherit approval."""
+        """A previously registered file replaced by a symlink cannot inherit approval.
+
+        Args:
+            self: This unittest case instance, holding its isolated fixtures and assertion
+                methods.
+
+        Returns:
+            None. Assertions fail if the documented behavior regresses; unittest records the
+            result.
+        """
         self.pause()
         replacement = self.cli.directory / "private.txt"
         replacement.write_text("Must not be acquired")
@@ -207,7 +352,16 @@ class PlanReviewIntegrationTests(unittest.TestCase):
         self.assertFalse((self.directory / "documents/S1/raw.bin").exists())
 
     def test_revised_plan_cannot_introduce_an_unregistered_source(self):
-        """A manually edited plan still passes source-ID validation before continuation."""
+        """A manually edited plan still passes source-ID validation before continuation.
+
+        Args:
+            self: This unittest case instance, holding its isolated fixtures and assertion
+                methods.
+
+        Returns:
+            None. Assertions fail if the documented behavior regresses; unittest records the
+            result.
+        """
         self.pause()
         revised = self.review.plan.model_copy(deep=True)
         revised.clarifications = []
@@ -218,7 +372,16 @@ class PlanReviewIntegrationTests(unittest.TestCase):
         self.assertEqual(get_plan_review(self.cli.output, self.directory.name), self.review)
 
     def test_edited_display_file_cannot_change_the_checkpoint_review(self):
-        """The convenient JSON artifact is a projection, not authority to change a plan."""
+        """The convenient JSON artifact is a projection, not authority to change a plan.
+
+        Args:
+            self: This unittest case instance, holding its isolated fixtures and assertion
+                methods.
+
+        Returns:
+            None. Assertions fail if the documented behavior regresses; unittest records the
+            result.
+        """
         self.pause()
         path = self.directory / "review_request.json"
         edited = json.loads(path.read_text())
@@ -227,7 +390,16 @@ class PlanReviewIntegrationTests(unittest.TestCase):
         self.assertEqual(get_plan_review(self.cli.output, self.directory.name), self.review)
 
     def test_crashed_execution_is_not_mistaken_for_a_safe_review_pause(self):
-        """The review command is not an unsafe general-purpose replay of crashed tasks."""
+        """The review command is not an unsafe general-purpose replay of crashed tasks.
+
+        Args:
+            self: This unittest case instance, holding its isolated fixtures and assertion
+                methods.
+
+        Returns:
+            None. Assertions fail if the documented behavior regresses; unittest records the
+            result.
+        """
         self.pause()
         path = self.directory / "run_status.json"
         status = json.loads(path.read_text())
@@ -239,7 +411,16 @@ class PlanReviewIntegrationTests(unittest.TestCase):
         self.assertFalse((self.directory / "documents.json").exists())
 
     def test_cli_requires_the_inspected_review_id_before_approving(self):
-        """A convenience flag must not silently approve whatever review is current."""
+        """A convenience flag must not silently approve whatever review is current.
+
+        Args:
+            self: This unittest case instance, holding its isolated fixtures and assertion
+                methods.
+
+        Returns:
+            None. Assertions fail if the documented behavior regresses; unittest records the
+            result.
+        """
         self.pause()
         result = self.command("review", "--accept-assumptions")
         self.assertEqual(result.returncode, 2)
@@ -247,7 +428,16 @@ class PlanReviewIntegrationTests(unittest.TestCase):
         self.assertEqual(get_plan_review(self.cli.output, self.directory.name), self.review)
 
     def test_cancel_at_a_pause_points_to_rejection_without_leaving_a_stop_marker(self):
-        """There is no active worker to acknowledge cancellation during human review."""
+        """There is no active worker to acknowledge cancellation during human review.
+
+        Args:
+            self: This unittest case instance, holding its isolated fixtures and assertion
+                methods.
+
+        Returns:
+            None. Assertions fail if the documented behavior regresses; unittest records the
+            result.
+        """
         self.pause()
         result = self.command("cancel")
         self.assertEqual(result.returncode, 2)
@@ -255,7 +445,16 @@ class PlanReviewIntegrationTests(unittest.TestCase):
         self.assertFalse((self.directory / "cancel.request").exists())
 
     def test_missing_checkpoint_is_not_reconstructed_from_display_json(self):
-        """Old runs and copied snapshots cannot pretend to have native resumable history."""
+        """Old runs and copied snapshots cannot pretend to have native resumable history.
+
+        Args:
+            self: This unittest case instance, holding its isolated fixtures and assertion
+                methods.
+
+        Returns:
+            None. Assertions fail if the documented behavior regresses; unittest records the
+            result.
+        """
         self.pause()
         store = self.cli.output / "workflow_checkpoints.sqlite"
         store.rename(self.cli.output / "test-hidden-checkpoint.sqlite")
@@ -265,7 +464,16 @@ class PlanReviewIntegrationTests(unittest.TestCase):
         self.assertFalse((self.directory / "documents.json").exists())
 
     def test_full_decision_file_uses_the_same_contract_as_a_nonterminal_adapter(self):
-        """Machine-oriented CLI submission reaches the same validation and reject branch."""
+        """Machine-oriented CLI submission reaches the same validation and reject branch.
+
+        Args:
+            self: This unittest case instance, holding its isolated fixtures and assertion
+                methods.
+
+        Returns:
+            None. Assertions fail if the documented behavior regresses; unittest records the
+            result.
+        """
         self.pause()
         path = self.cli.directory / "decision.json"
         path.write_text(self.decision("reject", note="Reject from a structured client.").model_dump_json())

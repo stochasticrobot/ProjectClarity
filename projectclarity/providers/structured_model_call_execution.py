@@ -1,4 +1,4 @@
-"""Execute one review/discovery call with the run's shared allowance and private trace.
+"""Execute one capture, review, source-selection or coverage call under the shared allowance.
 
 Nodes own prompts and domain checks. This helper owns the repeated mechanics:
 reserve a request before sending, retain malformed answers for debugging, total
@@ -20,10 +20,28 @@ from projectclarity.providers.structured_model_provider import create_structured
 from projectclarity.retrieval.retrieval_limits import RunCancelled
 from projectclarity.run_monitor import MonitoringError
 from projectclarity.session_storage import save_session
+from projectclarity.knowledge.capture_budget import capture_remaining
+
+MAX_MESSAGE_CHARACTERS = 48_000
 
 
 def save_call_trace(directory, trace, secret):
-    """Write only selected diagnostic fields, redacting credentials before touching disk."""
+    """Save the caller's processing-call trace with credential redaction so failed calls
+    remain inspectable without writing the configured key.
+
+    The caller selects the diagnostic fields; this writer serializes the supplied
+    dictionary rather than filtering it through an additional field allowlist.
+
+    Args:
+        directory: Local filesystem directory for this one saved research run.
+        trace: Processing-call trace dictionary containing selected inputs, output and
+            receipt fields.
+        secret: Optional exact API key to redact in addition to recognizable credential
+            patterns; None adds no exact-key replacement.
+
+    Returns:
+        None. Write the bounded, redacted private processing-call trace.
+    """
     folder = directory / "llm_calls"
     path = folder / (trace["call_id"] + ".json")
     if folder.is_symlink() or path.is_symlink():
@@ -40,11 +58,38 @@ def save_call_trace(directory, trace, secret):
 
 
 def invoke_structured(session, output_root, *, call_id, task, prompt_version, messages, schema, key_reader, monitor=None):
-    """Return (validated reply or None, receipt); callers still check IDs and source versions.
+    """Execute one structured model request under the run's shared request allowance so review,
+    knowledge capture, search selection and coverage obey the same overall ceiling.
+    Capture also obeys its explicitly configured auxiliary allowance, checked before
+    credentials or model construction. Failed capture calls consume that allowance.
 
-    Failure codes are application-owned. Never persist arbitrary exception text.
-    Unknown provider usage remains unknown in the run total. A skipped call uses
-    no credentials and no provider request, but still leaves a receipt.
+    Reserve the attempt, capture private inputs and bounded output, validate adapter
+    completion, and persist usage and a safe receipt. Failure returns no parsed answer
+    rather than allowing later nodes to treat a malformed or interrupted response as usable
+    knowledge.
+
+    Args:
+        session: ResearchSession containing this run's request, plan, source records,
+            accumulated results and status.
+        output_root: Local filesystem directory containing research-run subdirectories; not
+            a URL or an individual run folder.
+        call_id: Application call identifier selecting one saved model attempt, not a
+            filesystem path.
+        task: Workflow task name used to identify the model call in receipts and displays.
+        prompt_version: Version label identifying the application prompt used for this model
+            attempt.
+        messages: Ordered (role, text) application messages sent to the model; may contain
+            private research content.
+        schema: Pydantic response-model class defining the structured answer expected from
+            the provider.
+        key_reader: Required zero-argument callable returning the model API key when a
+            request needs it; the calling node supplies its credential reader.
+        monitor: Optional RunMonitor for progress events and cooperative cancellation; None
+            disables those hooks.
+
+    Returns:
+        A pair of parsed schema-model answer (or None on failure) and a receipt dictionary
+        describing the attempt, usage and safe error code.
     """
     if not re.fullmatch(r"[A-Za-z][A-Za-z0-9_-]{0,63}", call_id):
         raise ValueError("Invalid internal call ID")
@@ -58,8 +103,11 @@ def invoke_structured(session, output_root, *, call_id, task, prompt_version, me
         if session.usage.requests_attempted >= session.request.budget.max_requests:
             receipt["error_code"] = "request_limit"
             return None, receipt
+        if task == 'accumulate_knowledge' and capture_remaining(session) <= 0:
+            receipt['error_code'] = 'knowledge_request_limit'
+            return None, receipt
         serialized = json.dumps(messages, ensure_ascii=False)
-        if len(serialized) > 48_000:
+        if len(serialized) > MAX_MESSAGE_CHARACTERS:
             receipt["error_code"] = "input_too_large"
             return None, receipt
         secret = key_reader()

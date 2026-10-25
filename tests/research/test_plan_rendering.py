@@ -19,7 +19,16 @@ class PlanRenderingTests(unittest.TestCase):
     """Rendering describes current results; it never validates factual claims."""
 
     def test_category_and_question_are_visible_as_distinct_plan_sections(self):
-        """Readers can distinguish the question's type from its topic and goals."""
+        """Readers can distinguish the question's type from its topic and goals.
+
+        Args:
+            self: This unittest case instance, holding its isolated fixtures and assertion
+                methods.
+
+        Returns:
+            None. Assertions fail if the documented behavior regresses; unittest records the
+            result.
+        """
         session = example_session()
         session.plan.question_category = "Comparison"
         text = render_plan(session)
@@ -30,18 +39,45 @@ class PlanRenderingTests(unittest.TestCase):
         self.assertNotIn("## Retrieval results", text)
 
     def test_missing_plan_is_not_rendered_as_a_successful_empty_plan(self):
-        """A caller must handle planning failure instead of printing a fake plan."""
+        """A caller must handle planning failure instead of printing a fake plan.
+
+        Args:
+            self: This unittest case instance, holding its isolated fixtures and assertion
+                methods.
+
+        Returns:
+            None. Assertions fail if the documented behavior regresses; unittest records the
+            result.
+        """
         with self.assertRaisesRegex(ValueError, "without a validated plan"):
             render_plan(example_session(with_plan=False))
 
     def test_terminal_filter_removes_controls_but_keeps_readable_unicode(self):
-        """Untrusted text cannot send escape/control bytes to the user's terminal."""
+        """Untrusted text cannot send escape/control bytes to the user's terminal.
+
+        Args:
+            self: This unittest case instance, holding its isolated fixtures and assertion
+                methods.
+
+        Returns:
+            None. Assertions fail if the documented behavior regresses; unittest records the
+            result.
+        """
         text = "Café\tCanada\n\x1b[31mred\x1b[0m\x00\x07\r\x7f\x9b"
         filtered = terminal_text(text)
         self.assertEqual(filtered, "Café\tCanada\n[31mred[0m")
 
     def test_partial_retrieval_displays_successes_failures_and_scope_limits(self):
-        """A readable source and a blocked source remain distinct, unverified outcomes."""
+        """A readable source and a blocked source remain distinct, unverified outcomes.
+
+        Args:
+            self: This unittest case instance, holding its isolated fixtures and assertion
+                methods.
+
+        Returns:
+            None. Assertions fail if the documented behavior regresses; unittest records the
+            result.
+        """
         session = example_session(plan_only=False)
         session.visited_nodes.append("retrieve_sources")
         session.status = "retrieval_partial"

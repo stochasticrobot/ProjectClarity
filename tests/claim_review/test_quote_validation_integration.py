@@ -14,7 +14,16 @@ class QuoteValidationIntegrationTests(unittest.TestCase):
     """Exercise the production route rather than a separate demonstration validator."""
 
     def setUp(self):
-        """Reuse the existing offline transport harness with a deliberately wrapped source."""
+        """Reuse the existing offline transport harness with a deliberately wrapped source.
+
+        Args:
+            self: This unittest case instance, holding its isolated fixtures and assertion
+                methods.
+
+        Returns:
+            None. Initialize this test instance's fixtures; unittest calls setUp before each
+            test method.
+        """
         self.flow = flow_tests.ReviewDiscoveryIntegrationTests()
         self.flow.setUp()
         self.addCleanup(self.flow.doCleanups)
@@ -22,9 +31,27 @@ class QuoteValidationIntegrationTests(unittest.TestCase):
             b"<main>Alice works at <a href='/team'>Lab X.</a> Alice studies adversarial attacks.</main>")
 
     def test_original_spans_survive_extraction_review_and_adjudication(self):
-        """A model's spaces can match page layout while evidence keeps exact saved newlines."""
+        """A model's spaces can match page layout while evidence keeps exact saved newlines.
+
+        Args:
+            self: This unittest case instance, holding its isolated fixtures and assertion
+                methods.
+
+        Returns:
+            None. Assertions fail if the documented behavior regresses; unittest records the
+            result.
+        """
         def review(body):
-            """Return the usual claim with layout-normalized wording, not altered facts."""
+            """Return the usual claim with layout-normalized wording, not altered facts.
+
+            Args:
+                body: Decoded provider-request JSON passed by the fixture router; contains the
+                    actual serialized task payload.
+
+            Returns:
+                A synthetic httpx2.Response passed through the real provider SDK; no network request
+                is made by this responder.
+            """
             return self.flow.cli.response(text=json.dumps({"assessments": [{
                 "candidate_id": "S1_P1_C1", "verdict": "supported", "in_scope": True,
                 "rationale": "The passage states the affiliation.", "evidence_quotes": ["Alice works at Lab X."]}]}))
@@ -43,7 +70,16 @@ class QuoteValidationIntegrationTests(unittest.TestCase):
         self.assertEqual(session["usage"]["requests_attempted"], 3)
 
     def test_bad_quote_does_not_discard_neighboring_valid_assessment(self):
-        """One fabricated quote leaves its claim unresolved, not every claim in the batch."""
+        """One fabricated quote leaves its claim unresolved, not every claim in the batch.
+
+        Args:
+            self: This unittest case instance, holding its isolated fixtures and assertion
+                methods.
+
+        Returns:
+            None. Assertions fail if the documented behavior regresses; unittest records the
+            result.
+        """
         batch = proposed_batch()
         other = copy.deepcopy(batch["claims"][0])
         other.update(claim_id="C2", statement="Alice studies adversarial attacks.", relationship=None)
@@ -51,7 +87,16 @@ class QuoteValidationIntegrationTests(unittest.TestCase):
         batch["claims"].append(other)
         self.flow.overrides["ExtractionBatch"] = lambda body: self.flow.cli.response(text=json.dumps(batch))
         def review(body):
-            """Pair one valid review with one invented source quotation."""
+            """Pair one valid review with one invented source quotation.
+
+            Args:
+                body: Decoded provider-request JSON passed by the fixture router; contains the
+                    actual serialized task payload.
+
+            Returns:
+                A synthetic httpx2.Response passed through the real provider SDK; no network request
+                is made by this responder.
+            """
             return self.flow.cli.response(text=json.dumps({"assessments": [
                 {"candidate_id": "S1_P1_C1", "verdict": "supported", "in_scope": True,
                  "rationale": "Affiliation is stated.", "evidence_quotes": ["Alice works at Lab X."]},

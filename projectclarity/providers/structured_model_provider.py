@@ -10,7 +10,20 @@ from langchain_anthropic import ChatAnthropic
 
 
 def create_structured_model(api_key, session, schema):
-    """Return a no-retry LangChain runnable with parsed output and raw answer metadata."""
+    """Return a no-retry LangChain runnable with parsed output and raw answer metadata.
+
+    Args:
+        api_key: Transient model-provider credential; used to configure the client, not
+            saved as research data.
+        session: ResearchSession containing this run's request, plan, source records,
+            accumulated results and status.
+        schema: Pydantic response-model class defining the structured answer expected from
+            the provider.
+
+    Returns:
+        A configured LangChain runnable returning raw, parsed and parsing_error fields when
+        invoked; construction itself sends no request.
+    """
     model = ChatAnthropic(model=session.request.model, api_key=api_key,
         base_url="https://api.anthropic.com", max_tokens=session.request.budget.max_output_tokens,
         timeout=60.0, max_retries=0, output_config={"effort": "low"})

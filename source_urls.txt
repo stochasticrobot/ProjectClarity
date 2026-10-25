@@ -1,7 +1,6 @@
-# Positive-source smoke test: person, affiliations and AI-security research.
-# Retrieved successfully through ProjectClarity on 2026-10-22; pages may change.
-# About four extraction passages total: allow planning + extraction with
-# --extract --max-requests 6 --max-output-tokens 4096
-# See docs/extraction-smoke-test-sources.md for expected evidence and limitations.
+# Example starting points for Canadian AI-security research; contents may change.
+# See README.md for live search/review/crawling and optional broad graph capture.
+# Request/source limits are ceilings, not completion guarantees.
+# These explicit seeds do not require --use-default-sources; URL policy still applies.
 https://www.papernot.fr/
 https://aisafety.ca/research/

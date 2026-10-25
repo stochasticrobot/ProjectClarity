@@ -29,7 +29,7 @@ from unittest.mock import patch
 from pydantic import ValidationError
 
 from projectclarity.research_schemas import Budget, ResearchPlan
-from projectclarity import research_planner as planning
+from projectclarity.nodes.plan_research import research_planner as planning
 
 
 FIXTURE = Path(__file__).parent / "fixtures" / "valid_research_plan.json"
@@ -39,20 +39,38 @@ class PlanContractTests(unittest.TestCase):
     """Structural acceptance is not a claim about planning quality or factual truth."""
 
     def test_old_prompt_revision_is_readable_without_relabeling_saved_state(self):
-        """A new prompt must not strand existing review checkpoints or rewrite their provenance."""
+        """A new prompt must not strand existing review checkpoints or rewrite their provenance.
+
+        Args:
+            self: This unittest case instance, holding its isolated fixtures and assertion
+                methods.
+
+        Returns:
+            None. Assertions fail if the documented behavior regresses; unittest records the
+            result.
+        """
         from projectclarity.research_schemas import ResearchSession
         from tests.research.research_test_fixtures import example_session
 
-        for version in ("research-plan-v1", "research-plan-v2", "research-plan-v3"):
+        for version in ("research-plan-v1", "research-plan-v2", "research-plan-v3", "research-plan-v4", "research-plan-v5", "research-plan-v6", "research-plan-v7", "research-plan-v8", "research-plan-v9", "research-plan-v10"):
             with self.subTest(version=version):
                 saved = example_session().model_dump(mode="json")
                 saved["prompt_version"] = version
                 restored = ResearchSession.model_validate_json(json.dumps(saved))
                 self.assertEqual(restored.model_dump(mode="json"), saved)
-        self.assertEqual(example_session().prompt_version, "research-plan-v4")
+        self.assertEqual(example_session().prompt_version, "research-plan-v11")
 
     def test_question_category_is_required_nonblank_text_with_a_length_bound(self):
-        """The prompt's category request must produce data, not vanish from the output."""
+        """The prompt's category request must produce data, not vanish from the output.
+
+        Args:
+            self: This unittest case instance, holding its isolated fixtures and assertion
+                methods.
+
+        Returns:
+            None. Assertions fail if the documented behavior regresses; unittest records the
+            result.
+        """
         for value in (None, "", "   ", 42, ["comparison"], "x" * 161):
             with self.subTest(value=value):
                 plan = json.loads(FIXTURE.read_text())
@@ -66,7 +84,16 @@ class PlanContractTests(unittest.TestCase):
             ResearchPlan.model_validate(plan)
 
     def test_question_category_is_open_ended_and_survives_json_round_trip(self):
-        """Useful new labels do not require a fixed taxonomy; outer whitespace is trimmed."""
+        """Useful new labels do not require a fixed taxonomy; outer whitespace is trimmed.
+
+        Args:
+            self: This unittest case instance, holding its isolated fixtures and assertion
+                methods.
+
+        Returns:
+            None. Assertions fail if the documented behavior regresses; unittest records the
+            result.
+        """
         plan = json.loads(FIXTURE.read_text())
         plan["question_category"] = "  Comparison of research methods  "
         accepted = ResearchPlan.model_validate(plan)
@@ -74,7 +101,16 @@ class PlanContractTests(unittest.TestCase):
         self.assertEqual(restored.question_category, "Comparison of research methods")
 
     def test_duplicate_unknown_and_uncovered_goals_are_rejected(self):
-        """A strategy must cover each unique goal and cannot refer to invented IDs."""
+        """A strategy must cover each unique goal and cannot refer to invented IDs.
+
+        Args:
+            self: This unittest case instance, holding its isolated fixtures and assertion
+                methods.
+
+        Returns:
+            None. Assertions fail if the documented behavior regresses; unittest records the
+            result.
+        """
         # Reload each time: the malformed variants must not contaminate others.
         for problem in ["duplicate", "unknown", "uncovered"]:
             with self.subTest(problem=problem):
@@ -89,7 +125,16 @@ class PlanContractTests(unittest.TestCase):
                     ResearchPlan.model_validate(plan)
 
     def test_missing_blank_and_extra_fields_are_rejected(self):
-        """Valid JSON is insufficient; all contract fields and boundaries matter."""
+        """Valid JSON is insufficient; all contract fields and boundaries matter.
+
+        Args:
+            self: This unittest case instance, holding its isolated fixtures and assertion
+                methods.
+
+        Returns:
+            None. Assertions fail if the documented behavior regresses; unittest records the
+            result.
+        """
         for problem in ["missing", "blank", "budget_override"]:
             with self.subTest(problem=problem):
                 plan = json.loads(FIXTURE.read_text())
@@ -104,8 +149,17 @@ class PlanContractTests(unittest.TestCase):
                     ResearchPlan.model_validate(plan)
 
     def test_budget_limits_are_bounded_and_immutable(self):
-        """Budget changes require a new explicit configuration, not mutation by nodes."""
-        for fields in [{"max_requests": -1}, {"max_requests": 31}, {"max_output_tokens": 0}, {"max_output_tokens": 8193}]:
+        """Budget changes require a new explicit configuration, not mutation by nodes.
+
+        Args:
+            self: This unittest case instance, holding its isolated fixtures and assertion
+                methods.
+
+        Returns:
+            None. Assertions fail if the documented behavior regresses; unittest records the
+            result.
+        """
+        for fields in [{"max_requests": -1}, {"max_requests": 1001}, {"max_output_tokens": 0}, {"max_output_tokens": 8193}]:
             with self.subTest(fields=fields):
                 with self.assertRaises(ValidationError):
                     Budget(**fields)
@@ -119,7 +173,16 @@ class CredentialInputTests(unittest.TestCase):
 
     def setUp(self):
         # Never read the developer's real .env, even after they populate it.
-        """Redirect credential-file lookup to a disposable path, never the developer's real .env."""
+        """Redirect credential-file lookup to a disposable path, never the developer's real .env.
+
+        Args:
+            self: This unittest case instance, holding its isolated fixtures and assertion
+                methods.
+
+        Returns:
+            None. Initialize this test instance's fixtures; unittest calls setUp before each
+            test method.
+        """
         self.temporary = tempfile.TemporaryDirectory()
         self.addCleanup(self.temporary.cleanup)
         self.env_file = Path(self.temporary.name) / ".env"
@@ -128,7 +191,16 @@ class CredentialInputTests(unittest.TestCase):
         self.addCleanup(env_path.stop)
 
     def test_environment_key_does_not_open_a_prompt(self):
-        """An already-configured credential stays out of interactive input and output."""
+        """An already-configured credential stays out of interactive input and output.
+
+        Args:
+            self: This unittest case instance, holding its isolated fixtures and assertion
+                methods.
+
+        Returns:
+            None. Assertions fail if the documented behavior regresses; unittest records the
+            result.
+        """
         with (
             patch.dict("os.environ", {"ANTHROPIC_API_KEY": "synthetic-test-key"}),
             patch.object(planning.getpass, "getpass") as prompt,
@@ -139,7 +211,16 @@ class CredentialInputTests(unittest.TestCase):
             read_file.assert_not_called()
 
     def test_project_file_key_is_loaded_without_prompt_or_environment_mutation(self):
-        """Local persistence avoids repeated entry but does not export the file's data."""
+        """Local persistence avoids repeated entry but does not export the file's data.
+
+        Args:
+            self: This unittest case instance, holding its isolated fixtures and assertion
+                methods.
+
+        Returns:
+            None. Assertions fail if the documented behavior regresses; unittest records the
+            result.
+        """
         self.env_file.write_text('ANTHROPIC_API_KEY="synthetic-file-key"\nUNRELATED_TEST_SETTING=ignored\n')
         with (
             patch.dict("os.environ", {"ANTHROPIC_API_KEY": ""}),
@@ -151,13 +232,31 @@ class CredentialInputTests(unittest.TestCase):
             prompt.assert_not_called()
 
     def test_file_values_are_not_interpolated_or_executed(self):
-        """A .env is configuration data, not shell code or an environment template."""
+        """A .env is configuration data, not shell code or an environment template.
+
+        Args:
+            self: This unittest case instance, holding its isolated fixtures and assertion
+                methods.
+
+        Returns:
+            None. Assertions fail if the documented behavior regresses; unittest records the
+            result.
+        """
         self.env_file.write_text("ANTHROPIC_API_KEY='synthetic-${OTHER_TEST_VALUE}-$(not-a-command)'\n")
         with patch.dict("os.environ", {"ANTHROPIC_API_KEY": "", "OTHER_TEST_VALUE": "expanded"}):
             self.assertEqual(planning.read_api_key(), "synthetic-${OTHER_TEST_VALUE}-$(not-a-command)")
 
     def test_unrelated_working_directory_cannot_supply_a_key(self):
-        """Only the explicit project file is used, never a different cwd's .env."""
+        """Only the explicit project file is used, never a different cwd's .env.
+
+        Args:
+            self: This unittest case instance, holding its isolated fixtures and assertion
+                methods.
+
+        Returns:
+            None. Assertions fail if the documented behavior regresses; unittest records the
+            result.
+        """
         unrelated = Path(self.temporary.name) / "unrelated"
         unrelated.mkdir()
         (unrelated / ".env").write_text("ANTHROPIC_API_KEY=wrong-project-key\n")
@@ -166,7 +265,16 @@ class CredentialInputTests(unittest.TestCase):
             self.assertEqual(planning.read_api_key(), "correct-project-key")
 
     def test_unreadable_file_has_a_controlled_diagnostic(self):
-        """Configuration errors must not include arbitrary file/exception contents."""
+        """Configuration errors must not include arbitrary file/exception contents.
+
+        Args:
+            self: This unittest case instance, holding its isolated fixtures and assertion
+                methods.
+
+        Returns:
+            None. Assertions fail if the documented behavior regresses; unittest records the
+            result.
+        """
         self.env_file.write_text("ANTHROPIC_API_KEY=synthetic-private-value\n")
         with (
             patch.dict("os.environ", {"ANTHROPIC_API_KEY": ""}),
@@ -178,7 +286,16 @@ class CredentialInputTests(unittest.TestCase):
             self.assertNotIn("synthetic-private-value", str(caught.exception))
 
     def test_noninteractive_input_is_refused_without_environment_key(self):
-        """A missing key in noninteractive mode must fail before asking for a secret."""
+        """A missing key in noninteractive mode must fail before asking for a secret.
+
+        Args:
+            self: This unittest case instance, holding its isolated fixtures and assertion
+                methods.
+
+        Returns:
+            None. Assertions fail if the documented behavior regresses; unittest records the
+            result.
+        """
         with (
             patch.dict("os.environ", {"ANTHROPIC_API_KEY": ""}),
             patch.object(planning.sys.stdin, "isatty", return_value=False),
@@ -189,9 +306,27 @@ class CredentialInputTests(unittest.TestCase):
             prompt.assert_not_called()
 
     def test_visible_input_fallback_is_stopped_before_reading_a_key(self):
-        """A terminal that cannot hide input must not fall back to echoing secrets."""
+        """A terminal that cannot hide input must not fall back to echoing secrets.
+
+        Args:
+            self: This unittest case instance, holding its isolated fixtures and assertion
+                methods.
+
+        Returns:
+            None. Assertions fail if the documented behavior regresses; unittest records the
+            result.
+        """
         def cannot_hide_input(_prompt):
-            """Emit the hidden-input warning and fail if the application allows visible fallback."""
+            """Emit the hidden-input warning and fail if the application allows visible fallback.
+
+            Args:
+                _prompt: Hidden-input prompt accepted to match getpass; no actual credential is read
+                    by this failure fixture.
+
+            Returns:
+                Never returns a credential; emit the hidden-input warning and fail if visible
+                fallback is allowed.
+            """
             warnings.warn("Cannot hide input", planning.getpass.GetPassWarning)
             self.fail("The warning should have stopped visible input")
 

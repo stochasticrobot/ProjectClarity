@@ -21,7 +21,17 @@ class RetrievalCLIIntegrationTests(unittest.TestCase):
     """Reuse the existing real-module CLI harness without duplicating its test cases."""
 
     def setUp(self):
-        """Reuse the real CLI harness and substitute source HTTP, with a plan that permits retrieval."""
+        """Reuse the real CLI harness and substitute source HTTP, with a plan that permits
+        retrieval.
+
+        Args:
+            self: This unittest case instance, holding its isolated fixtures and assertion
+                methods.
+
+        Returns:
+            None. Initialize this test instance's fixtures; unittest calls setUp before each
+            test method.
+        """
         self.cli = planning_tests.PlanningCLIIntegrationTests()
         self.cli.setUp()
         self.addCleanup(self.cli.doCleanups)
@@ -35,7 +45,17 @@ class RetrievalCLIIntegrationTests(unittest.TestCase):
         self.addCleanup(pool.stop)
 
     def test_real_cli_retrieves_url_and_pdf_with_inspectable_provenance(self):
-        """The retrieval node must produce both artifacts after planning/review, not just log its name."""
+        """The retrieval node must produce both artifacts after planning/review, not just log its
+        name.
+
+        Args:
+            self: This unittest case instance, holding its isolated fixtures and assertion
+                methods.
+
+        Returns:
+            None. Assertions fail if the documented behavior regresses; unittest records the
+            result.
+        """
         document = self.cli.directory / "report.pdf"
         pdf = text_pdf()
         document.write_bytes(pdf)
@@ -44,7 +64,7 @@ class RetrievalCLIIntegrationTests(unittest.TestCase):
             "--document", str(document), plan_only=False, source_dns=public_dns)
         self.assertEqual(code, 0, stderr)
         directory, saved = self.cli.saved_session()
-        self.assertEqual(saved["visited_nodes"], ["initialize_research", "plan_research", "review_plan", "retrieve_sources"])
+        self.assertEqual(saved["visited_nodes"], ["initialize_research", "plan_research", "review_plan", "schedule_work", "retrieve_sources", "schedule_work", "retrieve_sources", "schedule_work"])
         self.assertEqual(saved["mode"], "plan_and_retrieve")
         self.assertEqual(saved["status"], "sources_retrieved")
         # Retrieval rewrites plan.md with acquisition results. The planner's
@@ -77,7 +97,16 @@ class RetrievalCLIIntegrationTests(unittest.TestCase):
         self.assertNotIn(b"Visible research text", self.cli.requests[0].content)
 
     def test_main_entry_shortcut_accepts_url_list_and_multiple_documents(self):
-        """Root-level flags retain mixed sources and reach the actual retrieval node."""
+        """Root-level flags retain mixed sources and reach the actual retrieval node.
+
+        Args:
+            self: This unittest case instance, holding its isolated fixtures and assertion
+                methods.
+
+        Returns:
+            None. Assertions fail if the documented behavior regresses; unittest records the
+            result.
+        """
         first = self.cli.directory / "first note.txt"
         second = self.cli.directory / "second note.txt"
         first.write_text("First local evidence.\n")
@@ -99,7 +128,16 @@ class RetrievalCLIIntegrationTests(unittest.TestCase):
         self.assertNotIn("What would you like to research?", stdout)
 
     def test_one_failed_source_does_not_discard_other_sources(self):
-        """A failed URL and malformed PDF retain their own receipts while a text file succeeds."""
+        """A failed URL and malformed PDF retain their own receipts while a text file succeeds.
+
+        Args:
+            self: This unittest case instance, holding its isolated fixtures and assertion
+                methods.
+
+        Returns:
+            None. Assertions fail if the documented behavior regresses; unittest records the
+            result.
+        """
         self.routes[("example.org", "/research")] = (404, {}, b"")
         bad = self.cli.directory / "bad.pdf"
         bad.write_bytes(b"%PDF-not-valid")
@@ -120,9 +158,17 @@ class RetrievalCLIIntegrationTests(unittest.TestCase):
     def test_original_plan_is_saved_before_any_source_is_acquired(self):
         """Guard the real URL and local readers, not merely the recorded node names.
 
-        Both readers must see the completed, saved original plan before they
-        begin. They then execute normally, so this cannot pass by skipping fetch.
-        The provider callback also checks that no acquisition happened earlier.
+        Both readers must see the completed, saved original plan before they begin. They then
+        execute normally, so this cannot pass by skipping fetch. The provider callback also
+        checks that no acquisition happened earlier.
+
+        Args:
+            self: This unittest case instance, holding its isolated fixtures and assertion
+                methods.
+
+        Returns:
+            None. Assertions fail if the documented behavior regresses; unittest records the
+            result.
         """
         document = self.cli.directory / "evidence.txt"
         document.write_text("SOURCE_CONTENT_ONLY_AVAILABLE_AFTER_PLANNING\n")
@@ -132,26 +178,63 @@ class RetrievalCLIIntegrationTests(unittest.TestCase):
         original_read = source_retrieval.read_local
 
         def require_original_plan(kind):
-            """Assert the original plan is saved and counted before recording an acquisition attempt."""
+            """Assert the original plan is saved and counted before recording an acquisition attempt.
+
+            Args:
+                kind: Acquisition-kind label recorded after checking that the original plan was
+                    saved first.
+
+            Returns:
+                None. Assert plan persistence/usage ordering and record the acquisition kind for
+                later checks.
+            """
             directory, session = self.cli.saved_session()
             self.assertEqual(session["plan"], self.cli.plan)
             self.assertEqual(json.loads((directory / "plan.json").read_text()), self.cli.plan)
-            self.assertEqual(session["visited_nodes"], ["initialize_research", "plan_research", "review_plan", "retrieve_sources"])
+            self.assertEqual(session['visited_nodes'][:3], ['initialize_research', 'plan_research', 'review_plan'])
+            self.assertEqual(session['visited_nodes'][-1], 'retrieve_sources')
+            self.assertEqual(session['visited_nodes'].count('retrieve_sources'), len(acquisitions) + 1)
             self.assertEqual(session["usage"]["requests_attempted"], 1)
             acquisitions.append(kind)
 
         def fetch_after_plan(reader, url):
-            """Check planning order, then delegate URL acquisition to the real public fetcher."""
+            """Check planning order, then delegate URL acquisition to the real public fetcher.
+
+            Args:
+                reader: Actual PublicWebReader instance whose original fetch method is called.
+                url: HTTP(S) address of the page to inspect or retrieve.
+
+            Returns:
+                The real fetcher's (WebResponse, final URL, redirect chain) tuple after the
+                fixture's observation or ordering check.
+            """
             require_original_plan("url")
             return original_fetch(reader, url)
 
         def read_after_plan(path, budget):
-            """Check planning order, then delegate local reading to the real acquisition helper."""
+            """Check planning order, then delegate local reading to the real acquisition helper.
+
+            Args:
+                path: Registered local fixture-file Path to read.
+                budget: Shared production RetrievalBudget forwarded to read_local.
+
+            Returns:
+                Bytes returned by the real local-file reader after the planning-order assertion.
+            """
             require_original_plan("file")
             return original_read(path, budget)
 
         def planning_reply(request):
-            """Verify no acquisition occurred before the provider returns its planning fixture."""
+            """Verify no acquisition occurred before the provider returns its planning fixture.
+
+            Args:
+                request: Actual httpx2.Request emitted by the SDK; inspected locally and answered
+                    with fixture data.
+
+            Returns:
+                A synthetic httpx2.Response passed through the real provider SDK; no network request
+                is made by this responder.
+            """
             self.assertEqual(acquisitions, [])
             self.assertEqual(self.http.requests, [])
             directory, session = self.cli.saved_session()
@@ -161,7 +244,8 @@ class RetrievalCLIIntegrationTests(unittest.TestCase):
             body = json.loads(request.content)
             content = body["messages"][0]["content"]
             payload = json.loads(content if isinstance(content, str) else content[0]["text"])
-            self.assertEqual(payload["run_mode"], "plan_and_retrieve")
+            self.assertNotIn("run_mode", payload)
+            self.assertIs(payload["source_contents_available"], False)
             return self.cli.response()
 
         with patch.object(PublicWebReader, "fetch", fetch_after_plan), \
@@ -177,11 +261,19 @@ class RetrievalCLIIntegrationTests(unittest.TestCase):
     def test_research_uncertainty_is_retained_without_human_review(self):
         """An evidence question belongs in the saved work plan, not a startup pause.
 
-        The model reply is handwritten: this checks that the real workflow
-        preserves its investigation task and proceeds to acquire sources. It
-        does not prove that a live model puts uncertainty in the right field,
-        or that a later extraction/research stage investigates it: this run
-        deliberately stops after retrieval and never enables --extract.
+        The model reply is handwritten: this checks that the real workflow preserves its
+        investigation task and proceeds to acquire sources. It does not prove that a live model
+        puts uncertainty in the right field, or that a later extraction/research stage
+        investigates it: this run deliberately stops after retrieval and never enables
+        --extract.
+
+        Args:
+            self: This unittest case instance, holding its isolated fixtures and assertion
+                methods.
+
+        Returns:
+            None. Assertions fail if the documented behavior regresses; unittest records the
+            result.
         """
         question = "Which candidates have evidence connecting their work to AI security?"
         strategy = "Identify candidates, inspect supporting work, and separate confirmed relevance from unverified adjacent leads."
@@ -195,7 +287,7 @@ class RetrievalCLIIntegrationTests(unittest.TestCase):
         directory, session = self.cli.saved_session()
         self.assertEqual(session["plan"], self.cli.plan)
         self.assertEqual(session["status"], "sources_retrieved")
-        self.assertEqual(session["visited_nodes"], ["initialize_research", "plan_research", "review_plan", "retrieve_sources"])
+        self.assertEqual(session["visited_nodes"], ["initialize_research", "plan_research", "review_plan", "schedule_work", "retrieve_sources", "schedule_work"])
         self.assertIsNone(session["pending_review"])
         self.assertFalse((directory / "review_request.json").exists())
         self.assertIn("Visible research text.", (directory / "documents/S1/text.txt").read_text())
@@ -207,7 +299,16 @@ class RetrievalCLIIntegrationTests(unittest.TestCase):
         self.assertEqual(len(self.cli.requests), 1)
 
     def test_clarifications_stop_normal_mode_before_retrieval(self):
-        """An unresolved plan interrupts at review, without silently fetching sources."""
+        """An unresolved plan interrupts at review, without silently fetching sources.
+
+        Args:
+            self: This unittest case instance, holding its isolated fixtures and assertion
+                methods.
+
+        Returns:
+            None. Assertions fail if the documented behavior regresses; unittest records the
+            result.
+        """
         self.cli.plan["clarifications"] = ["Which time period should the research cover?"]
         code, stdout, _ = self.cli.run_cli(lambda request: self.cli.response(), plan_only=False)
         self.assertEqual(code, 2)
@@ -219,7 +320,16 @@ class RetrievalCLIIntegrationTests(unittest.TestCase):
         self.assertIn("Retrieval has not started", stdout)
 
     def test_explicit_plan_only_stops_even_when_plan_is_ready(self):
-        """Retrieval and later nodes must not break the no-source-reading promise of --plan-only."""
+        """Retrieval and later nodes must not break the no-source-reading promise of --plan-only.
+
+        Args:
+            self: This unittest case instance, holding its isolated fixtures and assertion
+                methods.
+
+        Returns:
+            None. Assertions fail if the documented behavior regresses; unittest records the
+            result.
+        """
         code, _, stderr = self.cli.run_cli(lambda request: self.cli.response(), plan_only=True)
         self.assertEqual(code, 0, stderr)
         directory, saved = self.cli.saved_session()
@@ -229,7 +339,16 @@ class RetrievalCLIIntegrationTests(unittest.TestCase):
         self.assertEqual(self.http.requests, [])
 
     def test_invalid_plan_cannot_reach_retrieval(self):
-        """A provider reply with missing plan fields must not reach review or retrieval."""
+        """A provider reply with missing plan fields must not reach review or retrieval.
+
+        Args:
+            self: This unittest case instance, holding its isolated fixtures and assertion
+                methods.
+
+        Returns:
+            None. Assertions fail if the documented behavior regresses; unittest records the
+            result.
+        """
         code, _, _ = self.cli.run_cli(lambda request: self.cli.response(text='{"objective":"Incomplete"}'), plan_only=False)
         self.assertEqual(code, 1)
         _, saved = self.cli.saved_session()
@@ -238,7 +357,16 @@ class RetrievalCLIIntegrationTests(unittest.TestCase):
         self.assertEqual(self.http.requests, [])
 
     def test_no_supplied_sources_is_not_reported_as_successful_retrieval(self):
-        """Zero input documents should produce an actionable message, not 'research complete'."""
+        """Zero input documents should produce an actionable message, not 'research complete'.
+
+        Args:
+            self: This unittest case instance, holding its isolated fixtures and assertion
+                methods.
+
+        Returns:
+            None. Assertions fail if the documented behavior regresses; unittest records the
+            result.
+        """
         self.cli.plan["strategy"][0]["source_ids"] = []
         code, _, stderr = self.cli.run_cli(lambda request: self.cli.response(), include_urls=False, plan_only=False)
         self.assertEqual(code, 1)
@@ -247,14 +375,32 @@ class RetrievalCLIIntegrationTests(unittest.TestCase):
         self.assertIn("No sources supplied", stderr)
 
     def test_file_changed_to_symlink_after_planning_is_not_followed(self):
-        """Recheck local references at read time instead of trusting earlier initialization."""
+        """Recheck local references at read time instead of trusting earlier initialization.
+
+        Args:
+            self: This unittest case instance, holding its isolated fixtures and assertion
+                methods.
+
+        Returns:
+            None. Assertions fail if the documented behavior regresses; unittest records the
+            result.
+        """
         document = self.cli.directory / "notes.txt"
         document.write_text("Original notes")
         other = self.cli.directory / "other.txt"
         other.write_text("Do not acquire this replacement")
 
         def provider_reply(request):
-            """Replace only the temporary input with a symlink between initialization and retrieval."""
+            """Replace only the temporary input with a symlink between initialization and retrieval.
+
+            Args:
+                request: Actual httpx2.Request emitted by the SDK; inspected locally and answered
+                    with fixture data.
+
+            Returns:
+                A synthetic httpx2.Response passed through the real provider SDK; no network request
+                is made by this responder.
+            """
             document.unlink()
             document.symlink_to(other)
             return self.cli.response()

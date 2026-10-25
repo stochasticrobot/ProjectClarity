@@ -19,7 +19,16 @@ class WebTests(unittest.TestCase):
     """No website or live DNS is needed to falsify the access-control assumptions."""
 
     def setUp(self):
-        """Replace DNS and HTTP pools and deny sockets, keeping URL/robots/budget code real."""
+        """Replace DNS and HTTP pools and deny sockets, keeping URL/robots/budget code real.
+
+        Args:
+            self: This unittest case instance, holding its isolated fixtures and assertion
+                methods.
+
+        Returns:
+            None. Initialize this test instance's fixtures; unittest calls setUp before each
+            test method.
+        """
         self.budget = RetrievalBudget(RetrievalLimits(min_host_interval_seconds=0.0))
         self.reader = PublicWebReader(self.budget)
         self.routes = {("example.org", "/robots.txt"): (200, {"Content-Type": "text/plain"}, b"User-agent: *\nAllow: /\n"),
@@ -36,7 +45,16 @@ class WebTests(unittest.TestCase):
             self.addCleanup(mock.stop)
 
     def test_public_fetch_pins_ip_preserves_tls_identity_and_bounds_requests(self):
-        """An allowed page uses the checked IP but verifies the website's certificate name."""
+        """An allowed page uses the checked IP but verifies the website's certificate name.
+
+        Args:
+            self: This unittest case instance, holding its isolated fixtures and assertion
+                methods.
+
+        Returns:
+            None. Assertions fail if the documented behavior regresses; unittest records the
+            result.
+        """
         response, final_url, chain = self.reader.fetch("https://example.org/page")
         self.assertEqual(response.body, b"Source text")
         self.assertEqual(final_url, "https://example.org/page")
@@ -54,7 +72,16 @@ class WebTests(unittest.TestCase):
             self.assertNotIn("Authorization", options["headers"])
 
     def test_private_loopback_metadata_and_non_http_targets_are_blocked(self):
-        """Private addresses cannot be reached directly or through unusual URL spellings."""
+        """Private addresses cannot be reached directly or through unusual URL spellings.
+
+        Args:
+            self: This unittest case instance, holding its isolated fixtures and assertion
+                methods.
+
+        Returns:
+            None. Assertions fail if the documented behavior regresses; unittest records the
+            result.
+        """
         urls = ["http://127.0.0.1/", "http://169.254.169.254/latest/meta-data/", "http://10.0.0.1/",
                 "http://localhost/", "http://[::1]/", "http://[::ffff:8.8.8.8]/", "file:///etc/passwd",
                 "https://example.org:8443/", "https://user:password@example.org/", "https://example.org/\nsecret"]
@@ -65,7 +92,16 @@ class WebTests(unittest.TestCase):
         self.assertEqual(self.http.requests, [])
 
     def test_mixed_public_and_private_dns_answers_are_refused(self):
-        """Choosing only the public answer would hide an unsafe DNS configuration."""
+        """Choosing only the public answer would hide an unsafe DNS configuration.
+
+        Args:
+            self: This unittest case instance, holding its isolated fixtures and assertion
+                methods.
+
+        Returns:
+            None. Assertions fail if the documented behavior regresses; unittest records the
+            result.
+        """
         answers = public_dns("example.org", 443) + [(socket.AF_INET, socket.SOCK_STREAM, 6, "", ("10.0.0.1", 443))]
         with patch("socket.getaddrinfo", return_value=answers):
             with self.assertRaises(RetrievalError) as caught:
@@ -74,7 +110,16 @@ class WebTests(unittest.TestCase):
         self.assertEqual(self.http.requests, [])
 
     def test_robots_denial_and_unavailable_rules_do_not_fetch_page(self):
-        """Wildcard exclusions and robots failures stop acquisition before page access."""
+        """Wildcard exclusions and robots failures stop acquisition before page access.
+
+        Args:
+            self: This unittest case instance, holding its isolated fixtures and assertion
+                methods.
+
+        Returns:
+            None. Assertions fail if the documented behavior regresses; unittest records the
+            result.
+        """
         for status, body in [(200, b"User-agent: *\nDisallow: /pa*\n"), (403, b""), (503, b"")]:
             with self.subTest(status=status):
                 self.routes[("example.org", "/robots.txt")] = (status, {"Content-Type": "text/plain"}, body)
@@ -84,14 +129,32 @@ class WebTests(unittest.TestCase):
         self.assertTrue(all(path == "/robots.txt" for _, path, _ in self.http.requests))
 
     def test_missing_robots_allows_page_and_rules_are_cached(self):
-        """A missing rules file is allowed; the same origin need not refetch it for every source."""
+        """A missing rules file is allowed; the same origin need not refetch it for every source.
+
+        Args:
+            self: This unittest case instance, holding its isolated fixtures and assertion
+                methods.
+
+        Returns:
+            None. Assertions fail if the documented behavior regresses; unittest records the
+            result.
+        """
         self.routes[("example.org", "/robots.txt")] = (404, {}, b"")
         self.reader.fetch("https://example.org/page")
         self.reader.fetch("https://example.org/page")
         self.assertEqual([path for _, path, _ in self.http.requests], ["/robots.txt", "/page", "/page"])
 
     def test_redirect_is_rechecked_and_private_target_is_never_requested(self):
-        """An allowed starting address cannot smuggle an internal target through a redirect."""
+        """An allowed starting address cannot smuggle an internal target through a redirect.
+
+        Args:
+            self: This unittest case instance, holding its isolated fixtures and assertion
+                methods.
+
+        Returns:
+            None. Assertions fail if the documented behavior regresses; unittest records the
+            result.
+        """
         self.routes[("example.org", "/page")] = (302, {"Location": "https://127.0.0.1/secret"}, b"")
         with self.assertRaises(RetrievalError) as caught:
             self.reader.fetch("https://example.org/page")
@@ -99,7 +162,16 @@ class WebTests(unittest.TestCase):
         self.assertEqual(len(self.http.requests), 2)
 
     def test_public_redirect_chain_is_retained_and_loop_is_rejected(self):
-        """Provenance keeps redirect hops; a loop does not spend unlimited requests."""
+        """Provenance keeps redirect hops; a loop does not spend unlimited requests.
+
+        Args:
+            self: This unittest case instance, holding its isolated fixtures and assertion
+                methods.
+
+        Returns:
+            None. Assertions fail if the documented behavior regresses; unittest records the
+            result.
+        """
         self.routes[("example.org", "/page")] = (302, {"Location": "/final"}, b"")
         self.routes[("example.org", "/final")] = (200, {"Content-Type": "text/plain"}, b"Final text")
         _, final_url, chain = self.reader.fetch("https://example.org/page")
@@ -111,7 +183,17 @@ class WebTests(unittest.TestCase):
         self.assertEqual(caught.exception.code, "redirect_loop")
 
     def test_large_stream_and_compressed_response_are_not_accepted(self):
-        """Actual byte counting protects against missing lengths; compression is explicit unsupported input."""
+        """Actual byte counting protects against missing lengths; compression is explicit
+        unsupported input.
+
+        Args:
+            self: This unittest case instance, holding its isolated fixtures and assertion
+                methods.
+
+        Returns:
+            None. Assertions fail if the documented behavior regresses; unittest records the
+            result.
+        """
         self.budget.limits = RetrievalLimits(max_source_bytes=4, min_host_interval_seconds=0.0)
         for headers, expected in [({"Content-Type": "text/plain"}, "source_size_limit"),
                                   ({"Content-Encoding": "gzip"}, "encoded_response")]:
@@ -122,7 +204,16 @@ class WebTests(unittest.TestCase):
                 self.assertEqual(caught.exception.code, expected)
 
     def test_request_and_total_byte_budgets_stop_work(self):
-        """Robots traffic counts against both limits, not just successful source pages."""
+        """Robots traffic counts against both limits, not just successful source pages.
+
+        Args:
+            self: This unittest case instance, holding its isolated fixtures and assertion
+                methods.
+
+        Returns:
+            None. Assertions fail if the documented behavior regresses; unittest records the
+            result.
+        """
         for limits, expected in [(RetrievalLimits(max_http_requests=1, min_host_interval_seconds=0.0), "request_limit"),
                                  (RetrievalLimits(max_total_bytes=4, min_host_interval_seconds=0.0), "total_size_limit")]:
             with self.subTest(expected=expected):
@@ -131,7 +222,16 @@ class WebTests(unittest.TestCase):
                 self.assertEqual(caught.exception.code, expected)
 
     def test_crawl_delay_and_rate_limit_are_respected(self):
-        """Honor the site's delay; after HTTP 429, do not repeatedly hit the origin."""
+        """Honor the site's delay; after HTTP 429, do not repeatedly hit the origin.
+
+        Args:
+            self: This unittest case instance, holding its isolated fixtures and assertion
+                methods.
+
+        Returns:
+            None. Assertions fail if the documented behavior regresses; unittest records the
+            result.
+        """
         self.routes[("example.org", "/robots.txt")] = (200, {}, b"User-agent: *\nCrawl-delay: 2\n")
         self.routes[("example.org", "/page")] = (429, {}, b"")
         with patch("projectclarity.retrieval.public_url_fetcher.time.sleep") as sleep:

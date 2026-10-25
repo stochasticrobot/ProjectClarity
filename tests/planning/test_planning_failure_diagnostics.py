@@ -14,7 +14,7 @@ failure whose original validation details were discarded.
 import json
 import unittest
 
-from projectclarity.planning_failure_diagnostics import describe_planning_failure, safe_field_path
+from projectclarity.nodes.plan_research.planning_failure_diagnostics import describe_planning_failure, safe_field_path
 from tests.planning import test_planning_cli_integration as planning_tests
 
 
@@ -22,7 +22,20 @@ class PlanningFailureIntegrationTests(unittest.TestCase):
     """Exercise real SDK exceptions and ensure invalid answers cannot start retrieval."""
 
     def run_rejected_reply(self, *, mutate=None, text=None):
-        """Return safe diagnostics from an isolated real CLI run with one fake reply."""
+        """Return safe diagnostics from an isolated real CLI run with one fake reply.
+
+        Args:
+            self: This unittest case instance, holding its isolated fixtures and assertion
+                methods.
+            mutate: Optional callable modifying the otherwise valid fixture plan before the fake
+                reply is serialized.
+            text: Optional literal bad answer text; None serializes the possibly mutated plan
+                fixture.
+
+        Returns:
+            A tuple of safe diagnostic dictionary, combined console text and concatenated saved-
+            artifact bytes for leak checks.
+        """
         cli = planning_tests.PlanningCLIIntegrationTests()
         cli.setUp()
         try:
@@ -52,11 +65,29 @@ class PlanningFailureIntegrationTests(unittest.TestCase):
             cli.doCleanups()
 
     def test_nested_field_errors_are_explained_without_values_or_unknown_names(self):
-        """Retain schema locations, but redact rejected values and invented field names."""
+        """Retain schema locations, but redact rejected values and invented field names.
+
+        Args:
+            self: This unittest case instance, holding its isolated fixtures and assertion
+                methods.
+
+        Returns:
+            None. Assertions fail if the documented behavior regresses; unittest records the
+            result.
+        """
         secret = planning_tests.TEST_KEY
 
         def invalid(plan):
-            """Inject missing/wrong/private fields to test bounded diagnostics without leaking their values."""
+            """Inject missing/wrong/private fields to test bounded diagnostics without leaking their
+            values.
+
+            Args:
+                plan: Mutable valid-plan fixture dictionary to alter in place.
+
+            Returns:
+                None. Mutate the isolated planning fixture to inject the specific validation defect
+                under test.
+            """
             del plan["question_category"]
             plan["goals"][0]["evidence_required"][0] = {"private": secret}
             plan[secret] = "PRIVATE_MODEL_TEXT_NOT_FOR_LOGS"
@@ -73,11 +104,28 @@ class PlanningFailureIntegrationTests(unittest.TestCase):
             self.assertNotIn(private.encode(), artifacts)
 
     def test_goal_link_failures_have_distinct_actionable_codes(self):
-        """Separate duplicate IDs, nonexistent goals, and goals with no strategy coverage."""
+        """Separate duplicate IDs, nonexistent goals, and goals with no strategy coverage.
+
+        Args:
+            self: This unittest case instance, holding its isolated fixtures and assertion
+                methods.
+
+        Returns:
+            None. Assertions fail if the documented behavior regresses; unittest records the
+            result.
+        """
         for expected in ("duplicate_goal_ids", "strategy_unknown_goals", "strategy_uncovered_goals"):
             with self.subTest(rule=expected):
                 def invalid(plan):
-                    """Create the selected duplicate, unknown or uncovered goal-link error in the fixture."""
+                    """Create the selected duplicate, unknown or uncovered goal-link error in the fixture.
+
+                    Args:
+                        plan: Mutable valid-plan fixture dictionary to alter in place.
+
+                    Returns:
+                        None. Mutate the isolated planning fixture to inject the specific validation defect
+                        under test.
+                    """
                     if expected == "duplicate_goal_ids":
                         plan["goals"][1]["goal_id"] = "G1"
                     elif expected == "strategy_unknown_goals":
@@ -89,7 +137,16 @@ class PlanningFailureIntegrationTests(unittest.TestCase):
                 self.assertIn(diagnostic["issues"][0]["message"], terminal)
 
     def test_invalid_json_is_distinguished_without_echoing_the_reply(self):
-        """The SDK's JSON parser cause is enough; its raw llm_output must stay private."""
+        """The SDK's JSON parser cause is enough; its raw llm_output must stay private.
+
+        Args:
+            self: This unittest case instance, holding its isolated fixtures and assertion
+                methods.
+
+        Returns:
+            None. Assertions fail if the documented behavior regresses; unittest records the
+            result.
+        """
         diagnostic, terminal, artifacts = self.run_rejected_reply(
             text='{"objective": PRIVATE_INVALID_JSON}')
         self.assertEqual(diagnostic["error_code"], "plan_json_invalid")
@@ -99,9 +156,27 @@ class PlanningFailureIntegrationTests(unittest.TestCase):
         self.assertNotIn(b"PRIVATE_INVALID_JSON", artifacts)
 
     def test_many_invalid_fields_produce_a_bounded_artifact(self):
-        """A malformed answer cannot flood diagnostic files with repeated private fields."""
+        """A malformed answer cannot flood diagnostic files with repeated private fields.
+
+        Args:
+            self: This unittest case instance, holding its isolated fixtures and assertion
+                methods.
+
+        Returns:
+            None. Assertions fail if the documented behavior regresses; unittest records the
+            result.
+        """
         def invalid(plan):
-            """Add twenty invalid fields to verify the diagnostic issue limit and private-name filtering."""
+            """Add twenty invalid fields to verify the diagnostic issue limit and private-name
+            filtering.
+
+            Args:
+                plan: Mutable valid-plan fixture dictionary to alter in place.
+
+            Returns:
+                None. Mutate the isolated planning fixture to inject the specific validation defect
+                under test.
+            """
             plan.update({f"PRIVATE_FIELD_{number}": "PRIVATE_VALUE" for number in range(20)})
         diagnostic, terminal, artifacts = self.run_rejected_reply(mutate=invalid)
         self.assertEqual(len(diagnostic["issues"]), 8)
@@ -115,14 +190,32 @@ class PlanningDiagnosticBoundaryTests(unittest.TestCase):
     """Use predictable fallbacks when no structured validation detail is available."""
 
     def test_missing_result_and_unknown_parser_failure_are_not_conflated(self):
-        """An empty parser result differs from an exception with no safe field details."""
+        """An empty parser result differs from an exception with no safe field details.
+
+        Args:
+            self: This unittest case instance, holding its isolated fixtures and assertion
+                methods.
+
+        Returns:
+            None. Assertions fail if the documented behavior regresses; unittest records the
+            result.
+        """
         self.assertEqual(describe_planning_failure(None).error_code, "plan_result_missing")
         failure = describe_planning_failure(RuntimeError("PRIVATE_EXCEPTION_MESSAGE"))
         self.assertEqual(failure.error_code, "plan_parse_failed")
         self.assertNotIn("PRIVATE_EXCEPTION_MESSAGE", failure.model_dump_json() + failure.explanation())
 
     def test_cyclic_exception_chain_terminates_without_printing_exception_text(self):
-        """A broken wrapper cannot loop forever while the application diagnoses failure."""
+        """A broken wrapper cannot loop forever while the application diagnoses failure.
+
+        Args:
+            self: This unittest case instance, holding its isolated fixtures and assertion
+                methods.
+
+        Returns:
+            None. Assertions fail if the documented behavior regresses; unittest records the
+            result.
+        """
         first, second = RuntimeError("PRIVATE_FIRST"), RuntimeError("PRIVATE_SECOND")
         first.__cause__, second.__cause__ = second, first
         failure = describe_planning_failure(first)
@@ -130,7 +223,16 @@ class PlanningDiagnosticBoundaryTests(unittest.TestCase):
         self.assertNotIn("PRIVATE", failure.model_dump_json())
 
     def test_field_paths_are_bounded_and_hide_unknown_components(self):
-        """Only known schema names and bounded list positions may be displayed."""
+        """Only known schema names and bounded list positions may be displayed.
+
+        Args:
+            self: This unittest case instance, holding its isolated fixtures and assertion
+                methods.
+
+        Returns:
+            None. Assertions fail if the documented behavior regresses; unittest records the
+            result.
+        """
         self.assertEqual(safe_field_path(()), "plan")
         self.assertEqual(safe_field_path(("goals", 0, "goal_id")), "goals[0].goal_id")
         path = safe_field_path(tuple(["PRIVATE_NAME", -1, 10001] * 100))

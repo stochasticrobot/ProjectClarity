@@ -1,0 +1,12 @@
+All people, organizations, publications and events in this document are fictional.
+
+Alice Morgan is a researcher at Cedar Lab.
+Ben Carter is the director of Cedar Lab.
+Cedar Lab is located in Halifax.
+Alice Morgan authored the paper Northstar Study.
+Ben Carter authored the paper Northstar Study.
+Northstar Study was published in 2024.
+Northstar Study was presented at Maple Conference.
+Northstar Study was funded by the organization Harbor Fund.
+Maple Conference took place in Halifax.
+Maple Conference started on 2025-06-12.

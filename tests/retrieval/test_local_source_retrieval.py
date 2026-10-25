@@ -25,7 +25,17 @@ class LocalSourceRetrievalTests(unittest.TestCase):
     """Failures identify a source/read/parse boundary instead of looking like empty success."""
 
     def setUp(self):
-        """Create a tiny local source and fresh shared counters for deterministic read-failure tests."""
+        """Create a tiny local source and fresh shared counters for deterministic read-failure
+        tests.
+
+        Args:
+            self: This unittest case instance, holding its isolated fixtures and assertion
+                methods.
+
+        Returns:
+            None. Initialize this test instance's fixtures; unittest calls setUp before each
+            test method.
+        """
         temporary = tempfile.TemporaryDirectory()
         self.addCleanup(temporary.cleanup)
         self.root = Path(temporary.name)
@@ -35,7 +45,16 @@ class LocalSourceRetrievalTests(unittest.TestCase):
         self.web = PublicWebReader(RetrievalBudget())
 
     def test_local_size_boundary_and_shared_budget_are_enforced(self):
-        """An exact-size file is allowed, but per-file and whole-run excesses are not."""
+        """An exact-size file is allowed, but per-file and whole-run excesses are not.
+
+        Args:
+            self: This unittest case instance, holding its isolated fixtures and assertion
+                methods.
+
+        Returns:
+            None. Assertions fail if the documented behavior regresses; unittest records the
+            result.
+        """
         budget = RetrievalBudget(RetrievalLimits(max_source_bytes=3, max_total_bytes=3))
         self.assertEqual(read_local(self.path, budget), b"abc")
         self.assertEqual(budget.bytes_read, 3)
@@ -49,7 +68,16 @@ class LocalSourceRetrievalTests(unittest.TestCase):
                 self.assertEqual(caught.exception.code, expected)
 
     def test_replaced_fifo_is_rejected_without_waiting_for_a_writer(self):
-        """A special file substituted after planning must not hang a research worker."""
+        """A special file substituted after planning must not hang a research worker.
+
+        Args:
+            self: This unittest case instance, holding its isolated fixtures and assertion
+                methods.
+
+        Returns:
+            None. Assertions fail if the documented behavior regresses; unittest records the
+            result.
+        """
         fifo = self.root / "substituted-document"
         os.mkfifo(fifo)
         with self.assertRaises(RetrievalError) as caught:
@@ -57,7 +85,16 @@ class LocalSourceRetrievalTests(unittest.TestCase):
         self.assertEqual(caught.exception.code, "not_regular_file")
 
     def test_file_change_during_read_is_not_accepted_as_stable_evidence(self):
-        """Changing metadata between the pre/post checks rejects the acquired bytes."""
+        """Changing metadata between the pre/post checks rejects the acquired bytes.
+
+        Args:
+            self: This unittest case instance, holding its isolated fixtures and assertion
+                methods.
+
+        Returns:
+            None. Assertions fail if the documented behavior regresses; unittest records the
+            result.
+        """
         before = self.path.stat()
         after = SimpleNamespace(st_size=before.st_size, st_mtime_ns=before.st_mtime_ns + 1)
         # Keep the read real, but deterministically represent a simultaneous edit.
@@ -67,7 +104,16 @@ class LocalSourceRetrievalTests(unittest.TestCase):
         self.assertEqual(caught.exception.code, "document_changed")
 
     def test_missing_local_file_leaves_a_failed_receipt_without_parsing(self):
-        """A vanished input is recorded as file I/O failure, not successful empty text."""
+        """A vanished input is recorded as file I/O failure, not successful empty text.
+
+        Args:
+            self: This unittest case instance, holding its isolated fixtures and assertion
+                methods.
+
+        Returns:
+            None. Assertions fail if the documented behavior regresses; unittest records the
+            result.
+        """
         self.source.path = str(self.root / "missing.txt")
         with patch("projectclarity.retrieval.source_retrieval.parse_document") as parser:
             receipt = retrieve_one(self.source, self.root / "run", self.web)
@@ -78,7 +124,16 @@ class LocalSourceRetrievalTests(unittest.TestCase):
         self.assertEqual(saved, receipt.model_dump())
 
     def test_parse_failure_retains_raw_source_but_does_not_publish_text(self):
-        """An unsupported document still has inspectable acquisition evidence."""
+        """An unsupported document still has inspectable acquisition evidence.
+
+        Args:
+            self: This unittest case instance, holding its isolated fixtures and assertion
+                methods.
+
+        Returns:
+            None. Assertions fail if the documented behavior regresses; unittest records the
+            result.
+        """
         with patch("projectclarity.retrieval.source_retrieval.parse_document",
                    side_effect=RetrievalError("unsupported_format", "Unsupported fixture format.")):
             receipt = retrieve_one(self.source, self.root / "run", self.web)
@@ -90,7 +145,16 @@ class LocalSourceRetrievalTests(unittest.TestCase):
         self.assertFalse((self.root / "run/documents/S1/text.txt").exists())
 
     def test_unexpected_parser_exception_payload_is_not_saved(self):
-        """Third-party errors can identify their type without leaking document contents."""
+        """Third-party errors can identify their type without leaking document contents.
+
+        Args:
+            self: This unittest case instance, holding its isolated fixtures and assertion
+                methods.
+
+        Returns:
+            None. Assertions fail if the documented behavior regresses; unittest records the
+            result.
+        """
         with patch("projectclarity.retrieval.source_retrieval.parse_document",
                    side_effect=RuntimeError("PRIVATE_DOCUMENT_PAYLOAD")):
             receipt = retrieve_one(self.source, self.root / "run", self.web)

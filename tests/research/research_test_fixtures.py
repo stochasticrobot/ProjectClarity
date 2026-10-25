@@ -13,7 +13,17 @@ from projectclarity.research_schemas import ResearchPlan, ResearchRequest, Resea
 
 
 def example_session(*, with_plan=True, plan_only=True):
-    """Return a reviewable fixture; its labels are test data, not model findings."""
+    """Return a reviewable fixture; its labels are test data, not model findings.
+
+    Args:
+        with_plan: Whether the synthetic session includes a valid plan.
+        plan_only: Whether this run stops after planning instead of entering review and
+            retrieval.
+
+    Returns:
+        A synthetic ResearchSession with fixed labels and requested plan/execution flags; no
+        workflow is invoked.
+    """
     fixture = Path(__file__).parents[1] / "planning/fixtures/valid_research_plan.json"
     plan_data = json.loads(fixture.read_text(encoding="utf-8"))
     plan_data["clarifications"] = []

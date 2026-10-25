@@ -14,14 +14,21 @@ import json
 from pathlib import Path
 
 from projectclarity.plan_renderer import terminal_text
-from projectclarity.plan_review_contracts import PlanReviewDecision, ReviewAnswer
-from projectclarity.plan_review_service import get_plan_review, submit_plan_review
-from projectclarity.research_planner import ResearchError
+from projectclarity.nodes.review_plan.plan_review_contracts import PlanReviewDecision, ReviewAnswer
+from projectclarity.nodes.review_plan.plan_review_service import get_plan_review, submit_plan_review
+from projectclarity.nodes.plan_research.research_planner import ResearchError
 from projectclarity.terminal_research_interface import interactive_plan_review, use_interactive_review
 
 
 def add_review_command(commands) -> None:
-    """Keep review-specific flags separate from source-acquisition CLI options."""
+    """Keep review-specific flags separate from source-acquisition CLI options.
+
+    Args:
+        commands: argparse subparser collection to which the review command is added.
+
+    Returns:
+        None. Add the review subcommand and its options to the existing parser.
+    """
     parser = commands.add_parser("review", help="Inspect or resolve a paused plan without replanning; continue the configured workflow")
     parser.add_argument("run_id")
     parser.add_argument("--output-dir", type=Path, default=Path(".projectclarity/runs"))
@@ -42,7 +49,15 @@ def add_review_command(commands) -> None:
 
 
 def read_decision_file(path: Path):
-    """Bound UI input before decoding; never execute a response file as code."""
+    """Bound UI input before decoding; never execute a response file as code.
+
+    Args:
+        path: Local path to the decision JSON file supplied by a UI or command-line user.
+
+    Returns:
+        Decoded JSON data for the caller to validate as a review decision or answer mapping;
+        oversized, unreadable or malformed input raises ResearchError.
+    """
     try:
         with path.open("rb") as stream:
             raw = stream.read(65537)
@@ -54,7 +69,18 @@ def read_decision_file(path: Path):
 
 
 def run_review_command(args, *, on_event=None):
-    """Inspect, offer guided review, or submit an explicit decision using the same service."""
+    """Inspect, offer guided review, or submit an explicit decision using the same service.
+
+    Args:
+        args: Parsed review-command arguments identifying the run and inspection or
+            submission action.
+        on_event: Optional callback receiving operational progress-event dictionaries, not
+            source text or private prompts.
+
+    Returns:
+        The resumed ResearchSession after submission, or None for inspection only.
+        Interactive deferral raises ReviewDeferred rather than returning a completed run.
+    """
     action = "accept_assumptions" if args.accept_assumptions else "answer" if args.answers else "reject" if args.reject else None
     if action is None and args.decision is None:
         if args.review_id or args.note:

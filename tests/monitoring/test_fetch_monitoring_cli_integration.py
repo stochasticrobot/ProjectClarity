@@ -20,18 +20,47 @@ class FetchMonitoringCLIIntegrationTests(unittest.TestCase):
     """Only remote dependencies are simulated; the monitoring implementation stays real."""
 
     def setUp(self):
-        """Reuse the offline retrieval harness while keeping real monitoring in the execution path."""
+        """Reuse the offline retrieval harness while keeping real monitoring in the execution path.
+
+        Args:
+            self: This unittest case instance, holding its isolated fixtures and assertion
+                methods.
+
+        Returns:
+            None. Initialize this test instance's fixtures; unittest calls setUp before each
+            test method.
+        """
         self.retrieval = retrieval_tests.RetrievalCLIIntegrationTests()
         self.retrieval.setUp()
         self.addCleanup(self.retrieval.doCleanups)
         self.cli = self.retrieval.cli
 
     def run_cli(self, *options):
-        """Use the production module entry with source DNS and HTTP substituted."""
+        """Use the production module entry with source DNS and HTTP substituted.
+
+        Args:
+            self: This unittest case instance, holding its isolated fixtures and assertion
+                methods.
+            *options: Additional command-line argument strings appended to this helper's base
+                invocation.
+
+        Returns:
+            A tuple of CLI exit code, captured stdout and captured stderr from the production
+            command.
+        """
         return self.cli.run_cli(lambda request: self.cli.response(), *options, plan_only=False, source_dns=public_dns)
 
     def test_success_exposes_real_phases_counters_and_saved_document_location(self):
-        """Every 'retrieved' event corresponds to files actually saved through the CLI."""
+        """Every 'retrieved' event corresponds to files actually saved through the CLI.
+
+        Args:
+            self: This unittest case instance, holding its isolated fixtures and assertion
+                methods.
+
+        Returns:
+            None. Assertions fail if the documented behavior regresses; unittest records the
+            result.
+        """
         code, _, progress = self.run_cli("--progress-json")
         self.assertEqual(code, 0, progress)
         directory, session = self.cli.saved_session()
@@ -50,9 +79,18 @@ class FetchMonitoringCLIIntegrationTests(unittest.TestCase):
         self.assertTrue((directory / source["text_path"]).is_file())
 
     def test_whole_run_limit_stops_later_sources_and_reports_why(self):
-        """A zero HTTP budget makes no network request and leaves other inputs unattempted."""
+        """A zero HTTP budget blocks URLs but still permits independent local-file work.
+
+        Args:
+            self: This unittest case instance, holding its isolated fixtures and assertion
+                methods.
+
+        Returns:
+            None. Assertions fail if the documented behavior regresses; unittest records the
+            result.
+        """
         document = self.cli.directory / "later.txt"
-        document.write_text("This source must not be read after the run budget stops.")
+        document.write_text("This local source does not consume an HTTP request.")
         self.cli.plan["strategy"][0]["source_ids"] = ["S1", "S2"]
         code, _, _ = self.run_cli("--max-http-requests", "0", "--document", str(document))
         self.assertEqual(code, 1)
@@ -60,13 +98,23 @@ class FetchMonitoringCLIIntegrationTests(unittest.TestCase):
         status = json.loads((directory / "run_status.json").read_text())
         self.assertEqual(status["limits"]["max_http_requests"], 0)
         self.assertEqual(session["request"]["fetch_limits"]["max_http_requests"], 0)
-        self.assertEqual(status["sources"][0]["error_code"], "request_limit")
-        self.assertEqual(status["sources"][1]["status"], "not_started")
+        self.assertIn('request_limit', session['workflow']['stop_details'])
+        self.assertEqual(status['sources'][0]['status'], 'not_started')
+        self.assertEqual(status["sources"][1]["status"], "retrieved")
         self.assertEqual(self.retrieval.http.requests, [])
-        self.assertFalse((directory / "documents/S2").exists())
+        self.assertTrue((directory / "documents/S2/text.txt").is_file())
 
     def test_clarification_has_a_waiting_status_without_claiming_any_fetch(self):
-        """A deliberate review pause is neither completion nor an interrupted worker."""
+        """A deliberate review pause is neither completion nor an interrupted worker.
+
+        Args:
+            self: This unittest case instance, holding its isolated fixtures and assertion
+                methods.
+
+        Returns:
+            None. Assertions fail if the documented behavior regresses; unittest records the
+            result.
+        """
         self.cli.plan["clarifications"] = ["Which scope is intended?"]
         code, _, _ = self.run_cli()
         self.assertEqual(code, 2)
@@ -79,7 +127,16 @@ class FetchMonitoringCLIIntegrationTests(unittest.TestCase):
         self.assertEqual(self.retrieval.http.requests, [])
 
     def test_quiet_progress_keeps_structured_monitoring_files(self):
-        """Turning off terminal chatter must not disable operational evidence."""
+        """Turning off terminal chatter must not disable operational evidence.
+
+        Args:
+            self: This unittest case instance, holding its isolated fixtures and assertion
+                methods.
+
+        Returns:
+            None. Assertions fail if the documented behavior regresses; unittest records the
+            result.
+        """
         code, _, progress = self.run_cli("--quiet-progress")
         self.assertEqual(code, 0, progress)
         self.assertEqual(progress, "")
@@ -87,9 +144,27 @@ class FetchMonitoringCLIIntegrationTests(unittest.TestCase):
         self.assertTrue((directory / "events.jsonl").stat().st_size > 0)
 
     def test_cancellation_during_planning_is_observed_before_fetching(self):
-        """A stop request while the model responds keeps attempt accounting but starts no fetch."""
+        """A stop request while the model responds keeps attempt accounting but starts no fetch.
+
+        Args:
+            self: This unittest case instance, holding its isolated fixtures and assertion
+                methods.
+
+        Returns:
+            None. Assertions fail if the documented behavior regresses; unittest records the
+            result.
+        """
         def response_with_stop(request):
-            """Write a real cancellation request before returning the simulated planning response."""
+            """Write a real cancellation request before returning the simulated planning response.
+
+            Args:
+                request: Actual httpx2.Request emitted by the SDK; inspected locally and answered
+                    with fixture data.
+
+            Returns:
+                A synthetic httpx2.Response passed through the real provider SDK; no network request
+                is made by this responder.
+            """
             directory, _ = self.cli.saved_session()
             request_cancel(self.cli.output, directory.name)
             return self.cli.response()
@@ -104,11 +179,31 @@ class FetchMonitoringCLIIntegrationTests(unittest.TestCase):
         self.assertEqual(self.retrieval.http.requests, [])
 
     def test_monitoring_failure_stops_fetching_and_never_reports_success(self):
-        """A broken log/status sink cannot let the worker continue invisibly to later sources."""
+        """A broken log/status sink cannot let the worker continue invisibly to later sources.
+
+        Args:
+            self: This unittest case instance, holding its isolated fixtures and assertion
+                methods.
+
+        Returns:
+            None. Assertions fail if the documented behavior regresses; unittest records the
+            result.
+        """
         original = RunMonitor.observe
 
         def fail_during_parse(monitor, event, **details):
-            """Fail one monitoring event and pass all others through to test fail-visible behavior."""
+            """Fail one monitoring event and pass all others through to test fail-visible behavior.
+
+            Args:
+                monitor: Actual RunMonitor instance passed to the patched observe method.
+                event: Production monitoring event name used to select the deliberate failure point.
+                **details: Operational event fields forwarded unchanged for events not selected to
+                    fail.
+
+            Returns:
+                None for ordinary forwarded events; raise the injected failure at the selected
+                parser event.
+            """
             if event == "source_parsing":
                 raise MonitoringError("synthetic monitoring failure")
             return original(monitor, event, **details)

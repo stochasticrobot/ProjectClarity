@@ -14,7 +14,7 @@ Typical use:
     environment/.env lookup. It can spend credits and must be invoked explicitly.
 Boundary:
     The filename is deliberately not test_*.py, so offline discovery does not
-    execute it. Importing only defines code. Success establishes connection
+    execute it. Importing loads its local prompt but makes no model call. Success establishes connection
     wiring, not research planning, extraction quality, or the full researcher.
 """
 
@@ -33,7 +33,9 @@ from langsmith import tracing_context
 DEFAULT_MODEL = "claude-haiku-5-5"
 MAX_OUTPUT_TOKENS = 512
 # A fixed, non-sensitive prompt keeps this connection check small and repeatable.
-PROMPT = "Reply with one short sentence confirming that you received this message."
+from projectclarity.prompt_loader import load_prompt
+
+PROMPT = load_prompt('connection_test.txt')
 
 
 class SmokeTestError(RuntimeError):
@@ -52,7 +54,15 @@ class SmokeState(TypedDict, total=False):
 
 
 def read_key() -> str:
-    """Read a key without echoing it; refuse getpass's visible-input fallback."""
+    """Read a key without echoing it; refuse getpass's visible-input fallback.
+
+    Args:
+        None.
+
+    Returns:
+        The nonempty API key read from hidden terminal input; unsafe or empty input raises
+        SmokeTestError.
+    """
     # Piped input cannot provide the interactive, hidden prompt this check needs.
     if not sys.stdin.isatty():
         raise SmokeTestError("Run this command in an interactive terminal for hidden key entry.")
@@ -70,7 +80,17 @@ def read_key() -> str:
 
 
 def run_smoke(api_key: str, model_id: str = DEFAULT_MODEL) -> dict:
-    """Execute START -> ask_haiku -> END with no retry, fallback, or tools."""
+    """Execute START -> ask_haiku -> END with no retry, fallback, or tools.
+
+    Args:
+        api_key: Transient model-provider credential; used to configure the client, not
+            saved as research data.
+        model_id: Provider model identifier for the explicit live connection check.
+
+    Returns:
+        A dictionary containing requested/returned model IDs, completed answer text, stop
+        reason and usage; invalid completion raises SmokeTestError.
+    """
     # Keep provider configuration explicit: one bounded request, no hidden retry,
     # and a known endpoint rather than an environment-selected proxy URL.
     model = ChatAnthropic(
@@ -85,7 +105,16 @@ def run_smoke(api_key: str, model_id: str = DEFAULT_MODEL) -> dict:
     )
 
     def ask_haiku(state: SmokeState) -> SmokeState:
-        """Invoke the provider and translate its response into our graph state."""
+        """Invoke the provider and translate its response into our graph state.
+
+        Args:
+            state: SmokeState dictionary containing the fixed connection-check prompt under
+                prompt.
+
+        Returns:
+            A graph-state update containing visible answer text, returned model name, stop
+            reason and token usage.
+        """
         response = model.invoke(state["prompt"])
         content = response.content
         if isinstance(content, str):
@@ -129,7 +158,15 @@ def run_smoke(api_key: str, model_id: str = DEFAULT_MODEL) -> dict:
 
 
 def main() -> int:
-    """Provide the interactive CLI and return a shell-friendly success/failure code."""
+    """Provide the interactive CLI and return a shell-friendly success/failure code.
+
+    Args:
+        None.
+
+    Returns:
+        Shell exit code 0 for a completed connection check, 1 for failure or 130 for user
+        cancellation.
+    """
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument("--model", default=DEFAULT_MODEL, help="Explicit model ID; no automatic fallback")
     args = parser.parse_args()

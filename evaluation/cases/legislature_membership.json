@@ -527,7 +527,6 @@
       "Vermont at-large aliases refer to the same whole-state geographic coverage as Vermont in this small suite. MEMBER_OF independently distinguishes the House from the Senate; this is not a general district-to-state rule.",
       "Chamber abbreviations are explicit naming conventions, not additional offices or people."
     ],
-    "audit_document": "evaluation/cases/reference_validation.md",
     "additional_source_snapshots": [
       {
         "original_location": "https://www.ourcommons.ca/Members/en/search?province=YT",

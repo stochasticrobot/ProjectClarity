@@ -1,330 +1,92 @@
-"""Define ProjectClarity's LangGraph: its named nodes and the routes between them.
+"""Wire the production LangGraph around one durable work scheduler.
 
-START HERE to see how the application runs. This is the file where build_graph()
-registers nodes with add_node() and connects them with edges. A node is one step
-of work; an edge says which step comes next. LangGraph carries ResearchState
-(the request and this run's session record) from one step to another.
+New runs register references, plan, and resolve any human review before acquisition.
+Every work unit then returns to workflow_control.schedule_work. That module owns
+lane dispatch, remaining-work checks, bounded retries and explicit stop reasons;
+this module owns graph wiring, adapter injection, locks and run lifecycle.
+When enabled, the exploration-cycle gate filters runnable lanes before rotation.
+A wide crawl window can consume the model budget before coverage/search; graph
+wiring alone does not guarantee those stages a turn.
 
-The normal route is:
-    START -> initialize_research -> plan_research -> review_plan -> retrieve_sources -> END
-With --plan-only or a failed plan, the route ends after plan_research. Otherwise
-review_plan either passes a clear plan onward or interrupts for a human decision.
-It does not display a terminal prompt. The CLI (or a future web UI) handles that.
+A processing turn extracts at most one passage, validates its evidence, saves
+candidates and reviews newly anchored claims. Retrieval attempts one scheduled
+source. Search/link selection, coverage and optional capture receive separate
+turns. None of those local outcomes alone decides whether the run stops.
 
-For example, a question plus source_urls.txt and report.pdf first becomes a plan.
-The original plan ALWAYS comes before fetching a URL or reading a document's
-contents. Initialization registers references only; unread sources are expected,
-not a reason for the planner to demand source text or browsing permission.
-Once the plan can proceed, retrieve_sources saves the supplied documents'
-text and provenance. This is acquisition, not an answer to the research question.
-With --extract, retrieval continues to extract_knowledge -> validate_evidence ->
-persist_candidates. --review-claims adds review_claims -> adjudicate_claims.
---follow-links then adds select_followup_sources, which can return to retrieval
-ONCE for registered, origin-restricted links. Review and selection use an LLM;
-adjudication and evidence validation are ordinary Python. Extraction is defined in its own file under extraction/, not
-inside this graph definition. Saved candidates are not approved facts.
-
-File responsibilities:
-    This file: define the graph, implement node-level decisions, update run status.
-    source_reference_loader.py: check and label supplied URLs/file paths before planning.
-    research_planner.py: prepare planning questions/source references and the output schema.
-    planning_failure_diagnostics.py: explain rejected replies without exposing their contents.
-    retrieval/: read/fetch sources, parse text, and produce per-source receipts.
-    extraction/extract_knowledge_node.py: the extraction node and bounded call loop.
-    extraction/validate_evidence_node.py: Python-only source/quote/reference checks.
-    extraction/candidate_claim_storage.py: the persistence node and readable candidates.
-    session_storage.py: save local snapshots; plan_renderer.py: make them readable.
-    run_monitor.py: publish live events/status and observe operator stop requests.
-
-Usage and limits:
-    command_line.py calls run_research(); it compiles and invokes THIS graph. Source text
-    goes into extraction/review prompts only with their explicit CLI permissions. workflow_checkpoints.py keeps
-    LangGraph's place at review; session.json remains an inspectable projection.
-    Resuming arbitrary failed retrieval tasks is not implemented.
-    run_research() owns one local monitor/worker lock for the graph invocation;
-    optional monitor arguments keep nodes callable independently in unit tests.
+command_line.py invokes run_research or resume_research, both using build_graph.
+Native SQLite checkpoints retain plan-review interrupts. For work restart,
+session.json carries the latest atomic task journal and budget reservations;
+uncertain in-flight calls are never replayed automatically. Runtime clients and
+credentials are never serialized. Saved candidates and completed workflow tasks
+are not a claim that the research question has been answered.
 """
 
 import time
 from datetime import UTC, datetime
 from pathlib import Path
-from typing import TypedDict
 from uuid import uuid4
 
 from langgraph.graph import END, START, StateGraph
-from langgraph.types import interrupt
 from langsmith import tracing_context
 
-from projectclarity.research_schemas import ResearchRequest, ResearchSession, ResearchPlan
-from projectclarity.research_planner import ResearchError, create_planner, planning_messages, read_api_key
-from projectclarity.planning_failure_diagnostics import describe_planning_failure
+from projectclarity.research_schemas import ResearchRequest, ResearchSession
+from projectclarity.nodes.plan_research.research_planner import ResearchError, read_api_key
 from projectclarity.run_graph_visualization import save_invoked_graph
 from projectclarity.plan_renderer import render_plan
-from projectclarity.retrieval.retrieval_limits import RetrievalBudget, RetrievalLimits, RunCancelled
-from projectclarity.retrieval.source_retrieval import retrieve_one, save_manifest
-from projectclarity.retrieval.public_url_fetcher import PublicWebReader
+from projectclarity.retrieval.retrieval_limits import RunCancelled
 from projectclarity.session_storage import save_session, write_text
-from projectclarity.source_reference_loader import load_sources
+from projectclarity.nodes.accumulate_knowledge.node import accumulate_knowledge
 from projectclarity.run_monitor import MonitoringError, RunMonitor
-from projectclarity.plan_review_contracts import PlanReviewRequest, PlanReviewDecision
-from projectclarity.plan_review_service import create_plan_review, validate_review_decision
 from projectclarity.workflow_checkpoints import checkpoint_store, thread_config
-from projectclarity.extraction.extract_knowledge_node import extract_knowledge
-from projectclarity.extraction.validate_evidence_node import validate_evidence
-from projectclarity.extraction.candidate_claim_storage import persist_candidates
-from projectclarity.claim_review.review_claims_node import review_claims
-from projectclarity.claim_review.adjudicate_claims_node import adjudicate_claims
-from projectclarity.discovery.select_followup_sources_node import select_followup_sources
-from projectclarity.discovery.observed_link_inventory import seed_origins
-
-
-class ResearchState(TypedDict, total=False):
-    """Information carried between nodes: a request and session, never an API key."""
-
-    # Durable channels contain only JSON-shaped data; node adapters validate
-    # them into Python models. Checkpoints never reconstruct arbitrary classes.
-    request: dict
-    session: dict
-    run_id: str
-
-
-def initialize_research(state: ResearchState, output_root: Path, monitor=None) -> dict:
-    """Register source references, create a unique run folder and start monitoring.
-
-    The node adapter supplies typed request data here. Only the URL-list file
-    and local path metadata are read; actual document contents wait until after
-    planning/review. The initial saved session makes early failures inspectable.
-    """
-    request = state["request"]
-    sources = load_sources(request.urls_file, request.document_paths)
-    session = ResearchSession(
-        session_id=state.get("run_id") or uuid4().hex,
-        created_at=datetime.now(UTC).isoformat(),
-        request=state["request"],
-        mode="plan_only" if request.plan_only else "plan_retrieve_extract" if request.extract_knowledge else "plan_and_retrieve",
-        sources=sources,
-        visited_nodes=["initialize_research"],
-    )
-    # A unique directory isolates runs; no existing output is overwritten.
-    (output_root / session.session_id).mkdir(parents=True, exist_ok=False)
-    save_session(session, output_root)
-    if monitor:
-        monitor.start(session)
-    return {"session": session}
-
-
-def plan_research(state: ResearchState, output_root: Path, key_reader=read_api_key, monitor=None) -> dict:
-    """Enforce local limits, call the planner once, validate, and save for review."""
-    session = state["session"]
-    session.visited_nodes.append("plan_research")
-    started = time.monotonic()
-    planning_failure = None
-    try:
-        if monitor:
-            monitor.observe("planning_started", stage="planning", run_status="planning")
-            monitor.check_cancel()
-        if session.usage.requests_attempted >= session.request.budget.max_requests:
-            raise ResearchError("LLM request budget exhausted; no provider request was made.")
-        api_key = key_reader()
-        planner = create_planner(api_key, session)
-        if monitor:
-            monitor.check_cancel()
-        session.status = "planning"
-        # Reserve the attempt BEFORE invoking. A timeout may still incur usage;
-        # it must not be mistaken for a free call or trigger an automatic retry.
-        session.usage.requests_attempted += 1
-        save_session(session, output_root)
-        messages = planning_messages(session)
-        if monitor:
-            monitor.model_input("plan_research", "plan", messages, ResearchPlan, api_key)
-        response = planner.invoke(messages)
-        raw = response["raw"]
-        if monitor:
-            monitor.model_output("plan_research", "plan", raw, api_key)
-        usage = raw.usage_metadata or {}
-        session.usage.input_tokens = usage.get("input_tokens")
-        session.usage.output_tokens = usage.get("output_tokens")
-        session.usage.total_tokens = usage.get("total_tokens")
-        session.usage.response_model = raw.response_metadata.get("model_name")
-        session.usage.stop_reason = raw.response_metadata.get("stop_reason")
-        if monitor:
-            monitor.check_cancel()
-        if session.usage.stop_reason != "end_turn":
-            raise ResearchError("The planner did not finish its answer. No retry was made; consider a higher --max-output-tokens limit.")
-        if response.get("parsing_error") is not None or response.get("parsed") is None:
-            # LangChain's exception message can contain the entire rejected
-            # answer. Persist only known field names and application-owned rules.
-            planning_failure = describe_planning_failure(response.get("parsing_error"))
-            write_text(output_root / session.session_id / "planning_failure.json",
-                       planning_failure.model_dump_json(indent=2) + "\n")
-            raise ResearchError("The planner returned an invalid plan. "
-                + planning_failure.explanation()
-                + " Nothing was accepted and no retry was made.")
-        plan = response["parsed"]
-        known_sources = {source.source_id for source in session.sources}
-        if any(source_id not in known_sources for step in plan.strategy for source_id in step.source_ids):
-            raise ResearchError("The plan referenced a source ID that was not supplied. Nothing was accepted.")
-        session.plan = plan
-        session.status = "needs_clarification" if plan.clarifications else "plan_ready"
-        if plan.clarifications and not session.request.plan_only:
-            session.pending_review = create_plan_review(session)
-    except (RunCancelled, KeyboardInterrupt, EOFError):
-        session.status = "cancelled"
-        session.error = "Cancelled. Token usage may be unknown if a request was already sent."
-    except ResearchError as exc:
-        session.status = "failed"
-        session.error = str(exc)
-    except Exception as exc:
-        session.status = "failed"
-        # Exception bodies can include prompts, headers or credentials. Store
-        # only the type/status, never their arbitrary message or traceback.
-        status = getattr(exc, "status_code", None)
-        detail = f" (HTTP {status})" if isinstance(status, int) else ""
-        session.error = f"Planning failed: {type(exc).__name__}{detail}. No retry was made."
-    session.usage.elapsed_seconds = round(time.monotonic() - started, 3)
-    # Human-readable snapshots are separate from LangGraph's durable checkpoint.
-    save_session(session, output_root)
-    if session.plan is not None:
-        directory = output_root / session.session_id
-        write_text(directory / "plan.json", session.plan.model_dump_json(indent=2) + "\n")
-        write_text(directory / "plan.md", render_plan(session))
-    if monitor:
-        details = {"error_code": planning_failure.error_code} if planning_failure else {}
-        monitor.observe("planning_finished", stage=session.status, run_status=session.status, **details)
-    return {"session": session}
-
-
-def retrieve_sources(state: ResearchState, output_root: Path, monitor=None, runtime=None) -> dict:
-    """Acquisition node: collect supplied documents, saving each outcome as we go.
-
-    The model's search suggestions never become permission to fetch new URLs.
-    We iterate only over registered source IDs: supplied seeds, then explicitly
-    authorized observed links registered by the discovery node.
-    Reading/parsing details belong to retrieval/, not to this graph definition.
-    Each attempt reports progress and persists its outcome before the next starts.
-    Source failures may continue; cancellation or a whole-run limit stops the loop.
-
-    A graph invocation shares one reader across rounds, including counters,
-    elapsed time, robots policies, pacing and HTTP-429 blocks. Only source IDs
-    without receipts are attempted. Runtime clients never enter checkpoints.
-    """
-    session = state["session"]
-    session.visited_nodes.append("retrieve_sources")
-    session.status = "retrieving"
-    directory = output_root / session.session_id
-    runtime = runtime if runtime is not None else {}
-    if "web" not in runtime:
-        prior = session.retrieval_usage
-        budget = RetrievalBudget(RetrievalLimits(**session.request.fetch_limits.model_dump()),
-            bytes_read=prior.get("bytes_read", 0), http_requests=prior.get("http_requests", 0),
-            started=time.monotonic() - prior.get("elapsed_seconds", 0),
-            check_control=monitor.check_cancel if monitor else None,
-            on_event=monitor.observe if monitor else None)
-        runtime["web"] = PublicWebReader(budget)
-    web = runtime["web"]
-    budget = web.budget
-    attempted_ids = {document.source_id for document in session.documents}
-    save_session(session, output_root)
-    try:
-        if monitor:
-            monitor.observe("retrieval_started", stage="retrieving", run_status="retrieving")
-        for source in session.sources:
-            if source.source_id in attempted_ids:
-                continue
-            # Discovered-page redirects must remain within the permission given
-            # by --follow-links. Original supplied pages keep existing behavior.
-            web.allowed_origins = seed_origins(session) if getattr(source, "depth", 0) == 1 else None
-            if monitor:
-                monitor.check_cancel()
-                monitor.observe("source_started", source_id=source.source_id, stage="acquiring")
-            record = retrieve_one(source, directory, web)
-            session.documents.append(record)
-            session.retrieval_usage = budget.summary()
-            save_manifest(directory, session.documents)
-            save_session(session, output_root)
-            budget.emit("source_finished", source_id=source.source_id, source_status=record.status,
-                        byte_count=record.byte_count, character_count=record.character_count,
-                        text_path=record.text_path, error_code=record.error_code,
-                        source_seconds=record.elapsed_seconds)
-            if record.status == "cancelled":
-                raise RunCancelled("Run cancellation requested.")
-            if record.error_code in {"run_time_limit", "request_limit", "total_size_limit"}:
-                # These apply to the whole run, not just a bad source. Do not
-                # manufacture repeated failures for documents we cannot attempt.
-                session.error = f"Retrieval stopped at {record.error_code}; remaining sources were not attempted."
-                budget.emit("retrieval_limit_reached", error_code=record.error_code)
-                break
-        successes = sum(document.status == "retrieved" for document in session.documents)
-        if not session.sources:
-            session.status = "retrieval_failed"
-            session.error = "No sources supplied. Add --urls or --document, or use --plan-only."
-        elif successes == len(session.sources):
-            session.status = "sources_retrieved"
-        elif successes:
-            session.status = "retrieval_partial"
-        else:
-            session.status = "retrieval_failed"
-    except (RunCancelled, KeyboardInterrupt, EOFError):
-        session.status = "cancelled"
-        session.error = "Retrieval cancelled; already completed source receipts have been kept."
-    except Exception as exc:
-        session.status = "retrieval_failed"
-        session.error = f"Retrieval could not finish ({type(exc).__name__}); inspect saved source receipts."
-    session.retrieval_usage = budget.summary()
-    save_manifest(directory, session.documents)
-    save_session(session, output_root)
-    write_text(directory / "plan.md", render_plan(session))
-    return {"session": session}
+from projectclarity.nodes.extract_knowledge.node import extract_knowledge
+from projectclarity.nodes.validate_evidence.node import validate_evidence
+from projectclarity.nodes.persist_candidates.node import persist_candidates
+from projectclarity.nodes.review_claims.node import review_claims
+from projectclarity.nodes.adjudicate_claims.node import adjudicate_claims
+from projectclarity.nodes.select_followup_sources.node import select_followup_sources
+from projectclarity.nodes.web_search.node import web_search
+from projectclarity.nodes.select_sources.node import select_sources
+from projectclarity.nodes.assess_research_gaps.node import assess_research_gaps, save_coverage
+from projectclarity.nodes.schedule_work.workflow_control import model_blocked
+from projectclarity.nodes.initialize_research.source_reference_loader import load_sources
+from projectclarity.workflow_state import ResearchState
+from projectclarity.retrieval.runtime import retrieval_runtime
+from projectclarity.nodes.initialize_research.node import initialize_research
+from projectclarity.nodes.plan_research.node import plan_research
+from projectclarity.nodes.review_plan.node import review_plan, json_text
+from projectclarity.nodes.retrieve_sources.node import retrieve_sources
+from projectclarity.nodes.schedule_work.node import schedule
+from projectclarity.nodes.wait_for_retry.node import wait_for_retry
 
 
 def after_planning(state: ResearchState) -> str:
-    """Send valid execution plans to review; failed/plan-only runs still end here."""
+    """Send valid execution plans to review; failed/plan-only runs still end here.
+
+    Args:
+        state: Graph-state dictionary whose session entry is a typed ResearchSession for the
+            current run.
+
+    Returns:
+        The routing label review for a valid execution plan, or stop for failed or plan-only
+        work.
+    """
     session = state["session"]
     if session.request.plan_only or session.status not in {"plan_ready", "needs_clarification"}:
         return "stop"
     return "review"
 
 
-def review_plan(state: ResearchState, output_root: Path, monitor=None) -> dict:
-    """Pause for a UI decision when necessary, without embedding any UI code.
-
-    LangGraph restarts this function when the decision arrives. Therefore all
-    durable side effects occur AFTER interrupt(), which returns that decision
-    on resume. The outer runner announces the pause after checkpointing succeeds.
-    A plan without questions passes through; that is not recorded as human approval.
-    """
-    session = state["session"]
-    if session.pending_review:
-        review = PlanReviewRequest.model_validate(session.pending_review)
-        decision = PlanReviewDecision.model_validate(interrupt(review.model_dump(mode="json")))
-        validate_review_decision(review, decision, session)
-        session.review_decision = decision.model_dump(mode="json")
-        session.review_resolved_at = datetime.now(UTC).isoformat()
-        session.pending_review = None
-        if decision.revised_plan is not None:
-            session.plan = decision.revised_plan
-        session.status = "rejected" if decision.action == "reject" else "plan_ready"
-        directory = output_root / session.session_id
-        write_text(directory / "review_decision.json", json_text(session.review_decision))
-        write_text(directory / "plan.json", session.plan.model_dump_json(indent=2) + "\n")
-        if monitor:
-            monitor.observe("review_resolved", review_id=decision.review_id, review_action=decision.action,
-                            run_status=session.status, stage="review_plan")
-    if "review_plan" not in session.visited_nodes:
-        session.visited_nodes.append("review_plan")
-    save_session(session, output_root)
-    write_text(output_root / session.session_id / "plan.md", render_plan(session))
-    return {"session": session}
-
-
-def json_text(value: dict) -> str:
-    """Serialize a private JSON artifact; telemetry receives only its identifiers."""
-    import json
-    return json.dumps(value, ensure_ascii=True, indent=2) + "\n"
-
-
 def typed_state(state: ResearchState) -> dict:
-    """Validate plain checkpoint data before a node uses any saved request/state."""
+    """Validate plain checkpoint data before a node uses any saved request/state.
+
+    Args:
+        state: Checkpoint-compatible dictionary whose request and session entries may be
+            plain dictionaries or already typed models.
+
+    Returns:
+        A shallow copy of the state with request/session values validated into their
+        application models when present.
+    """
     result = dict(state)
     if "request" in state:
         result["request"] = ResearchRequest.model_validate(state["request"])
@@ -334,20 +96,54 @@ def typed_state(state: ResearchState) -> dict:
 
 
 def build_graph(output_root: Path, key_reader=read_api_key, monitor=None, *, checkpointer=None):
-    """THIS defines the LangGraph nodes and their order; compile makes it runnable.
+    """Assemble and compile the research workflow so all entry points use the same planning,
+    discovery, retrieval, broad knowledge capture, answer extraction and assessment stages.
 
-    Each small lambda passes a node the output folder (and, for LLM steps, the
-    credential reader). LangGraph supplies the state argument when that node runs.
-    Conditional edges route to review, stop, retrieve, or opt-in extraction.
-    SQLite persistence is supplied by the runner; the graph itself knows nothing
-    about a terminal/web UI. Only explicit follow-links permission enables a one-hop loop.
+    Node adapters inject local services and convert typed application models back to
+    checkpoint-compatible dictionaries. The central scheduler enforces requested
+    features, budgets and termination; edges dispatch its reserved work unit. Web search can add bounded rounds; separately authorized link discovery
+    can expand successive observed-link frontiers. The runner supplies persistence and monitoring without coupling the
+    graph to a particular UI.
+
+    Args:
+        output_root: Local filesystem directory containing research-run subdirectories; not
+            a URL or an individual run folder.
+        key_reader: Zero-argument callable returning the model API key when a request needs
+            it; defaults to read_api_key.
+        monitor: Optional RunMonitor for progress events and cooperative cancellation; None
+            disables those hooks.
+        checkpointer: Optional LangGraph checkpoint saver supplied by the runner for durable
+            execution and review resumes.
+
+    Returns:
+        A compiled LangGraph workflow ready to invoke; constructing it does not execute
+        research.
     """
     builder = StateGraph(ResearchState)
-    runtime = {}  # Ephemeral shared HTTP client/cache; never serialized as graph state.
+    runtime = {'output_root': output_root}  # Live clients never enter checkpoints.
     def node(name, function):
-        """Announce the actual executing node while preserving plain checkpoint dictionaries."""
+        """Announce the actual executing node while preserving plain checkpoint dictionaries.
+
+        Args:
+            name: Registered graph-node name used for progress events.
+            function: Node callable accepting typed state and returning an updated
+                ResearchSession under session.
+
+        Returns:
+            A callable that announces execution and adapts typed node results to serializable
+            graph state.
+        """
         def execute(state):
-            """Report entry and normal return; an interrupted/raised node has no finish event."""
+            """Report entry and normal return; an interrupted/raised node has no finish event.
+
+            Args:
+                state: Graph state supplied by LangGraph, converted to typed request/session models
+                    before the node runs.
+
+            Returns:
+                A state-update dictionary whose session entry is JSON-compatible data for LangGraph
+                checkpoints.
+            """
             if monitor:
                 monitor.observe("node_started", node_name=name, stage=name)
             result = function(typed_state(state))["session"]
@@ -358,51 +154,115 @@ def build_graph(output_root: Path, key_reader=read_api_key, monitor=None, *, che
     builder.add_node("initialize_research", node("initialize_research", lambda state: initialize_research(state, output_root, monitor)))
     builder.add_node("plan_research", node("plan_research", lambda state: plan_research(state, output_root, key_reader, monitor)))
     builder.add_node("review_plan", node("review_plan", lambda state: review_plan(state, output_root, monitor)))
+    builder.add_node("web_search", node("web_search", lambda state: web_search(state, output_root, monitor,
+        retrieval_runtime(state['session'], runtime, monitor))))
+    builder.add_node("select_sources", node("select_sources", lambda state: select_sources(state, output_root, key_reader, monitor)))
+    builder.add_node("assess_research_gaps", node("assess_research_gaps", lambda state: assess_research_gaps(state, output_root, key_reader, monitor)))
     builder.add_node("retrieve_sources", node("retrieve_sources", lambda state: retrieve_sources(state, output_root, monitor, runtime)))
+    builder.add_node("accumulate_knowledge", node("accumulate_knowledge", lambda state: accumulate_knowledge(state, output_root, key_reader, monitor, final_pass=True, max_calls=state['session'].workflow['tasks'][state['session'].workflow['active']].get('max_calls', 1))))
     # The functions below live in dedicated files. This file only connects the
     # steps, making the graph readable without embedding extraction internals.
-    builder.add_node("extract_knowledge", node("extract_knowledge", lambda state: extract_knowledge(state, output_root, key_reader, monitor)))
+    builder.add_node("extract_knowledge", node("extract_knowledge", lambda state: extract_knowledge(state, output_root, key_reader, monitor, max_batches=1)))
     builder.add_node("validate_evidence", node("validate_evidence", lambda state: validate_evidence(state, output_root, monitor)))
     builder.add_node("persist_candidates", node("persist_candidates", lambda state: persist_candidates(state, output_root, monitor)))
     builder.add_node("review_claims", node("review_claims", lambda state: review_claims(state, output_root, key_reader, monitor)))
     builder.add_node("adjudicate_claims", node("adjudicate_claims", lambda state: adjudicate_claims(state, output_root, monitor)))
     builder.add_node("select_followup_sources", node("select_followup_sources", lambda state: select_followup_sources(
         state, output_root, key_reader, monitor, runtime.get("web"))))
-    builder.add_edge(START, "initialize_research")
+    builder.add_conditional_edges(START, lambda state: 'resume' if state.get('session') else 'new',
+        {'resume': 'schedule_work', 'new': 'initialize_research'})
     builder.add_edge("initialize_research", "plan_research")
     builder.add_conditional_edges("plan_research", lambda state: after_planning(typed_state(state)), {"stop": END, "review": "review_plan"})
-    builder.add_conditional_edges("review_plan", lambda state: "retrieve" if state["session"]["status"] == "plan_ready" else "stop",
-                                  {"retrieve": "retrieve_sources", "stop": END})
-    builder.add_conditional_edges("retrieve_sources",
-        lambda state: "extract" if state["session"]["request"].get("extract_knowledge", False)
-            and state["session"]["status"] in {"sources_retrieved", "retrieval_partial"} else "stop",
-        {"extract": "extract_knowledge", "stop": END})
-    builder.add_edge("extract_knowledge", "validate_evidence")
-    builder.add_edge("validate_evidence", "persist_candidates")
-    builder.add_conditional_edges("persist_candidates",
-        lambda state: "review" if state["session"]["request"].get("review_claims", False)
-            and state["session"]["status"] != "cancelled" else "stop",
-        {"review": "review_claims", "stop": END})
-    builder.add_edge("review_claims", "adjudicate_claims")
-    builder.add_conditional_edges("adjudicate_claims",
-        lambda state: "discover" if state["session"]["request"].get("follow_links", False)
-            and state["session"]["status"] != "cancelled" else "stop",
-        {"discover": "select_followup_sources", "stop": END})
-    builder.add_conditional_edges("select_followup_sources",
-        lambda state: "retrieve" if state["session"]["discovery"].get("stop_reason") == "followup_registered"
-            and state["session"]["status"] != "cancelled" else "stop",
-        {"retrieve": "retrieve_sources", "stop": END})
+
+
+    builder.add_node('schedule_work', node('schedule_work', lambda state: schedule(state, output_root, monitor, runtime)))
+    builder.add_node('wait_for_retry', node('wait_for_retry', lambda state: wait_for_retry(state, output_root, monitor, runtime)))
+    builder.add_conditional_edges('review_plan',
+        lambda state: 'schedule' if state['session']['status'] == 'plan_ready' else 'stop',
+        {'schedule': 'schedule_work', 'stop': END})
+    actions = {name: name for name in ('web_search', 'select_sources', 'retrieve_sources',
+        'extract_knowledge', 'validate_evidence', 'review_claims', 'assess_research_gaps',
+        'select_followup_sources', 'accumulate_knowledge')}
+    builder.add_conditional_edges('schedule_work', lambda state: state['session']['workflow']['next'],
+        {**actions, 'wait': 'wait_for_retry', 'stop': END})
+    for name in ('web_search', 'select_sources', 'retrieve_sources', 'assess_research_gaps',
+                 'select_followup_sources', 'accumulate_knowledge', 'wait_for_retry'):
+        builder.add_edge(name, 'schedule_work')
+    builder.add_edge('extract_knowledge', 'validate_evidence')
+    builder.add_edge('validate_evidence', 'persist_candidates')
+    builder.add_conditional_edges('persist_candidates',
+        lambda state: 'review' if state['session']['request'].get('review_claims')
+            and state['session']['status'] != 'cancelled'
+            and not model_blocked(ResearchSession.model_validate(state['session']))
+            and state['session']['usage']['requests_attempted'] < state['session']['request']['budget']['max_requests']
+            else 'schedule',
+        {'review': 'review_claims', 'schedule': 'schedule_work'})
+    builder.add_edge('review_claims', 'adjudicate_claims')
+    builder.add_edge('adjudicate_claims', 'schedule_work')
     return builder.compile(checkpointer=checkpointer)
 
 
 def finish_graph_invocation(result: dict, output_root: Path, monitor: RunMonitor, graph) -> ResearchSession:
     """Save the returned outcome and actual graph, or announce a durably saved pause.
 
-    A pause is not completion. Waiting for a person leaves the checkpoint ready
-    for review continuation; a normal return closes monitoring, even on a
-    controlled failed/partial result. The text graph records visits, not success.
+    A pause is not completion. Waiting for a person leaves the checkpoint ready for review
+    continuation; a normal return closes monitoring, even on a controlled failed/partial
+    result. Aggregate failed model tasks and selection receipts before adding search
+    warnings, so a generic earlier warning cannot conceal a later failure. Explicitly
+    budgeted auxiliary capture reports its own status without downgrading research
+    solely for capture incompleteness; legacy runs retain combined status. The text
+    graph records visits, not success.
+
+    Args:
+        result: Dictionary returned by graph invocation, including session data and any
+            native interrupt.
+        output_root: Local filesystem directory containing research-run subdirectories; not
+            a URL or an individual run folder.
+        monitor: Optional RunMonitor for progress events and cooperative cancellation; None
+            disables those hooks.
+        graph: Compiled graph actually invoked, used to record its topology and inspect a
+            review pause.
+
+    Returns:
+        The ResearchSession describing the finished, failed, partial or durably paused run.
     """
     session = ResearchSession.model_validate(result["session"])
+    if session.extraction and session.status not in {'cancelled', 'awaiting_review', 'failed'}:
+        session.extraction['retrieval_incomplete'] = (len(session.documents) != len(session.sources)
+            or any(d.status != 'retrieved' for d in session.documents))
+        persist_candidates({'session': session}, output_root, record_visit=False)
+        if session.status == 'candidates_saved':
+            session.error = None
+    if session.workflow.get('stop_reason') in {'blocked', 'budget_exhausted'} and session.status not in {'cancelled', 'failed'}:
+        session.status = 'extraction_partial' if session.extraction else 'retrieval_partial' if any(d.status == 'retrieved' for d in session.documents) else 'retrieval_failed'
+        session.error = 'Workflow stopped with unfinished work: ' + ', '.join(session.workflow.get('stop_details', [])) + '.'
+    if session.status not in {'cancelled', 'awaiting_review', 'failed'}:
+        failed_calls = sorted({(c['task'], c['error_code']) for c in session.processing_calls
+            if c.get('error_code') and c.get('status') == 'failed'
+            and not (c['task'] == 'accumulate_knowledge' and session.request.knowledge_max_requests is not None)})
+        if failed_calls:
+            session.status = 'extraction_partial' if session.extraction else 'retrieval_partial'
+            details = '; '.join(f'{task}: {code}' for task, code in failed_calls)
+            session.error = 'Incomplete model tasks (' + details + '). Saved evidence and failure receipts are retained.'
+        discovery_errors = {'invalid_selection_references', 'invalid_output_schema', 'incomplete_model_output',
+            'selection_failed', 'input_too_large', 'frontier_context_blocked'}
+        failed_selections = sorted({d.get('stop_reason') for d in
+            [session.discovery, *session.discovery.get('history', [])] if d.get('stop_reason') in discovery_errors})
+        if failed_selections:
+            session.status = 'extraction_partial' if session.extraction else 'retrieval_partial'
+            session.error = (session.error + ' ' if session.error else '') + 'Follow-up selection incomplete: ' + ', '.join(failed_selections) + '.'
+        failed_coverage = sorted({entry['error_code'] for entry in session.coverage.get('history', [])
+            if entry.get('error_code')})
+        if failed_coverage:
+            session.status = 'extraction_partial' if session.extraction else 'retrieval_partial'
+            session.error = (session.error + ' ' if session.error else '') + 'Coverage assessments incomplete: ' + ', '.join(failed_coverage) + '.'
+    if session.request.web_search and session.status not in {"cancelled", "awaiting_review", "failed"}:
+        failures = any(q.get("status") == "failed" for q in session.search.get("queries", [])) or any(
+            s.get("error_code") for s in session.search.get("selections", []))
+        if failures:
+            session.status = "extraction_partial" if session.extraction else "retrieval_partial" if session.documents else "retrieval_failed"
+            warning = "Search or source selection was incomplete; retained work is available in search.json."
+            session.error = (session.error + " " if session.error else "") + warning
     if result.get("__interrupt__"):
         session.status = "awaiting_review"
         if "review_plan" not in session.visited_nodes:
@@ -416,6 +276,7 @@ def finish_graph_invocation(result: dict, output_root: Path, monitor: RunMonitor
         monitor.finish(session.status)
     # Export this exact compiled graph, not a separate diagram of what we think
     # is connected. Paused review is visited but not a completed invocation.
+    save_coverage(session, output_root)
     save_invoked_graph(graph, session, output_root, finished=not bool(result.get("__interrupt__")))
     return session
 
@@ -423,10 +284,24 @@ def finish_graph_invocation(result: dict, output_root: Path, monitor: RunMonitor
 def run_research(request: ResearchRequest, output_root: Path, key_reader=read_api_key, *, on_event=None) -> ResearchSession:
     """Start a new run and return its completed, failed or review-paused session.
 
-    invoke() is the call that actually runs the graph; build_graph() only builds
-    it. Remote tracing stays disabled; local events and private extraction traces
-    remain available. This runner holds the worker lock only during execution,
-    not while a person is deciding whether to resume a paused plan.
+    invoke() is the call that actually runs the graph; build_graph() only builds it. Remote
+    tracing stays disabled; local events and private extraction traces remain available.
+    This runner holds the worker lock only during execution, not while a person is deciding
+    whether to resume a paused plan.
+
+    Args:
+        request: Validated ResearchRequest specifying the question, inputs, opt-in stages
+            and resource limits.
+        output_root: Local filesystem directory containing research-run subdirectories; not
+            a URL or an individual run folder.
+        key_reader: Zero-argument callable returning the model API key when a request needs
+            it; defaults to read_api_key.
+        on_event: Optional callback receiving operational progress-event dictionaries, not
+            source text or private prompts.
+
+    Returns:
+        The ResearchSession holding results and status for this new run, including failure
+        or a pending review pause.
     """
     monitor = RunMonitor(output_root, sink=on_event)
     try:
@@ -447,5 +322,55 @@ def run_research(request: ResearchRequest, output_root: Path, key_reader=read_ap
         except MonitoringError:
             pass  # Preserve the original failure; lock release still exposes a dead worker.
         raise
+    finally:
+        monitor.close()
+
+
+def resume_research(run_id: str, output_root: Path, key_reader=read_api_key, *, on_event=None) -> ResearchSession:
+    """Continue a scheduler journal without replanning, resetting limits or replaying calls.
+
+    Args:
+        run_id: Existing run directory identifier, validated against traversal.
+        output_root: Local directory containing that run and its checkpoint store.
+        key_reader: Credential reader used only if remaining work needs a model.
+        on_event: Optional operational progress sink, never source/prompt content.
+
+    Returns:
+        Updated session after remaining work. Refuse legacy journals, unresolved
+        plan reviews, and explicitly cancelled runs. An interrupted task is marked
+        uncertain; completed saved evidence can still be finalized. A worker lock
+        prevents concurrent resumptions. Existing budgets and breaker states stay.
+    """
+    from projectclarity.run_status_commands import run_directory
+    directory = run_directory(output_root, run_id)
+    monitor = RunMonitor(output_root, sink=on_event)
+    try:
+        monitor.attach(directory)
+        session = ResearchSession.model_validate_json((directory / 'session.json').read_text())
+        if session.workflow.get('version') != 1 or not session.plan:
+            raise ResearchError('This run has no compatible workflow journal; start a new run.')
+        if session.pending_review or session.status in {'cancelled', 'rejected'}:
+            raise ResearchError('Plan review or cancellation prevents automatic workflow resume.')
+        active = session.workflow.get('active')
+        if active:
+            task = session.workflow['tasks'][active]
+            task.update(status='uncertain', error_code='interrupted_outcome_unknown')
+            session.workflow['active'] = None
+            # Conservatively charge time since the last durable acquisition clock;
+            # downtime cannot silently replenish an interrupted run's allowance.
+            saved_at = session.retrieval_usage.get('checkpoint_wall_time', task.get('started_at', time.time()))
+            if session.retrieval_usage:
+                session.retrieval_usage['elapsed_seconds'] += max(0, time.time() - saved_at)
+            for passage in (session.extraction or {}).get('attempts', []):
+                if passage['status'] == 'started':
+                    passage.update(status='failed', error_code='interrupted_outcome_unknown')
+        session.workflow.setdefault('resumes', []).append(datetime.now(UTC).isoformat())
+        save_session(session, output_root)
+        monitor.resume(stage='schedule_work', run_status=session.status)
+        with monitor.termination_handler(), tracing_context(enabled=False), checkpoint_store(output_root, create=True) as store:
+            graph = build_graph(output_root, key_reader, monitor, checkpointer=store)
+            result = graph.invoke({'request': session.request.model_dump(mode='json'),
+                'session': session.model_dump(mode='json'), 'run_id': run_id}, thread_config(run_id))
+            return finish_graph_invocation(result, output_root, monitor, graph)
     finally:
         monitor.close()

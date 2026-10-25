@@ -1,0 +1,26 @@
+{
+  "policy_id": "research-network-variations-v2",
+  "version": 2,
+  "predicate_aliases": {
+    "AFFILIATED_WITH": ["MEMBER_OF", "WORKS_AT", "WORKS_FOR"],
+    "AUTHORED": ["AUTHOR_OF", "WROTE"],
+    "PRESENTED_AT": [],
+    "FUNDED_BY": ["SPONSORED_BY"],
+    "LOCATED_IN": ["LOCATED_AT", "BASED_IN", "TOOK_PLACE_IN", "HELD_IN"],
+    "publication_year": ["published_year", "year_published"],
+    "start_date": ["started_on", "event_date"]
+  },
+  "inverse_predicates": {
+    "AUTHORED_BY": "AUTHORED",
+    "WRITTEN_BY": "AUTHORED",
+    "HAS_AUTHOR": "AUTHORED",
+    "FUNDS": "FUNDED_BY"
+  },
+  "role_equivalences": [
+    {"predicate": "AUTHORED", "canonical_role": null, "accepted_roles": [null, "author", "co-author", "coauthor"]},
+    {"predicate": "AFFILIATED_WITH", "canonical_role": "researcher", "accepted_roles": ["researcher", "a researcher"]},
+    {"predicate": "AFFILIATED_WITH", "canonical_role": "director", "accepted_roles": ["director", "the director"]}
+  ],
+  "attribute_formats": {"publication_year": "year", "start_date": "date"},
+  "date_formats": ["%Y-%m-%d", "%B %d, %Y", "%d %B %Y"]
+}

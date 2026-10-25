@@ -40,20 +40,44 @@ class MonitoringError(RuntimeError):
 
 
 def utc_now() -> str:
-    """Use timezone-aware timestamps so event files are comparable across runs."""
+    """Create a timezone-aware UTC timestamp so saved events can be ordered across runs and
+    machines without interpreting local clock zones.
+
+    Args:
+        None.
+
+    Returns:
+        An ISO-formatted, timezone-aware UTC timestamp string for a recorded event.
+    """
     return datetime.now(UTC).isoformat()
 
 
 def safe_text(value) -> str:
-    """Keep generated display labels on one line and free of terminal controls."""
+    """Keep generated display labels on one line and free of terminal controls.
+
+    Args:
+        value: Application-selected display value to normalize for operational output.
+
+    Returns:
+        A printable, single-line label capped to 240 characters.
+    """
     return "".join(char for char in str(value) if char.isprintable())[:240]
 
 
 def console_progress(event: dict, *, json_output=False) -> None:
     """Write safe live metadata to stderr, leaving stdout for plans/candidate summaries.
 
-    JSON mode is a machine-readable event stream. Human mode selects a smaller
-    set of counters/status fields; neither format includes private call bodies.
+    JSON mode is a machine-readable event stream. Human mode selects a smaller set of
+    counters/status fields; neither format includes private call bodies.
+
+    Args:
+        event: Operational event dictionary containing whitelisted status fields and
+            counters.
+        json_output: Whether to print machine-readable JSON instead of the compact human-
+            readable display.
+
+    Returns:
+        None. Write the selected event fields to stderr.
     """
     import sys
     if json_output:
@@ -87,13 +111,28 @@ class RunMonitor:
         "batch_id", "passage_id", "call_status", "response_entities", "response_claims", "input_tokens",
         "output_tokens", "call_seconds", "stop_reason", "trace_path",
         "supported_claims", "unresolved_claims", "selected_sources", "eligible_links",
+        "knowledge_cursor_start", "knowledge_cursor_end",
+        "query_id", "search_provider", "result_count", "cooldown_until", "engine_exhausted",
+        "branch_status", "unproductive_count", "branch_limit",
+        "exploration_cycle", "exploration_phase", "exploration_depth",
     }
 
     def __init__(self, output_root: Path, sink=None):
         """Prepare an idle monitor; start/attach later claim a run and open its files.
 
-        The optional sink displays events without owning the durable record.
-        Constructing this object alone does not start a worker or create a queue.
+        The optional sink displays events without owning the durable record. Constructing this
+        object alone does not start a worker or create a queue.
+
+        Args:
+            self: Monitor bound to the active run's status, event files and worker lock, or
+                still idle before start/attach.
+            output_root: Local filesystem directory containing research-run subdirectories; not
+                a URL or an individual run folder.
+            sink: Optional callable receiving safe event dictionaries; an opted-in UI object may
+                additionally implement private model-input/output callbacks.
+
+        Returns:
+            None. Initialize an idle monitor; no worker lock or research run is started.
         """
         self.output_root = output_root
         self.sink = sink
@@ -109,7 +148,18 @@ class RunMonitor:
         self.prior_elapsed = 0.0
 
     def start(self, session) -> None:
-        """Publish the run ID and pending sources before planning or document I/O."""
+        """Publish the run ID and pending sources before planning or document I/O.
+
+        Args:
+            self: Monitor bound to the active run's status, event files and worker lock, or
+                still idle before start/attach.
+            session: ResearchSession containing this run's request, plan, source records,
+                accumulated results and status.
+
+        Returns:
+            None. Claim the new run, initialize status/event files and register its starting
+            source IDs.
+        """
         self.directory = self.output_root / session.session_id
         self.lock = (self.directory / "worker.lock").open("a")
         fcntl.flock(self.lock, fcntl.LOCK_EX | fcntl.LOCK_NB)
@@ -134,7 +184,17 @@ class RunMonitor:
         self.observe("run_started", stage="initialized", run_status="initialized")
 
     def register_sources(self, sources) -> None:
-        """Add discovery-approved IDs to live monitoring without replacing earlier outcomes."""
+        """Add discovery-approved IDs to live monitoring without replacing earlier outcomes.
+
+        Args:
+            self: Monitor bound to the active run's status, event files and worker lock, or
+                still idle before start/attach.
+            sources: Registered URLSource/FileSource objects to add to monitoring, including
+                authorized search or link selections.
+
+        Returns:
+            None. Add newly registered source IDs while retaining earlier source outcomes.
+        """
         known = {source["source_id"] for source in self.snapshot["sources"]}
         for source in sources:
             if source.source_id not in known:
@@ -147,8 +207,16 @@ class RunMonitor:
     def attach(self, directory: Path) -> None:
         """Exclusively claim an existing run before reading or submitting a review.
 
-        Taking the same lock as the worker prevents two terminals from resuming
-        the run at once. This does not yet alter its saved status or event log.
+        Taking the same lock as the worker prevents two terminals from resuming the run at once.
+        This does not yet alter its saved status or event log.
+
+        Args:
+            self: Monitor bound to the active run's status, event files and worker lock, or
+                still idle before start/attach.
+            directory: Local filesystem directory for this one saved research run.
+
+        Returns:
+            None. Acquire the existing run's worker lock; competing ownership raises an error.
         """
         self.directory = directory
         self.lock = (directory / "worker.lock").open("r+")
@@ -157,15 +225,37 @@ class RunMonitor:
         self.sequence = self.snapshot["last_event_sequence"]
         self.prior_elapsed = self.snapshot["elapsed_seconds"]
 
-    def resume(self) -> None:
-        """Reopen execution after validation; human waiting time is not worker time."""
+    def resume(self, *, stage="review_plan", run_status="awaiting_review") -> None:
+        """Reopen execution after validation; human waiting time is not worker time.
+
+        Args:
+            self: Monitor bound to the active run's status, event files and worker lock, or
+                still idle before start/attach.
+            stage: Executing stage after resume, defaulting to plan-review continuation.
+            run_status: Current execution status; workflow restart supplies its saved status.
+
+        Returns:
+            None. Reopen execution monitoring and reset worker timing after validated
+            review continuation or journal restart; acquisition budgets are separate.
+        """
         self.started = time.monotonic()
         self.snapshot.update(pid=os.getpid(), finished=False, waiting_for_input=False)
         self.snapshot.pop("finished_at", None)
-        self.observe("run_resumed", stage="review_plan", run_status="awaiting_review")
+        self.observe("run_resumed", stage=stage, run_status=run_status)
 
     def pause_for_review(self, review: dict) -> None:
-        """Announce a durable interrupt; questions remain in the private review payload."""
+        """Announce a durable interrupt; questions remain in the private review payload.
+
+        Args:
+            self: Monitor bound to the active run's status, event files and worker lock, or
+                still idle before start/attach.
+            review: Private review-request dictionary identifying the durable pause and
+                clarification questions.
+
+        Returns:
+            None. Publish paused status and safe review identifiers without exposing the
+            question payload.
+        """
         self.snapshot["waiting_for_input"] = True
         self.snapshot["review_id"] = review["review_id"]
         self.observe("review_required", run_status="awaiting_review", stage="review_plan",
@@ -173,7 +263,16 @@ class RunMonitor:
                      question_count=len(review["questions"]))
 
     def _write_snapshot(self) -> None:
-        """Replace a complete snapshot; readers never need to parse half-written JSON."""
+        """Replace a complete snapshot; readers never need to parse half-written JSON.
+
+        Args:
+            self: Monitor bound to the active run's status, event files and worker lock, or
+                still idle before start/attach.
+
+        Returns:
+            None. Atomically replace the run's status snapshot with the current in-memory
+            counters and state.
+        """
         now = time.monotonic()
         counts = Counter(source["status"] for source in self.snapshot["sources"])
         self.snapshot["counts"] = {name: counts[name] for name in
@@ -191,7 +290,23 @@ class RunMonitor:
         self.last_snapshot = now
 
     def observe(self, event: str, *, source_id=None, **details) -> None:
-        """Accept selected metadata from a node, budget, HTTP request, or parser stage."""
+        """Record an operational event and update live status so another terminal can inspect
+        actual work without reading private source text or model prompts.
+
+        Accept only the allowed metadata fields, update applicable counters/source states,
+        and notify the display sink. Field names are filtered; values are not redacted.
+
+        Args:
+            self: Monitor bound to the active run's status, event files and worker lock, or
+                still idle before start/attach.
+            event: Application-owned event name emitted by a workflow node or retrieval stage.
+            source_id: Optional registered source ID to associate with this event.
+            **details: Selected operational metadata; only allowed fields enter durable
+                telemetry.
+
+        Returns:
+            None. Update counters/status, append a safe event and notify the optional sink.
+        """
         if self.snapshot is None:
             return
         if set(details) - self.DETAIL_FIELDS:
@@ -271,8 +386,25 @@ class RunMonitor:
     def model_input(self, task, call_id, messages, schema, secret) -> None:
         """Offer private input to an opted-in UI, NEVER to observe()/events/checkpoints.
 
-        A plain event callback or JSON sink has no such method, so receives no
-        source content. Credentials are transient redaction inputs, never stored.
+        A plain event callback or JSON sink has no such method, so receives no source content.
+        Credentials are transient redaction inputs, never stored.
+
+        Args:
+            self: Monitor bound to the active run's status, event files and worker lock, or
+                still idle before start/attach.
+            task: Workflow task name used to identify the model call in receipts and displays.
+            call_id: Application call identifier selecting one saved model attempt, not a
+                filesystem path.
+            messages: Ordered (role, text) application messages sent to the model; may contain
+                private research content.
+            schema: Pydantic response-model class defining the structured answer expected from
+                the provider.
+            secret: Optional exact API key to redact in addition to recognizable credential
+                patterns; None adds no exact-key replacement.
+
+        Returns:
+            None. Call the opted-in UI's private input hook if available; do not append prompts
+            to operational events.
         """
         callback = getattr(self.sink, "model_input", None)
         if callback:
@@ -282,7 +414,22 @@ class RunMonitor:
                 self.sink = None
 
     def model_output(self, task, call_id, raw, secret) -> None:
-        """Offer answer text to the private UI without logging the provider object."""
+        """Offer answer text to the private UI without logging the provider object.
+
+        Args:
+            self: Monitor bound to the active run's status, event files and worker lock, or
+                still idle before start/attach.
+            task: Workflow task name used to identify the model call in receipts and displays.
+            call_id: Application call identifier selecting one saved model attempt, not a
+                filesystem path.
+            raw: Raw provider reply whose visible text may be shown by the private UI.
+            secret: Optional exact API key to redact in addition to recognizable credential
+                patterns; None adds no exact-key replacement.
+
+        Returns:
+            None. Call the opted-in UI's private output hook if available; do not persist the
+            SDK object in operational events.
+        """
         callback = getattr(self.sink, "model_output", None)
         if callback:
             try:
@@ -291,7 +438,20 @@ class RunMonitor:
                 self.sink = None
 
     def check_cancel(self) -> None:
-        """A request is acknowledged only when the worker actually observes it."""
+        """Check for a cooperative stop request and raise RunCancelled when one is observed,
+        allowing callers to preserve completed work before stopping.
+
+        Writing a cancel marker is only a request; this worker-side check records the
+        acknowledgment. It cannot interrupt a blocking operation that never polls it.
+
+        Args:
+            self: Monitor bound to the active run's status, event files and worker lock, or
+                still idle before start/attach.
+
+        Returns:
+            None while no stop is requested; acknowledge an observed request and raise
+            RunCancelled when stopping.
+        """
         if self.cancel_from_signal or (self.directory and (self.directory / "cancel.request").exists()):
             if not self.cancel_acknowledged:
                 self.cancel_acknowledged = True
@@ -301,7 +461,19 @@ class RunMonitor:
             raise RunCancelled("Run cancellation requested.")
 
     def finish(self, status: str, *, error_type=None) -> None:
-        """Close the run truthfully and distinguish unfinished sources from failures."""
+        """Close the run truthfully and distinguish unfinished sources from failures.
+
+        Args:
+            self: Monitor bound to the active run's status, event files and worker lock, or
+                still idle before start/attach.
+            status: Application execution-status string for this run's actual outcome.
+            error_type: Optional safe exception-class or error-category label; not raw exception
+                text.
+
+        Returns:
+            None. Persist the final run status and distinguish unfinished sources from completed
+            or failed ones.
+        """
         if self.snapshot is None or self.snapshot["finished"]:
             return
         for source in self.snapshot["sources"]:
@@ -324,8 +496,15 @@ class RunMonitor:
     def close(self) -> None:
         """Release the worker lock without inventing a final status.
 
-        The OS also releases it on process death. Status readers can then detect
-        an unfinished abandoned run rather than assuming the stale PID is alive.
+        The OS also releases it on process death. Status readers can then detect an unfinished
+        abandoned run rather than assuming the stale PID is alive.
+
+        Args:
+            self: Monitor bound to the active run's status, event files and worker lock, or
+                still idle before start/attach.
+
+        Returns:
+            None. Release and close the worker lock without changing the recorded run outcome.
         """
         if self.lock:
             self.lock.close()
@@ -333,7 +512,16 @@ class RunMonitor:
 
     @contextmanager
     def termination_handler(self):
-        """Convert SIGTERM into a cooperative request; keep Ctrl-C's normal exception."""
+        """Convert SIGTERM into a cooperative request; keep Ctrl-C's normal exception.
+
+        Args:
+            self: Monitor bound to the active run's status, event files and worker lock, or
+                still idle before start/attach.
+
+        Returns:
+            A context manager yielding None while SIGTERM requests cooperative cancellation;
+            restore the previous handler on exit.
+        """
         previous = None
         if threading.current_thread() is threading.main_thread():
             previous = signal.getsignal(signal.SIGTERM)

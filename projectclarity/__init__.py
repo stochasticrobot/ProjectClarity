@@ -7,10 +7,16 @@ Purpose:
     Normal runs then collect text from supplied sources. With --extract, the
     program also proposes entities and claims and checks their quoted evidence.
     --review-claims adds a separate model assessment and Python adjudication.
-    These remain candidates, not published facts or a final answer. --follow-links
-    explicitly permits one observed-link hop on supplied URL origins, sharing
-    the same budgets. Without it, only supplied sources are acquired. Web search
-    remains unimplemented; --plan-only stops before any document retrieval.
+    These remain candidates, not published facts. The CLI prints an extractive
+    provisional answer from reviewed evidence without a new model call. --follow-links
+    permits recursive observed-link exploration across public sites, subject to
+    saved URL policies, branch-progress gates and shared budgets. --search adds web search and
+    source selection; --assess-coverage compares evidence with planned criteria.
+    Without discovery flags, only supplied sources are acquired. --plan-only
+    stops before searching or document retrieval.
+    Broad graph capture is separate and requires an explicit auxiliary allowance
+    in new CLI runs. Relative-depth search gating does not guarantee search gets
+    a turn before a wide frontier exhausts the model budget.
 Responsibilities:
     Mark this directory as a Python package. This file deliberately starts no
     workflow, reads no credentials, and performs no network or filesystem work.

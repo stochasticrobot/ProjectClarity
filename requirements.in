@@ -14,3 +14,5 @@ certifi==2026.10.19
 protego==0.7.0
 beautifulsoup4==4.15.0
 pypdf==6.21.2
+# Free search discovery; explicit per-attempt backend and configured fallback order.
+ddgs==9.16.0

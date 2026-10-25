@@ -1,4 +1,4 @@
-"""Fetch supplied public web pages while rejecting local/private network targets.
+"""Fetch registered public web pages while rejecting local/private network targets.
 
 For example, a university page can be downloaded, but a URL pointing at this
 computer, a private network, or a cloud metadata service is refused. Every
@@ -9,7 +9,12 @@ destination between the check and the connection.
 PublicWebReader is used by source_retrieval.py. urllib3 handles HTTP/TLS and Protego
 interprets robots.txt, including wildcard rules. Requests are sequential, paced,
 bounded, and unauthenticated. No browser, JavaScript, cookies, proxy environment,
-automatic retries, link following, or search is involved. Source text is data.
+automatic retries, page-link selection, or search is involved. The caller may
+supply an authorized discovered URL; this fetcher still applies the same access
+checks. HTTP redirects are followed only within the configured limits and scope.
+The workflow assigns the request's domain-policy snapshot to the reader. Denies
+and optional whitelist-only checks run before DNS for sources and redirects.
+Optional seed-origin confinement applies to followed sources, not to every seed.
 """
 
 import ipaddress
@@ -49,10 +54,42 @@ class WebResponse:
     content_type: str
     body: bytes
     location: str | None = None
+    retry_after_seconds: float | None = None
+
+
+def retry_delay(value):
+    """Parse Retry-After without shortening a server's requested cooldown.
+
+    Args:
+        value: HTTP Retry-After header text or None; seconds and HTTP dates work.
+
+    Returns:
+        Nonnegative delay in seconds, or None for invalid/absent headers. This
+        does not authorize retries of denied, rate-limited or certificate errors.
+    """
+    from datetime import UTC, datetime
+    from email.utils import parsedate_to_datetime
+    if not value:
+        return None
+    try:
+        if value.strip().isdigit():
+            return min(float(value), 315360000.0)
+        date = parsedate_to_datetime(value)
+        return max(0, (date - datetime.now(UTC)).total_seconds())
+    except (ValueError, TypeError, OverflowError):
+        return None
 
 
 def public_target(url: str) -> PublicTarget:
-    """Reject unsafe destinations before a socket is opened, including mixed DNS answers."""
+    """Reject unsafe destinations before a socket is opened, including mixed DNS answers.
+
+    Args:
+        url: HTTP(S) address of the page to inspect or retrieve.
+
+    Returns:
+        A PublicTarget containing the normalized address, origin, host, port, request path
+        and vetted IP to pin for connection; unsafe targets raise RetrievalError.
+    """
     try:
         parts = urlsplit(url)
         if (len(url) > 2048 or any(char.isspace() or not char.isprintable() for char in url)
@@ -96,18 +133,43 @@ class PublicWebReader:
     def __init__(self, budget: RetrievalBudget):
         """Share one fetch allowance and per-origin robots/pacing decisions across sources.
 
-        An origin is a scheme plus host (for example https://example.org).
-        These caches last only for this reader/run; no background queue is started.
+        An origin is a scheme plus host (for example https://example.org). These caches last
+        only for this reader/run; no background queue is started.
+        The constructor does not load policy files. The workflow sets url_policy
+        from the request and allowed_origins for each source; None leaves that
+        optional layer unrestricted, not the underlying public-address checks.
+
+        Args:
+            self: Web reader holding this invocation's shared retrieval budget and per-origin
+                access/pacing caches.
+            budget: Shared RetrievalBudget charging bytes, HTTP attempts and elapsed time across
+                this run's sources.
+
+        Returns:
+            None. Initialize shared counters, per-origin policies and pacing caches without
+            making a request.
         """
         self.budget = budget
         self.allowed_origins: set[str] | None = None
+        self.url_policy = None
         self.policies: dict[str, Protego | RetrievalError] = {}
         self.intervals: dict[str, float] = {}
         self.last_request: dict[str, float] = {}
         self.blocked_origins: set[str] = set()
 
     def _pace(self, origin: str) -> None:
-        """Wait between requests; refuse an excessive requested delay instead of ignoring it."""
+        """Wait between requests; refuse an excessive requested delay instead of ignoring it.
+
+        Args:
+            self: Web reader holding this invocation's shared retrieval budget and per-origin
+                access/pacing caches.
+            origin: Normalized scheme/host/port key whose last-request time and crawl delay
+                apply.
+
+        Returns:
+            None after any permitted delay; raise RetrievalError if the requested wait or
+            remaining budget prevents a request.
+        """
         delay = self.intervals.get(origin, self.budget.limits.min_host_interval_seconds)
         if delay > self.budget.limits.max_robots_wait_seconds:
             raise RetrievalError("robots_delay", "The site's requested crawl delay exceeds this run's allowed wait.")
@@ -121,9 +183,21 @@ class PublicWebReader:
     def _request(self, url: str, max_bytes: int, *, request_kind="document") -> WebResponse:
         """Attempt at most one HTTP request after address, pacing and budget checks.
 
-        Unsafe targets can fail before any request. The caller handles redirects;
-        disabling library redirects/retries keeps every attempt visible to our
-        access checks and counters. Only a complete bounded HTTP-200 body is read.
+        Unsafe targets can fail before any request. The caller handles redirects; disabling
+        library redirects/retries keeps every attempt visible to our access checks and counters.
+        Only a complete bounded HTTP-200 body is read.
+
+        Args:
+            self: Web reader holding this invocation's shared retrieval budget and per-origin
+                access/pacing caches.
+            url: HTTP(S) address of the page to inspect or retrieve.
+            max_bytes: Maximum response-body bytes permitted for this particular request.
+            request_kind: Operational label distinguishing robots-policy requests from source-
+                document requests.
+
+        Returns:
+            A WebResponse containing status, content type, bounded body bytes and redirect
+            location; access, network or budget failures raise RetrievalError.
         """
         self.budget.check_time()
         self.budget.emit("resolving", stage="resolving", request_kind=request_kind)
@@ -177,7 +251,13 @@ class PublicWebReader:
             self.budget.emit("request_finished", http_status=response.status, request_kind=request_kind,
                              request_seconds=round(time.monotonic() - started, 3))
             return WebResponse(response.status, response.headers.get("Content-Type", "application/octet-stream"),
-                               body, response.headers.get("Location"))
+                               body, response.headers.get("Location"), retry_delay(response.headers.get("Retry-After")))
+        except urllib3.exceptions.SSLError:
+            raise RetrievalError('tls_failed', 'TLS certificate validation failed; no automatic retry.') from None
+        except urllib3.exceptions.TimeoutError:
+            raise RetrievalError('http_timeout', 'The HTTP request timed out.') from None
+        except (urllib3.exceptions.NewConnectionError, urllib3.exceptions.ProtocolError):
+            raise RetrievalError('connection_failed', 'The HTTP connection could not complete.') from None
         except (urllib3.exceptions.HTTPError, OSError):
             raise RetrievalError("http_failed", "The HTTP connection, timeout, or TLS certificate check failed.") from None
         finally:
@@ -186,7 +266,18 @@ class PublicWebReader:
             pool.close()
 
     def _check_robots(self, target: PublicTarget) -> None:
-        """Fetch robots once per origin and apply its rules to each requested page."""
+        """Fetch robots once per origin and apply its rules to each requested page.
+
+        Args:
+            self: Web reader holding this invocation's shared retrieval budget and per-origin
+                access/pacing caches.
+            target: Vetted PublicTarget for the page whose origin policy and request path are
+                checked.
+
+        Returns:
+            None when access is permitted; raise RetrievalError when robots policy or policy
+            retrieval blocks access.
+        """
         if target.origin not in self.policies:
             try:
                 robots_url = target.origin + "/robots.txt"
@@ -226,14 +317,32 @@ class PublicWebReader:
             raise RetrievalError("robots_denied", "robots.txt disallows this source for ProjectClarity.")
 
     def fetch(self, url: str) -> tuple[WebResponse, str, list[str]]:
-        """Follow only bounded HTTP redirects, checking public access and robots at every hop."""
+        """Follow only bounded HTTP redirects, checking public access and robots at every hop.
+
+        Frozen domain rules and optional seed-origin confinement apply before DNS,
+        including each redirect target, so an allowed starting URL cannot bypass policy.
+
+        Args:
+            self: Web reader holding this invocation's shared retrieval budget and per-origin
+                access/pacing caches.
+            url: HTTP(S) address of the page to inspect or retrieve.
+
+        Returns:
+            A tuple of the final WebResponse, final URL and redirect-chain records; disallowed
+            or unsuccessful retrieval raises RetrievalError.
+        """
         current = urldefrag(url)[0]
         chain = []
         for redirect in range(self.budget.limits.max_redirects + 1):
             self.budget.check_time()
             self.budget.emit("source_resolving", stage="resolving")
+            if self.url_policy is not None:
+                from projectclarity.discovery.url_policy import url_denial
+                if reason := url_denial(current, self.url_policy):
+                    raise RetrievalError(reason, "URL denied by the configured domain policy.")
             # Check operator scope before DNS/robots/network activity. Recheck
-            # every redirect; following a permitted link grants no new origin.
+            # every redirect. When origin confinement is enabled, a permitted
+            # starting link does not authorize a redirect outside that scope.
             if self.allowed_origins is not None:
                 from projectclarity.discovery.observed_link_inventory import canonical_url, origin
                 normalized = canonical_url(current)
@@ -255,6 +364,8 @@ class PublicWebReader:
                 self.budget.emit("redirect", http_status=reply.status)
                 continue
             if reply.status != 200:
-                raise RetrievalError("http_status", f"Source returned HTTP {reply.status}; no content accepted.")
+                code = f'http_{reply.status}' if reply.status in {502, 503, 504} else 'http_status'
+                raise RetrievalError(code, f"Source returned HTTP {reply.status}; no content accepted.",
+                    retry_after_seconds=reply.retry_after_seconds, http_status=reply.status)
             return reply, target.url, chain
         raise RetrievalError("redirect_limit", "Source redirect limit reached.")

@@ -21,13 +21,22 @@ from projectclarity.extraction.extraction_contracts import ExtractionRecord
 from projectclarity.extraction.knowledge_extraction_messages import extraction_messages
 from projectclarity.extraction.saved_source_passages import EvidenceInputError, read_verified_text
 from projectclarity.plan_renderer import terminal_text
-from projectclarity.research_planner import ResearchError
+from projectclarity.nodes.plan_research.research_planner import ResearchError
 from projectclarity.research_schemas import ResearchSession
 from projectclarity.run_status_commands import run_directory
 
 
 def one_line(value: str, limit=220) -> str:
-    """Keep untrusted research text readable without terminal controls or endless lines."""
+    """Keep untrusted research text readable without terminal controls or endless lines.
+
+    Args:
+        value: Research-derived value to display on one terminal line.
+        limit: Maximum retained text characters before appending an ellipsis when shortened.
+
+    Returns:
+        A control-free, whitespace-collapsed preview; shortened output contains up to
+        limit text characters plus one ellipsis character.
+    """
     value = " ".join(terminal_text(value).split())
     return value if len(value) <= limit else value[:limit] + "…"
 
@@ -35,9 +44,16 @@ def one_line(value: str, limit=220) -> str:
 def render_extraction_summary(session) -> str:
     """Summarize each passage outcome so an empty answer is not confused with failure.
 
-    Preview at most six names, two claims and two qualifications per claim to
-    keep the terminal readable; saved calls retain the rest. These are model
-    proposals, not a semantic-review verdict or an assessment of research coverage.
+    Preview at most six names, two claims and two qualifications per claim to keep the
+    terminal readable; saved calls retain the rest. These are model proposals, not a
+    semantic-review verdict or an assessment of research coverage.
+
+    Args:
+        session: ResearchSession containing this run's request, plan, source records,
+            accumulated results and status.
+
+    Returns:
+        Human-readable per-passage outcome text, or a message that extraction did not run.
     """
     if session.extraction is None:
         return "Extraction did not run."
@@ -72,7 +88,19 @@ def render_extraction_summary(session) -> str:
 
 
 def historical_call(directory: Path, session, attempt) -> dict:
-    """Reconstruct only hash-matching messages; never manufacture an old raw response."""
+    """Reconstruct only hash-matching messages; never manufacture an old raw response.
+
+    Args:
+        directory: Local filesystem directory for this one saved research run.
+        session: ResearchSession containing this run's request, plan, source records,
+            accumulated results and status.
+        attempt: Saved ExtractionAttempt whose original input is reconstructed only when
+            source hashes still match.
+
+    Returns:
+        A reconstructed call dictionary with only provable saved inputs; old raw responses
+        are not fabricated.
+    """
     trace = {"origin": "historical", "messages": None, "input_status": "unavailable",
              "response_text": None, "parsed_result": attempt.result.model_dump(mode="json") if attempt.result else None}
     try:
@@ -93,7 +121,19 @@ def historical_call(directory: Path, session, attempt) -> dict:
 
 
 def render_call(directory: Path, session, attempt) -> str:
-    """Show source/goal context, complete available application prompts and returned text."""
+    """Show source/goal context, complete available application prompts and returned text.
+
+    Args:
+        directory: Local filesystem directory for this one saved research run.
+        session: ResearchSession containing this run's request, plan, source records,
+            accumulated results and status.
+        attempt: Saved ExtractionAttempt to inspect, including source and passage
+            references.
+
+    Returns:
+        Human-readable details of the selected extraction attempt, using saved traces or
+        explicitly labeled reconstruction.
+    """
     path = call_trace_path(directory, attempt.batch_id)
     if path.exists():
         if path.stat().st_size > 2 * 1024 * 1024:
@@ -141,10 +181,21 @@ def render_call(directory: Path, session, attempt) -> str:
 def inspect_extraction(output_root: Path, run_id: str, call_id: str | None = None) -> tuple[str, Path]:
     """Inspect existing records and return display text plus the saved report path.
 
-    Without a call ID, print a summary but save details for every attempt. With
-    an ID, print/save that call's details. Neither mode calls the provider or
-    changes session/claim status. Inspection is not wholly read-only: its own
-    owner-only report is created/replaced inside the run folder.
+    Without a call ID, print a summary but save details for every attempt. With an ID,
+    print/save that call's details. Neither mode calls the provider or changes session/claim
+    status. Inspection is not wholly read-only: its own owner-only report is
+    created/replaced inside the run folder.
+
+    Args:
+        output_root: Local filesystem directory containing research-run subdirectories; not
+            a URL or an individual run folder.
+        run_id: Saved run identifier naming one subdirectory under output_root.
+        call_id: Optional extraction-call ID; None summarizes the run and saves details for
+            all attempts.
+
+    Returns:
+        A pair of display text and the Path of the owner-only inspection report written
+        inside the run directory.
     """
     directory = run_directory(output_root, run_id)
     try:

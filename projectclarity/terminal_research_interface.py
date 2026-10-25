@@ -22,41 +22,83 @@ from pathlib import Path
 from pydantic import ValidationError
 
 from projectclarity.plan_renderer import terminal_text
-from projectclarity.plan_review_contracts import PlanReviewDecision, ReviewAnswer
-from projectclarity.plan_review_service import get_plan_review, submit_plan_review, list_pending_plan_reviews
+from projectclarity.nodes.review_plan.plan_review_contracts import PlanReviewDecision, ReviewAnswer
+from projectclarity.nodes.review_plan.plan_review_service import get_plan_review, submit_plan_review, list_pending_plan_reviews
 from projectclarity.research_schemas import ResearchRequest
-from projectclarity.research_planner import ResearchError
-from projectclarity.source_reference_loader import load_sources
+from projectclarity.nodes.plan_research.research_planner import ResearchError
+from projectclarity.nodes.initialize_research.source_reference_loader import load_sources
 
 
 class ReviewDeferred(Exception):
     """Leave the CLI while keeping the review pending; this is not run cancellation."""
 
     def __init__(self, *, interrupted=False):
-        """Tell the CLI to leave the durable review paused, with a distinct exit code."""
+        """Tell the CLI to leave the durable review paused, with a distinct exit code.
+
+        Args:
+            self: Deferred-review exception instance carrying its reason and CLI exit code.
+            interrupted: Whether Ctrl-C interrupted the review, rather than an ordinary user
+                decision to leave it paused.
+
+        Returns:
+            None. Initialize an exception carrying the deferred-review reason and CLI exit code.
+        """
         super().__init__("Review left paused. No decision submitted; unfinished answers were not saved. "
                          "Open the ProjectClarity menu to continue later.")
         self.exit_code = 130 if interrupted else 2
 
 
 def terminal_available() -> bool:
-    """Never consume a pipe or print prompts into redirected/script output."""
+    """Never consume a pipe or print prompts into redirected/script output.
+
+    Args:
+        None.
+
+    Returns:
+        True only when both stdin and stdout are terminals suitable for interactive
+        prompting.
+    """
     return bool(sys.stdin.isatty() and sys.stdout.isatty())
 
 
 def use_interactive_review(args) -> bool:
-    """Structured streams and an explicit script switch override terminal detection."""
+    """Structured streams and an explicit script switch override terminal detection.
+
+    Args:
+        args: Parsed CLI namespace containing interactive and output-mode switches.
+
+    Returns:
+        True when terminal review is available and not disabled by script/structured-output
+        options.
+    """
     return (terminal_available() and not getattr(args, "non_interactive", False)
             and not getattr(args, "progress_json", False) and not getattr(args, "json", False))
 
 
 def say(text="") -> None:
-    """Print private UI text without allowing model/source strings to control the terminal."""
+    """Print private UI text without allowing model/source strings to control the terminal.
+
+    Args:
+        text: Human-facing menu, question or result text; it may contain untrusted
+            model/source strings.
+
+    Returns:
+        None. Print filtered private UI text to the terminal.
+    """
     print(terminal_text(text), flush=True)
 
 
 def choose(label: str, options: list[str]) -> int:
-    """Return a zero-based explicit choice; blank and invalid input simply retry."""
+    """Return a zero-based explicit choice; blank and invalid input simply retry.
+
+    Args:
+        label: Prompt explaining which menu choice the user is making.
+        options: Ordered display labels for the available explicit choices.
+
+    Returns:
+        The zero-based index explicitly chosen from options; invalid/blank input prompts
+        again.
+    """
     say(label)
     for number, option in enumerate(options, 1):
         say(f"  {number}. {option}")
@@ -68,7 +110,15 @@ def choose(label: str, options: list[str]) -> int:
 
 
 def confirm(label: str) -> bool:
-    """Require an affirmative response; Enter never authorizes a consequential choice."""
+    """Require an affirmative response; Enter never authorizes a consequential choice.
+
+    Args:
+        label: Prompt describing the action that requires an affirmative response.
+
+    Returns:
+        True only for an explicit affirmative response; blank or negative input returns
+        False.
+    """
     while True:
         answer = input(label + " [y/N]: ").strip().lower()
         if answer in {"y", "yes"}:
@@ -79,7 +129,16 @@ def confirm(label: str) -> bool:
 
 
 def show_review(review, *, expanded=False) -> None:
-    """Show the proposal and questions in plain language, not as a JSON object."""
+    """Show the proposal and questions in plain language, not as a JSON object.
+
+    Args:
+        review: PlanReviewRequest containing the exact paused proposal and questions.
+        expanded: Whether to show the full proposed plan as well as its compact review
+            summary.
+
+    Returns:
+        None. Print the proposed plan and clarification questions in a readable form.
+    """
     say("\nPlan review")
     say(f"Objective: {review.plan.objective}")
     say(f"Question category: {review.plan.question_category}")
@@ -109,7 +168,20 @@ def show_review(review, *, expanded=False) -> None:
 
 
 def ask_answer(question, number: int, total: int, current=None):
-    """Validate each answer locally, with a way back that does not approve anything."""
+    """Validate each answer locally, with a way back that does not approve anything.
+
+    Args:
+        question: PlanReviewQuestion defining the allowed answer kind and suggested choices.
+        number: One-based position of the question currently being asked.
+        total: Total number of clarification questions, used to show progress through the
+            review.
+        current: Existing draft answer to this question, or None when it has not been
+            answered.
+
+    Returns:
+        A validated ReviewAnswer, the retained current answer, or None when the user goes
+        back without submitting.
+    """
     say(f"\nQuestion {number} of {total}: {question.question}")
     if current is not None:
         say(f"Current answer: {current.answer}")
@@ -126,7 +198,17 @@ def ask_answer(question, number: int, total: int, current=None):
 
 
 def collect_answers(review, answers: dict) -> list[ReviewAnswer] | None:
-    """Keep drafts in this terminal and allow corrections before a single submission."""
+    """Keep drafts in this terminal and allow corrections before a single submission.
+
+    Args:
+        review: Pending PlanReviewRequest whose questions must be answered.
+        answers: Mutable mapping of question IDs to draft ReviewAnswer values, retained
+            while navigating the UI.
+
+    Returns:
+        ReviewAnswer objects in question order, or None when the user backs out; drafts
+        remain in the supplied answers mapping.
+    """
     for number, question in enumerate(review.questions, 1):
         if question.question_id not in answers:
             answer = ask_answer(question, number, len(review.questions))
@@ -153,9 +235,20 @@ def collect_answers(review, answers: dict) -> list[ReviewAnswer] | None:
 def interactive_plan_review(output_root: Path, run_id: str, *, on_event=None):
     """Read the current review, collect a decision, then use the existing resume service.
 
-    No worker lock is held while asking questions. Submission revalidates the
-    exact review ID; another terminal resolving it first cannot cause a stale
-    answer here to approve a new plan or fetch again.
+    No worker lock is held while asking questions. Submission revalidates the exact review
+    ID; another terminal resolving it first cannot cause a stale answer here to approve a
+    new plan or fetch again.
+
+    Args:
+        output_root: Local filesystem directory containing research-run subdirectories; not
+            a URL or an individual run folder.
+        run_id: Saved run identifier naming one subdirectory under output_root.
+        on_event: Optional callback receiving operational progress-event dictionaries, not
+            source text or private prompts.
+
+    Returns:
+        The resumed ResearchSession after submission; raise ReviewDeferred when the user
+        leaves the run paused.
     """
     review = get_plan_review(output_root, run_id)
     answers = {}
@@ -195,9 +288,17 @@ def interactive_plan_review(output_root: Path, run_id: str, *, on_event=None):
 def new_research_arguments(output_root: Path) -> list[str]:
     """Collect question/source references and return arguments for the normal CLI.
 
-    The simple menu uses default planning/retrieval behavior; it does not yet
-    offer extraction or budget controls. Use explicit --extract/--max-requests
-    flags at launch for that path. No source document is read by this setup form.
+    The simple menu uses default planning/retrieval behavior; it does not yet offer
+    extraction or budget controls. Use explicit --extract/--max-requests flags at launch for
+    that path. No source document is read by this setup form.
+
+    Args:
+        output_root: Local filesystem directory containing research-run subdirectories; not
+            a URL or an individual run folder.
+
+    Returns:
+        A list of normal CLI argument strings representing the user's choices; no research
+        is executed by this form.
     """
     while True:
         question = input("\nWhat would you like to research? ").strip()
@@ -233,7 +334,15 @@ def new_research_arguments(output_root: Path) -> list[str]:
 
 
 def launch_research_menu(output_root: Path) -> list[str] | None:
-    """Choose a normal CLI action, including saved reviews by title rather than ID."""
+    """Choose a normal CLI action, including saved reviews by title rather than ID.
+
+    Args:
+        output_root: Local filesystem directory containing research-run subdirectories; not
+            a URL or an individual run folder.
+
+    Returns:
+        CLI argument strings for the selected action, or None when the user chooses to exit.
+    """
     if not terminal_available():
         raise ResearchError("The guided menu needs a terminal. Use research/review flags for scripts.")
     say("\nProjectClarity")

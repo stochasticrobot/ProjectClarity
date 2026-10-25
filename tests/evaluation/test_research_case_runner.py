@@ -20,7 +20,16 @@ class ResearchCaseRunnerTests(unittest.TestCase):
     """Exercise free preparation and opt-in run wiring without spending credits."""
 
     def test_list_and_show_do_not_start_research(self):
-        """Reading questions and answer keys must not touch provider credentials or start a graph."""
+        """Reading questions and answer keys must not touch provider credentials or start a graph.
+
+        Args:
+            self: This unittest case instance, holding its isolated fixtures and assertion
+                methods.
+
+        Returns:
+            None. Assertions fail if the documented behavior regresses; unittest records the
+            result.
+        """
         with patch('evaluation.research_case_runner.research_main') as run, \
                 patch('sys.stdout', new_callable=io.StringIO) as output:
             self.assertEqual(main(['list']), 0)
@@ -30,7 +39,16 @@ class ResearchCaseRunnerTests(unittest.TestCase):
             run.assert_not_called()
 
     def test_live_runner_uses_production_cli_and_keeps_answer_key_out_of_prompt(self):
-        """Intercept only external transports, then inspect the runner's actual score and requests."""
+        """Intercept only external transports, then inspect the runner's actual score and requests.
+
+        Args:
+            self: This unittest case instance, holding its isolated fixtures and assertion
+                methods.
+
+        Returns:
+            None. Assertions fail if the documented behavior regresses; unittest records the
+            result.
+        """
         flow = flow_tests.ReviewDiscoveryIntegrationTests()
         flow.setUp()
         self.addCleanup(flow.doCleanups)
@@ -49,7 +67,18 @@ class ResearchCaseRunnerTests(unittest.TestCase):
         flow.overrides['ExtractionBatch'] = lambda body: flow.cli.response(text=json.dumps(batch))
         output = flow.cli.directory / 'evaluations'
         def evaluation_entry(*args, **kwargs):
-            """Enter the real evaluation CLI inside the existing offline transport harness."""
+            """Enter the real evaluation CLI inside the existing offline transport harness.
+
+            Args:
+                *args: Arguments accepted to match the intercepted runpy entry point; the selected
+                    evaluation command comes from the enclosing fixture.
+                **kwargs: Runpy keyword arguments accepted for patch compatibility; no alternate
+                    evaluator is selected from them.
+
+            Returns:
+                Never returns normally; SystemExit carries the actual evaluation CLI result to the
+                harness.
+            """
             raise SystemExit(main(['run', case['case_id'], '--max-requests', '3', '--max-output-tokens', '1024',
                 '--output-dir', str(output)]))
         with patch('evaluation.research_case_runner.load_suite', return_value=suite), \

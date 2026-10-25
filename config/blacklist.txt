@@ -1,0 +1,11 @@
+# Explicit blocked domains, including all their subdomains. Deny takes precedence.
+# Starter adult-content exclusions requested by the operator; not an exhaustive filter.
+# One domain per line: no scheme, path, port, wildcard or inline comment.
+# Checked for sources and redirects even when --whitelist-only is off.
+# Edit for new runs; existing runs retain their saved policy.
+pornhub.com
+xvideos.com
+xnxx.com
+xhamster.com
+redtube.com
+youporn.com

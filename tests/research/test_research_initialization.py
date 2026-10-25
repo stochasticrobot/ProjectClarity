@@ -28,16 +28,25 @@ from unittest.mock import patch
 from pydantic import TypeAdapter, ValidationError
 
 from projectclarity.research_schemas import Budget, FileSource, ResearchRequest, ResearchSession, Source, URLSource
-from projectclarity.research_planner import ResearchError
+from projectclarity.nodes.plan_research.research_planner import ResearchError
 from projectclarity.agentic_workflow import initialize_research
-from projectclarity.source_reference_loader import MAX_SOURCE_FILE_BYTES, load_sources
+from projectclarity.nodes.initialize_research.source_reference_loader import MAX_SOURCE_FILE_BYTES, load_sources
 
 
 class InitializationTests(unittest.TestCase):
     """Use temporary files to inspect real local input and persistence behavior."""
 
     def setUp(self):
-        """Allocate isolated source-list and output paths to inspect real initialization writes."""
+        """Allocate isolated source-list and output paths to inspect real initialization writes.
+
+        Args:
+            self: This unittest case instance, holding its isolated fixtures and assertion
+                methods.
+
+        Returns:
+            None. Initialize this test instance's fixtures; unittest calls setUp before each
+            test method.
+        """
         self.temporary = tempfile.TemporaryDirectory()
         self.addCleanup(self.temporary.cleanup)
         self.directory = Path(self.temporary.name)
@@ -45,7 +54,16 @@ class InitializationTests(unittest.TestCase):
         self.output = self.directory / "runs"
 
     def test_initialization_preserves_request_deduplicates_sources_and_saves_budgets(self):
-        """Original wording and configured limits survive initialization unchanged."""
+        """Original wording and configured limits survive initialization unchanged.
+
+        Args:
+            self: This unittest case instance, holding its isolated fixtures and assertion
+                methods.
+
+        Returns:
+            None. Assertions fail if the documented behavior regresses; unittest records the
+            result.
+        """
         # Comments and duplicate URLs should not create extra source records.
         self.urls.write_text("# fixtures\nhttps://example.org/a\n\nhttps://example.org/a\nhttps://example.org/b\n")
         request = ResearchRequest(
@@ -64,7 +82,16 @@ class InitializationTests(unittest.TestCase):
         self.assertIsNone(session.plan)
 
     def test_invalid_url_fails_before_a_session_is_created(self):
-        """Bad source input must fail locally, without leaving a research run."""
+        """Bad source input must fail locally, without leaving a research run.
+
+        Args:
+            self: This unittest case instance, holding its isolated fixtures and assertion
+                methods.
+
+        Returns:
+            None. Assertions fail if the documented behavior regresses; unittest records the
+            result.
+        """
         for url in ["file:///etc/passwd", "not a URL", "https://user:secret@example.org/", "https://example.org:bad/"]:
             with self.subTest(url=url):
                 self.urls.write_text(url)
@@ -74,7 +101,16 @@ class InitializationTests(unittest.TestCase):
                 self.assertFalse(self.output.exists())
 
     def test_source_file_and_url_count_are_bounded(self):
-        """Limit prompt input before provider construction or invocation."""
+        """Limit prompt input before provider construction or invocation.
+
+        Args:
+            self: This unittest case instance, holding its isolated fixtures and assertion
+                methods.
+
+        Returns:
+            None. Assertions fail if the documented behavior regresses; unittest records the
+            result.
+        """
         self.urls.write_text("x" * (MAX_SOURCE_FILE_BYTES + 1))
         with self.assertRaisesRegex(ResearchError, "32 KiB"):
             load_sources(str(self.urls))
@@ -83,7 +119,16 @@ class InitializationTests(unittest.TestCase):
             load_sources(str(self.urls))
 
     def test_missing_empty_or_non_utf8_source_file_is_rejected(self):
-        """An omitted URL option is valid; a broken supplied file is an input error."""
+        """An omitted URL option is valid; a broken supplied file is an input error.
+
+        Args:
+            self: This unittest case instance, holding its isolated fixtures and assertion
+                methods.
+
+        Returns:
+            None. Assertions fail if the documented behavior regresses; unittest records the
+            result.
+        """
         self.assertEqual(load_sources(None), [])
         with self.assertRaisesRegex(ResearchError, "Cannot read"):
             load_sources(str(self.urls))
@@ -95,14 +140,32 @@ class InitializationTests(unittest.TestCase):
             load_sources(str(self.urls))
 
     def test_blank_or_oversized_question_is_rejected(self):
-        """Reject unusable objectives before spending a request budget."""
+        """Reject unusable objectives before spending a request budget.
+
+        Args:
+            self: This unittest case instance, holding its isolated fixtures and assertion
+                methods.
+
+        Returns:
+            None. Assertions fail if the documented behavior regresses; unittest records the
+            result.
+        """
         for question in ["", "   ", "x" * 4001]:
             with self.subTest(length=len(question)):
                 with self.assertRaises(ValidationError):
                     ResearchRequest(question=question)
 
     def test_mixed_sources_resolve_paths_and_deduplicate_aliases(self):
-        """One file keeps one ID even when given as relative, absolute, or symlink paths."""
+        """One file keeps one ID even when given as relative, absolute, or symlink paths.
+
+        Args:
+            self: This unittest case instance, holding its isolated fixtures and assertion
+                methods.
+
+        Returns:
+            None. Assertions fail if the documented behavior regresses; unittest records the
+            result.
+        """
         document = self.directory / "report.pdf"
         document.write_bytes(b"Not a parsed PDF; only a source reference at this stage")
         alias = self.directory / "alias.pdf"
@@ -125,7 +188,16 @@ class InitializationTests(unittest.TestCase):
         ])
 
     def test_bad_document_references_fail_before_session_creation(self):
-        """Missing files, directories, remote URLs, and special files are not documents."""
+        """Missing files, directories, remote URLs, and special files are not documents.
+
+        Args:
+            self: This unittest case instance, holding its isolated fixtures and assertion
+                methods.
+
+        Returns:
+            None. Assertions fail if the documented behavior regresses; unittest records the
+            result.
+        """
         broken = self.directory / "broken.pdf"
         broken.symlink_to(self.directory / "missing.pdf")
         fifo = self.directory / "not-a-document"
@@ -140,17 +212,35 @@ class InitializationTests(unittest.TestCase):
                 self.assertFalse(self.output.exists())
 
     def test_inaccessible_document_is_rejected_without_reading_it(self):
-        """A failed permission check stops registration, independent of test-user privileges."""
+        """A failed permission check stops registration, independent of test-user privileges.
+
+        Args:
+            self: This unittest case instance, holding its isolated fixtures and assertion
+                methods.
+
+        Returns:
+            None. Assertions fail if the documented behavior regresses; unittest records the
+            result.
+        """
         document = self.directory / "report.pdf"
         document.touch()
         # A mocked permission result works even if tests run as an elevated user
         # that could otherwise read a chmod(000) file. It is not a content read.
-        with patch("projectclarity.source_reference_loader.os.access", return_value=False):
+        with patch("projectclarity.nodes.initialize_research.source_reference_loader.os.access", return_value=False):
             with self.assertRaisesRegex(ResearchError, "readable local file"):
                 load_sources(None, [str(document)])
 
     def test_source_limit_counts_urls_and_documents_together(self):
-        """Adding a document cannot bypass the total of 25 unique source references."""
+        """Adding a document cannot bypass the total of 25 unique source references.
+
+        Args:
+            self: This unittest case instance, holding its isolated fixtures and assertion
+                methods.
+
+        Returns:
+            None. Assertions fail if the documented behavior regresses; unittest records the
+            result.
+        """
         document = self.directory / "report.pdf"
         document.touch()
         self.urls.write_text("\n".join(f"https://example.org/{index}" for index in range(24)))
@@ -162,7 +252,16 @@ class InitializationTests(unittest.TestCase):
             load_sources(str(self.urls), [str(document), str(other)])
 
     def test_document_arguments_have_structural_input_bounds(self):
-        """Reject empty, oversized, non-string, or excessive document arguments early."""
+        """Reject empty, oversized, non-string, or excessive document arguments early.
+
+        Args:
+            self: This unittest case instance, holding its isolated fixtures and assertion
+                methods.
+
+        Returns:
+            None. Assertions fail if the documented behavior regresses; unittest records the
+            result.
+        """
         for references in [[""], ["x" * 4097], [123], ["report.pdf"] * 26]:
             with self.subTest(references=repr(references)[:100]):
                 with self.assertRaises(ValidationError):
@@ -173,7 +272,16 @@ class SourceContractTests(unittest.TestCase):
     """Verify that the source kind selects one unambiguous location-field shape."""
 
     def test_explicit_kind_selects_url_or_file_and_round_trips_json(self):
-        """Stored source records retain their type and ID when decoded again."""
+        """Stored source records retain their type and ID when decoded again.
+
+        Args:
+            self: This unittest case instance, holding its isolated fixtures and assertion
+                methods.
+
+        Returns:
+            None. Assertions fail if the documented behavior regresses; unittest records the
+            result.
+        """
         adapter = TypeAdapter(Source)
         for record, expected_type in [
             ({"source_id": "S1", "kind": "url", "url": "https://example.org/"}, URLSource),
@@ -182,11 +290,20 @@ class SourceContractTests(unittest.TestCase):
             with self.subTest(kind=record["kind"]):
                 source = adapter.validate_python(record)
                 self.assertIsInstance(source, expected_type)
-                expected = {**record, **({"depth": 0, "discovered_from_link": None} if record["kind"] == "url" else {})}
+                expected = {**record, **({"depth": 0, "discovered_from_link": None, "discovered_from_search": None} if record["kind"] == "url" else {})}
                 self.assertEqual(adapter.validate_json(source.model_dump_json()).model_dump(), expected)
 
     def test_ambiguous_or_incomplete_source_records_are_rejected(self):
-        """A discriminator is useful only if bad kinds and mixed location fields fail."""
+        """A discriminator is useful only if bad kinds and mixed location fields fail.
+
+        Args:
+            self: This unittest case instance, holding its isolated fixtures and assertion
+                methods.
+
+        Returns:
+            None. Assertions fail if the documented behavior regresses; unittest records the
+            result.
+        """
         adapter = TypeAdapter(Source)
         records = [
             {"source_id": "S1", "url": "https://example.org/"},

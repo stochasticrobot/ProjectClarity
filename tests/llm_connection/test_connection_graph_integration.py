@@ -33,7 +33,17 @@ TEST_KEY = "sk-ant-offline-test-only"
 
 
 def message_response(text="Offline fixture response.", stop_reason="end_turn"):
-    """Build a small provider-shaped response for the real SDK to deserialize."""
+    """Build a small provider-shaped response for the real SDK to deserialize.
+
+    Args:
+        text: Synthetic answer text to include in the provider response.
+        stop_reason: Synthetic provider stop reason, such as end_turn or max_tokens, used to
+            exercise output-completion handling.
+
+    Returns:
+        A synthetic httpx2.Response passed through the real provider SDK; no network request
+        is made by this responder.
+    """
     return httpx2.Response(200, json={
         "id": "msg_offline_fixture",
         "type": "message",
@@ -50,13 +60,31 @@ class GraphProviderIntegrationTests(unittest.TestCase):
     """Check connection behavior using deterministic HTTP responses, not a model."""
 
     def test_real_graph_reaches_sdk_with_bounded_request(self):
-        """A graph run must issue one bounded request and preserve the answer/usage."""
+        """A graph run must issue one bounded request and preserve the answer/usage.
+
+        Args:
+            self: This unittest case instance, holding its isolated fixtures and assertion
+                methods.
+
+        Returns:
+            None. Assertions fail if the documented behavior regresses; unittest records the
+            result.
+        """
         requests = []
 
         def respond(request):
             # Inspect the serialized wire request, not just constructor settings.
             # The credential belongs in authentication headers, never the prompt.
-            """Inspect the serialized provider request and return a bounded in-memory success reply."""
+            """Inspect the serialized provider request and return a bounded in-memory success reply.
+
+            Args:
+                request: Actual httpx2.Request emitted by the SDK; inspected locally and answered
+                    with fixture data.
+
+            Returns:
+                A synthetic httpx2.Response passed through the real provider SDK; no network request
+                is made by this responder.
+            """
             requests.append(request)
             self.assertEqual(str(request.url), "https://api.anthropic.com/v1/messages")
             self.assertEqual(request.headers["x-api-key"], TEST_KEY)
@@ -91,13 +119,32 @@ class GraphProviderIntegrationTests(unittest.TestCase):
         self.assertNotIn(TEST_KEY, json.dumps(result))
 
     def test_throttling_is_not_retried_or_reported_as_success(self):
-        """A simulated HTTP 429 must fail once, without retries or secret leakage."""
+        """A simulated HTTP 429 must fail once, without retries or secret leakage.
+
+        Args:
+            self: This unittest case instance, holding its isolated fixtures and assertion
+                methods.
+
+        Returns:
+            None. Assertions fail if the documented behavior regresses; unittest records the
+            result.
+        """
         requests = []
 
         def respond(request):
             # An HTTP error response exercises actual SDK error conversion and
             # retry behavior; raising a fake Python exception would not do that.
-            """Count actual transport attempts and return HTTP 429 to exercise SDK retry/error handling."""
+            """Count actual transport attempts and return HTTP 429 to exercise SDK retry/error
+            handling.
+
+            Args:
+                request: Actual httpx2.Request emitted by the SDK; inspected locally and answered
+                    with fixture data.
+
+            Returns:
+                A synthetic httpx2.Response passed through the real provider SDK; no network request
+                is made by this responder.
+            """
             requests.append(request)
             return httpx2.Response(429, json={
                 "type": "error",
@@ -127,7 +174,16 @@ class GraphProviderIntegrationTests(unittest.TestCase):
         self.assertNotIn(TEST_KEY, stdout.getvalue() + stderr.getvalue())
 
     def test_incomplete_answers_are_not_reported_as_success(self):
-        """HTTP 200 with blank or token-truncated text must still fail the check."""
+        """HTTP 200 with blank or token-truncated text must still fail the check.
+
+        Args:
+            self: This unittest case instance, holding its isolated fixtures and assertion
+                methods.
+
+        Returns:
+            None. Assertions fail if the documented behavior regresses; unittest records the
+            result.
+        """
         # These are distinct failure modes: no usable answer, or an answer that
         # was cut short. A successful HTTP status does not establish completion.
         for text, stop_reason in [("", "end_turn"), ("Partial answer", "max_tokens")]:
@@ -135,7 +191,16 @@ class GraphProviderIntegrationTests(unittest.TestCase):
                 requests = []
 
                 def respond(request):
-                    """Count requests and return the current blank/truncated response case without networking."""
+                    """Count requests and return the current blank/truncated response case without networking.
+
+                    Args:
+                        request: Actual httpx2.Request emitted by the SDK; inspected locally and answered
+                            with fixture data.
+
+                    Returns:
+                        A synthetic httpx2.Response passed through the real provider SDK; no network request
+                        is made by this responder.
+                    """
                     requests.append(request)
                     return message_response(text=text, stop_reason=stop_reason)
 

@@ -21,16 +21,24 @@ import re
 from pathlib import Path
 
 from projectclarity.extraction.extraction_contracts import ExtractionBatch
-from projectclarity.research_planner import ResearchError
+from projectclarity.nodes.plan_research.research_planner import ResearchError
 from projectclarity.run_monitor import MonitoringError
 
 
 def redact_text(text: str, secret: str | None = None) -> tuple[str, bool]:
     """Return redacted text plus a flag saying whether replacements occurred.
 
-    Covers the supplied exact credential and recognizable Anthropic key literals,
-    not arbitrary personal data, every provider's secrets or encoded credentials.
-    The flag prevents presenting a modified capture as byte-for-byte original.
+    Covers the supplied exact credential and recognizable Anthropic key literals, not
+    arbitrary personal data, every provider's secrets or encoded credentials. The flag
+    prevents presenting a modified capture as byte-for-byte original.
+
+    Args:
+        text: Text about to be persisted or displayed in a private call trace.
+        secret: Optional exact API key to redact in addition to recognizable credential
+            patterns; None adds no exact-key replacement.
+
+    Returns:
+        A pair of redacted text and a boolean indicating whether any replacement changed it.
     """
     original = text
     if secret:
@@ -42,9 +50,17 @@ def redact_text(text: str, secret: str | None = None) -> tuple[str, bool]:
 def write_private_text(path: Path, text: str) -> None:
     """Replace a file using owner-only temporary/output permissions on this Unix host.
 
-    The caller must provide an existing parent directory. Replacement prevents a
-    half-written final file, not a multi-file transaction or power-loss guarantee.
-    This is distinct from normal snapshot storage, which uses process permissions.
+    The caller must provide an existing parent directory. Replacement prevents a half-
+    written final file, not a multi-file transaction or power-loss guarantee. This is
+    distinct from normal snapshot storage, which uses process permissions.
+
+    Args:
+        path: Local destination file path for the private artifact.
+        text: Complete UTF-8 text to write.
+
+    Returns:
+        None. Atomically replace the destination with owner-only text; the parent directory
+        must already exist.
     """
     temporary = path.with_suffix(path.suffix + ".tmp")
     descriptor = os.open(temporary, os.O_WRONLY | os.O_CREAT | os.O_TRUNC | os.O_NOFOLLOW, 0o600)
@@ -55,7 +71,17 @@ def write_private_text(path: Path, text: str) -> None:
 
 
 def call_trace_path(directory: Path, batch_id: str) -> Path:
-    """Derive a fixed local filename; a call ID is never an arbitrary filesystem path."""
+    """Derive a fixed local filename; a call ID is never an arbitrary filesystem path.
+
+    Args:
+        directory: Local filesystem directory for this one saved research run.
+        batch_id: Application-owned extraction batch/call identifier, validated before being
+            used in a filename.
+
+    Returns:
+        A Path to the fixed private trace filename inside the run directory; invalid IDs
+        raise ResearchError.
+    """
     if not re.fullmatch(r"[A-Za-z][A-Za-z0-9_-]{0,63}", batch_id):
         raise ResearchError("Invalid extraction call ID.")
     folder = directory / "extraction_calls"
@@ -66,7 +92,22 @@ def call_trace_path(directory: Path, batch_id: str) -> Path:
 
 
 def save_trace(directory: Path, trace: dict, secret: str | None) -> None:
-    """Persist selected fields only, redacting credentials before any bytes reach disk."""
+    """Save the caller's diagnostic trace with credential redaction so malformed replies
+    remain inspectable without storing the configured key.
+
+    The caller constructs the trace's allowed fields. This writer serializes that
+    dictionary; it does not enforce a separate field allowlist.
+
+    Args:
+        directory: Local filesystem directory for this one saved research run.
+        trace: In-memory extraction-call trace dictionary containing fields selected by
+            the caller; do not include an unfiltered SDK object or exception.
+        secret: Optional exact API key to redact in addition to recognizable credential
+            patterns; None adds no exact-key replacement.
+
+    Returns:
+        None. Save the selected, credential-redacted trace fields in the run directory.
+    """
     path = call_trace_path(directory, trace["batch_id"])
     encoded, redacted = redact_text(json.dumps(trace, ensure_ascii=False, indent=2), secret)
     safe = json.loads(encoded)
@@ -82,9 +123,22 @@ def save_trace(directory: Path, trace: dict, secret: str | None) -> None:
 def start_trace(directory: Path, session, attempt, messages, secret: str) -> dict:
     """Save application input before invocation, with any credential redaction labelled.
 
-    A prepared trace proves input was assembled, not that a request reached the
-    provider. The node reserves the attempt separately; finish_trace adds the
-    result. The recorded schema precedes LangChain's wire-format transformation.
+    A prepared trace proves input was assembled, not that a request reached the provider.
+    The node reserves the attempt separately; finish_trace adds the result. The recorded
+    schema precedes LangChain's wire-format transformation.
+
+    Args:
+        directory: Local filesystem directory for this one saved research run.
+        session: ResearchSession containing this run's request, plan, source records,
+            accumulated results and status.
+        attempt: ExtractionAttempt holding the batch, source, passage and request metadata.
+        messages: Ordered (role, text) application messages sent to the model; may contain
+            private research content.
+        secret: Optional exact API key to redact in addition to recognizable credential
+            patterns; None adds no exact-key replacement.
+
+    Returns:
+        The mutable prepared trace dictionary, already saved before provider invocation.
     """
     trace = {
         "schema_version": "1.0", "origin": "captured", "run_id": session.session_id,
@@ -105,9 +159,17 @@ def start_trace(directory: Path, session, attempt, messages, secret: str) -> dic
 def capture_answer(trace: dict, raw) -> None:
     """Copy answer text into the in-memory trace, omitting non-text provider blocks.
 
-    Long text is capped at 128,000 characters with a visible flag. Multiple text
-    blocks are joined with newlines, so this is selected answer text, not the raw
-    HTTP body. save_trace performs redaction before the trace reaches disk.
+    Long text is capped at 128,000 characters with a visible flag. Multiple text blocks are
+    joined with newlines, so this is selected answer text, not the raw HTTP body. save_trace
+    performs redaction before the trace reaches disk.
+
+    Args:
+        trace: Mutable call-trace dictionary that will later be redacted and saved.
+        raw: Provider AIMessage or compatible raw reply; only visible text content is
+            copied.
+
+    Returns:
+        None. Mutate the trace with bounded visible answer text and truncation metadata.
     """
     content = raw.content
     if isinstance(content, str):
@@ -121,7 +183,20 @@ def capture_answer(trace: dict, raw) -> None:
 
 
 def finish_trace(directory: Path, trace: dict, attempt, secret: str) -> None:
-    """Add the final receipt, including parse failures and unknown usage, without exception bodies."""
+    """Add the final receipt, including parse failures and unknown usage, without exception
+    bodies.
+
+    Args:
+        directory: Local filesystem directory for this one saved research run.
+        trace: Mutable trace prepared before this extraction call.
+        attempt: ExtractionAttempt containing the final call outcome, parse status and known
+            token usage.
+        secret: Optional exact API key to redact in addition to recognizable credential
+            patterns; None adds no exact-key replacement.
+
+    Returns:
+        None. Merge final attempt status and usage into the trace and save it.
+    """
     for field in ("status", "error_code", "response_model", "stop_reason", "input_tokens",
                   "output_tokens", "total_tokens", "elapsed_seconds"):
         trace[field] = getattr(attempt, field)

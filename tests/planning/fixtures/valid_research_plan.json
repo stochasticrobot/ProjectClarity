@@ -1,28 +1,87 @@
 {
   "objective": "Identify Canadian research into the security of AI systems.",
   "question_category": "Entity discovery",
-  "scope_in": ["Researchers affiliated with Canadian institutions"],
-  "scope_out": ["Unsupported claims about individual researchers"],
+  "scope_in": [
+    "Researchers affiliated with Canadian institutions"
+  ],
+  "scope_out": [
+    "Unsupported claims about individual researchers"
+  ],
   "goals": [
     {
       "goal_id": "G1",
       "question": "Which Canadian groups study vulnerabilities in AI systems?",
-      "evidence_required": ["Relevant publications and institutional research pages"]
+      "evidence_required": [
+        "Relevant publications and institutional research pages"
+      ]
     },
     {
       "goal_id": "G2",
       "question": "What work and affiliations establish each group's relevance?",
-      "evidence_required": ["Dated publication and affiliation records"]
+      "evidence_required": [
+        "Dated publication and affiliation records"
+      ]
     }
   ],
   "strategy": [
     {
       "action": "Inspect supplied research pages and identify supporting publications.",
-      "goal_ids": ["G1", "G2"],
-      "source_ids": ["S1"],
-      "proposed_searches": ["Canada AI systems security research publications"]
+      "goal_ids": [
+        "G1",
+        "G2"
+      ],
+      "source_ids": [
+        "S1"
+      ],
+      "proposed_searches": [
+        "Canada AI systems security research publications"
+      ]
     }
   ],
-  "assumptions": ["The draft interpretation concerns securing AI systems; confirmation is needed."],
-  "clarifications": ["Does AI security mean securing AI systems, AI applied to cybersecurity, or both?"]
+  "assumptions": [
+    "The draft interpretation concerns securing AI systems; confirmation is needed."
+  ],
+  "clarifications": [
+    "Does AI security mean securing AI systems, AI applied to cybersecurity, or both?"
+  ],
+  "completion_criteria": [
+    {
+      "criterion_id": "K1",
+      "goal_ids": [
+        "G1",
+        "G2"
+      ],
+      "description": "Document relevant groups with publication and affiliation evidence.",
+      "kind": "evidence_sufficiency",
+      "measurement_method": "Check publication and affiliation evidence for each reported group; disclose remaining coverage gaps.",
+      "target_basis": "not_applicable",
+      "target_count": null,
+      "limitations": [
+        "Open-ended discovery does not establish an exhaustive population."
+      ]
+    }
+  ],
+  "scope_estimates": [
+    {
+      "estimate_id": "E1",
+      "goal_ids": [
+        "G1"
+      ],
+      "unit": "distinct relevant groups",
+      "lower": 10,
+      "upper": 200,
+      "scale": "medium",
+      "basis": "provisional_prior",
+      "confidence": "low",
+      "method": "Sample independent source families and compare overlap; revise the range before enumerating every member.",
+      "rationale": "An illustrative fixture prior, not a factual population estimate.",
+      "assumptions": [
+        "The population can be grouped by organization."
+      ],
+      "limitations": [
+        "The source sample may overrepresent visible groups."
+      ],
+      "candidate_ids": []
+    }
+  ]
 }

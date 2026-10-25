@@ -19,12 +19,28 @@ from projectclarity.command_line import main as research_main
 
 
 def write_json(path, value):
-    """Save readable experiment metadata; no provider credentials are accepted here."""
+    """Save readable experiment metadata; no provider credentials are accepted here.
+
+    Args:
+        path: Local experiment-metadata destination Path.
+        value: JSON-serializable experiment inputs, provenance or results; never supply
+            credentials.
+
+    Returns:
+        None. Write readable JSON metadata to the given local experiment file.
+    """
     path.write_text(json.dumps(value, ensure_ascii=False, indent=2) + '\n', encoding='utf-8')
 
 
 def print_score(result):
-    """Separate source failures and unfinished work from reference-match counts."""
+    """Separate source failures and unfinished work from reference-match counts.
+
+    Args:
+        result: Saved or freshly computed evaluation-score dictionary.
+
+    Returns:
+        None. Print metric counts and separately identified failures to the console.
+    """
     print('Evaluation:', result['case_id'], '| reference date:', result['reference_date'])
     print('Research outcome:', result['run_status'])
     for key in ['anchored_relationships', 'supported_relationships']:
@@ -46,7 +62,15 @@ def print_score(result):
 
 
 def print_reference_validation(suite_or_score):
-    """Tell the reader who checked the answer key, without asking them to approve it."""
+    """Tell the reader who checked the answer key, without asking them to approve it.
+
+    Args:
+        suite_or_score: Reference-suite or score dictionary carrying the recorded reference-
+            validation metadata.
+
+    Returns:
+        None. Print the verification recorded for this exact answer-key version.
+    """
     validation = reference_validation(suite_or_score)
     print('Reference validation:', validation['status'], '| reviewer:', validation['reviewer'],
           '| checked:', validation.get('verified_on', 'not recorded'))
@@ -55,9 +79,20 @@ def print_reference_validation(suite_or_score):
 def run_case(suite, case, args):
     """Save inputs, call the real CLI once, and score its saved output even when partial.
 
-    No automatic repeat is made after a budget stop or failed model call. Source
-    access errors remain source access errors. Each case has its own explicit
-    request cap; no hidden batch runner multiplies the requested spend.
+    No automatic repeat is made after a budget stop or failed model call. Source access
+    errors remain source access errors. Each case has its own explicit request cap; no
+    hidden batch runner multiplies the requested spend.
+
+    Args:
+        suite: Loaded reference suite to freeze alongside the experiment.
+        case: Selected case supplying the question, source URLs and expected scoring
+            configuration.
+        args: Parsed evaluation-run arguments containing output location, model and request
+            limit.
+
+    Returns:
+        The CLI/evaluation exit code, including failure or incomplete acceptance checks;
+        saved artifacts remain available for inspection.
     """
     directory = args.output_dir / case['case_id'] / uuid.uuid4().hex
     directory.mkdir(parents=True, exist_ok=False)
@@ -66,11 +101,11 @@ def run_case(suite, case, args):
     write_json(directory / 'experiment.json', {'case_id': case['case_id'],
         'reference_sha256': hashlib.sha256(frozen).hexdigest(),
         'max_requests': args.max_requests, 'max_output_tokens': args.max_output_tokens,
-        'source_mode': 'live_urls', 'automatic_retries': False})
+        'source_mode': 'live_urls', 'automatic_retries': False, 'knowledge_capture': False})
     urls = directory / 'sources.txt'
     urls.write_text('\n'.join(s['url'] for s in case['sources']) + '\n', encoding='utf-8')
     argv = ['research', '--question', case['question'], '--urls', str(urls),
-        '--extract', '--review-claims', '--non-interactive', '--max-requests', str(args.max_requests),
+        '--extract', '--no-knowledge', '--review-claims', '--non-interactive', '--max-requests', str(args.max_requests),
         '--max-output-tokens', str(args.max_output_tokens), '--output-dir', str(directory / 'runs')]
     if args.show_prompts:
         argv.append('--show-prompts')
@@ -92,13 +127,30 @@ def run_case(suite, case, args):
 
 
 def acceptance_exit_code(result):
-    """Return nonzero for a failed/incomplete explicit test, so automation can catch it."""
+    """Return nonzero for a failed/incomplete explicit test, so automation can catch it.
+
+    Args:
+        result: Evaluation result dictionary, optionally containing the explicit combined-
+            case acceptance check.
+
+    Returns:
+        1 when an explicit built-in check failed or is incomplete; otherwise 0.
+    """
     check = result.get('acceptance')
     return 1 if check and check['status'] != 'passed' else 0
 
 
 def main(argv=None):
-    """Dispatch explicit offline inspection or a single opt-in live research experiment."""
+    """Dispatch explicit offline inspection or a single opt-in live research experiment.
+
+    Args:
+        argv: Command-line argument strings excluding the program name; None reads
+            sys.argv[1:].
+
+    Returns:
+        Shell exit code for the selected list/show/score/run operation; live calls occur
+        only for an explicit run command.
+    """
     parser = argparse.ArgumentParser(description='Prepare, run or score small dated legislature membership evaluations.')
     commands = parser.add_subparsers(dest='command', required=True)
     commands.add_parser('list', help='List prepared cases; no network or model calls')
@@ -115,8 +167,8 @@ def main(argv=None):
     score.add_argument('run_folder', type=Path)
     score.add_argument('--reference-suite', type=Path, help='Use the frozen reference_suite.json from an earlier experiment')
     args = parser.parse_args(argv)
-    if args.command == 'run' and (not 3 <= args.max_requests <= 30 or not 128 <= args.max_output_tokens <= 8192):
-        parser.error('Review requires 3–30 model requests and 128–8192 output tokens per request.')
+    if args.command == 'run' and (not 3 <= args.max_requests <= 1000 or not 128 <= args.max_output_tokens <= 8192):
+        parser.error('Review requires 3–1000 model requests and 128–8192 output tokens per request.')
     try:
         suite = (json.loads(args.reference_suite.read_text(encoding='utf-8'))
                  if args.command == 'score' and args.reference_suite else load_suite())

@@ -21,7 +21,7 @@ from langchain_core.messages import AIMessage
 from projectclarity.command_line import main
 from projectclarity.extraction.extraction_call_tracing import capture_answer
 from projectclarity.extraction.extraction_inspection import inspect_extraction
-from projectclarity.research_planner import ResearchError
+from projectclarity.nodes.plan_research.research_planner import ResearchError
 from tests.extraction import test_knowledge_extraction_integration as integration
 from tests.extraction.extraction_test_fixtures import proposed_batch
 from tests.planning import test_planning_cli_integration as planning
@@ -31,17 +31,45 @@ class ExtractionCallInspectionTests(unittest.TestCase):
     """Use the shared offline production-path harness, not a second workflow."""
 
     def setUp(self):
-        """Create an isolated extraction CLI harness so inspection never touches real runs."""
+        """Create an isolated extraction CLI harness so inspection never touches real runs.
+
+        Args:
+            self: This unittest case instance, holding its isolated fixtures and assertion
+                methods.
+
+        Returns:
+            None. Initialize this test instance's fixtures; unittest calls setUp before each
+            test method.
+        """
         self.harness = integration.KnowledgeExtractionIntegrationTests()
         self.harness.setUp()
         self.addCleanup(self.harness.doCleanups)
 
     def test_trace_precedes_call_and_matches_serialized_messages_and_answer(self):
-        """Inspect the prepared trace inside the fake server before returning its answer."""
+        """Inspect the prepared trace inside the fake server before returning its answer.
+
+        Args:
+            self: This unittest case instance, holding its isolated fixtures and assertion
+                methods.
+
+        Returns:
+            None. Assertions fail if the documented behavior regresses; unittest records the
+            result.
+        """
         answer = json.dumps(proposed_batch())
 
         def respond(request):
-            """Compare the pre-call trace with the real SDK request before returning a synthetic answer."""
+            """Compare the pre-call trace with the real SDK request before returning a synthetic
+            answer.
+
+            Args:
+                request: Actual httpx2.Request emitted by the SDK; inspected locally and answered
+                    with fixture data.
+
+            Returns:
+                A synthetic httpx2.Response passed through the real provider SDK; no network request
+                is made by this responder.
+            """
             directory, _ = self.harness.cli.saved_session()
             trace = json.loads((directory / "extraction_calls/S1_P1.json").read_text())
             wire = json.loads(request.content)
@@ -66,7 +94,16 @@ class ExtractionCallInspectionTests(unittest.TestCase):
         self.assertNotIn("Alice", (directory / "events.jsonl").read_text())
 
     def test_failed_schema_answer_is_redacted_and_failure_visible(self):
-        """Malformed model text is retained privately, with known credentials removed."""
+        """Malformed model text is retained privately, with known credentials removed.
+
+        Args:
+            self: This unittest case instance, holding its isolated fixtures and assertion
+                methods.
+
+        Returns:
+            None. Assertions fail if the documented behavior regresses; unittest records the
+            result.
+        """
         answer = json.dumps({"unexpected": "bad answer " + planning.TEST_KEY})
         code, _, stderr, directory, _ = self.harness.run_extraction(
             provider=lambda request: self.harness.cli.response(text=answer))
@@ -80,7 +117,16 @@ class ExtractionCallInspectionTests(unittest.TestCase):
         self.assertNotIn("bad answer", (directory / "events.jsonl").read_text())
 
     def test_provider_failure_has_receipt_without_exception_body(self):
-        """HTTP failures finish the live event and leave an explicit missing-answer receipt."""
+        """HTTP failures finish the live event and leave an explicit missing-answer receipt.
+
+        Args:
+            self: This unittest case instance, holding its isolated fixtures and assertion
+                methods.
+
+        Returns:
+            None. Assertions fail if the documented behavior regresses; unittest records the
+            result.
+        """
         reply = httpx2.Response(429, json={"type": "error", "error": {
             "type": "rate_limit_error", "message": "PRIVATE_PROVIDER_ERROR_BODY"}})
         code, _, _, directory, _ = self.harness.run_extraction(provider=lambda request: reply)
@@ -96,12 +142,21 @@ class ExtractionCallInspectionTests(unittest.TestCase):
                 self.assertNotIn(b"PRIVATE_PROVIDER_ERROR_BODY", path.read_bytes())
 
     def test_inspection_cli_reads_saved_call_without_provider_or_session_mutation(self):
-        """Inspecting an existing run is free and does not approve or change its proposals."""
+        """Inspecting an existing run is free and does not approve or change its proposals.
+
+        Args:
+            self: This unittest case instance, holding its isolated fixtures and assertion
+                methods.
+
+        Returns:
+            None. Assertions fail if the documented behavior regresses; unittest records the
+            result.
+        """
         _, _, _, directory, session = self.harness.run_extraction()
         before = (directory / "session.json").read_bytes()
         output = io.StringIO()
         with contextlib.redirect_stdout(output), patch(
-            "projectclarity.research_planner.read_api_key", side_effect=AssertionError("No key needed")
+            "projectclarity.nodes.plan_research.research_planner.read_api_key", side_effect=AssertionError("No key needed")
         ), patch("socket.socket.connect", side_effect=AssertionError("No network needed")):
             code = main(["inspect-extraction", session["session_id"], "--call", "S1_P1",
                          "--output-dir", str(directory.parent)])
@@ -115,7 +170,16 @@ class ExtractionCallInspectionTests(unittest.TestCase):
             inspect_extraction(directory.parent, session["session_id"], "../../escape")
 
     def test_historical_inputs_require_matching_hash_and_never_invent_reply(self):
-        """Older runs can reconstruct inputs only while their recorded source still matches."""
+        """Older runs can reconstruct inputs only while their recorded source still matches.
+
+        Args:
+            self: This unittest case instance, holding its isolated fixtures and assertion
+                methods.
+
+        Returns:
+            None. Assertions fail if the documented behavior regresses; unittest records the
+            result.
+        """
         _, _, _, directory, session = self.harness.run_extraction()
         trace = directory / "extraction_calls/S1_P1.json"
         trace.rename(trace.with_suffix(".held"))
@@ -127,7 +191,16 @@ class ExtractionCallInspectionTests(unittest.TestCase):
         self.assertIn("Input: unavailable", output)
 
     def test_entities_without_claims_are_not_presented_as_empty_extraction(self):
-        """A recognized name and a supported claim are separate useful outcomes."""
+        """A recognized name and a supported claim are separate useful outcomes.
+
+        Args:
+            self: This unittest case instance, holding its isolated fixtures and assertion
+                methods.
+
+        Returns:
+            None. Assertions fail if the documented behavior regresses; unittest records the
+            result.
+        """
         batch = proposed_batch()
         batch["claims"] = []
         code, stdout, _, _, _ = self.harness.run_extraction(batch=batch)
@@ -136,7 +209,16 @@ class ExtractionCallInspectionTests(unittest.TestCase):
         self.assertNotIn("Model returned empty lists", stdout)
 
     def test_capture_omits_non_answer_blocks_and_labels_size_limit(self):
-        """Do not turn provider reasoning/signatures into an inspectable answer dump."""
+        """Do not turn provider reasoning/signatures into an inspectable answer dump.
+
+        Args:
+            self: This unittest case instance, holding its isolated fixtures and assertion
+                methods.
+
+        Returns:
+            None. Assertions fail if the documented behavior regresses; unittest records the
+            result.
+        """
         trace = {}
         capture_answer(trace, AIMessage(content=[
             {"type": "thinking", "thinking": "NOT_ANSWER", "signature": "PRIVATE"},

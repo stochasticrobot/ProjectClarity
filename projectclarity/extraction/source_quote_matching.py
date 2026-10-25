@@ -31,9 +31,16 @@ class SourceQuoteMatch:
 def whitespace_index(text: str):
     """Collapse whitespace and retain original start/end offsets for each resulting character.
 
-    A collapsed space maps to the complete whitespace run. Non-whitespace
-    characters map one-to-one, including Unicode characters; offsets are Python
-    character indices, not UTF-8 byte positions. The original string is untouched.
+    A collapsed space maps to the complete whitespace run. Non-whitespace characters map
+    one-to-one, including Unicode characters; offsets are Python character indices, not
+    UTF-8 byte positions. The original string is untouched.
+
+    Args:
+        text: Original source or quote text whose whitespace layout is to be indexed.
+
+    Returns:
+        A tuple of normalized text, original-start indices and original-end indices, mapping
+        each normalized character to its source span.
     """
     characters, starts, ends = [], [], []
     for token in re.finditer(r"\s+|\S+", text):
@@ -52,10 +59,20 @@ def whitespace_index(text: str):
 def match_source_quote(passage: str, submitted_quote: str) -> SourceQuoteMatch:
     """Return one original span or raise an application-owned missing/ambiguous code.
 
-    Outer whitespace in a submitted quote is presentation, not evidence. Interior
-    whitespace may differ, but its presence between words cannot be removed or
-    invented. Check all normalized occurrences so an exact spelling does not
-    conceal a second equally plausible location with different line wrapping.
+    Outer whitespace in a submitted quote is presentation, not evidence. Interior whitespace
+    may differ, but its presence between words cannot be removed or invented. Check all
+    normalized occurrences so an exact spelling does not conceal a second equally plausible
+    location with different line wrapping.
+
+    Args:
+        passage: Original saved source passage within which the quote must occur exactly
+            once.
+        submitted_quote: Model-proposed quotation; layout whitespace may vary but words and
+            punctuation must match.
+
+    Returns:
+        A SourceQuoteMatch containing the unique original quote and character span; missing
+        or ambiguous matches raise QuoteMatchError.
     """
     needle = " ".join(submitted_quote.split())
     if not needle:

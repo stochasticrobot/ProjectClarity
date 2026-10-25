@@ -21,8 +21,8 @@ from langchain_core.messages import AIMessage
 
 from projectclarity import agentic_workflow
 from projectclarity.extraction.extraction_contracts import ExtractionBatch
-from projectclarity.plan_review_contracts import PlanReviewDecision, ReviewAnswer
-from projectclarity.plan_review_service import get_plan_review, submit_plan_review
+from projectclarity.nodes.review_plan.plan_review_contracts import PlanReviewDecision, ReviewAnswer
+from projectclarity.nodes.review_plan.plan_review_service import get_plan_review, submit_plan_review
 from projectclarity.research_schemas import ResearchSession
 from tests.extraction.extraction_test_fixtures import SOURCE_TEXT, proposed_batch
 from tests.planning import test_planning_cli_integration as planning_tests
@@ -32,7 +32,16 @@ class KnowledgeExtractionIntegrationTests(unittest.TestCase):
     """Use production entry points, keeping network/model substitutions explicit."""
 
     def setUp(self):
-        """Prepare a temporary source and a valid no-clarification plan for extraction checks."""
+        """Prepare a temporary source and a valid no-clarification plan for extraction checks.
+
+        Args:
+            self: This unittest case instance, holding its isolated fixtures and assertion
+                methods.
+
+        Returns:
+            None. Initialize this test instance's fixtures; unittest calls setUp before each
+            test method.
+        """
         self.cli = planning_tests.PlanningCLIIntegrationTests()
         self.cli.setUp()
         self.addCleanup(self.cli.doCleanups)
@@ -41,9 +50,34 @@ class KnowledgeExtractionIntegrationTests(unittest.TestCase):
         self.document.write_text(SOURCE_TEXT)
 
     def run_extraction(self, *flags, batch=None, provider=None, budget=2):
-        """Supply a plan first, then extraction responses through real SDK serialization."""
+        """Supply a plan first, then extraction responses through real SDK serialization.
+
+        Args:
+            self: This unittest case instance, holding its isolated fixtures and assertion
+                methods.
+            batch: Optional extraction-answer dictionary; None uses proposed_batch().
+            provider: Optional HTTP responder for extraction calls; None serializes the chosen
+                batch fixture.
+            budget: Maximum model requests allowed for the fixture run, shared by planning and
+                subsequent model-backed nodes.
+            *flags: Additional command-line argument strings appended to this helper's base
+                invocation.
+
+        Returns:
+            A tuple of CLI exit code, captured stdout, captured stderr, run-directory Path and
+            saved-session dictionary.
+        """
         def response(request):
-            """Return the planning fixture first, then the chosen extraction answer or failure."""
+            """Return the planning fixture first, then the chosen extraction answer or failure.
+
+            Args:
+                request: Actual httpx2.Request emitted by the SDK; inspected locally and answered
+                    with fixture data.
+
+            Returns:
+                A synthetic httpx2.Response passed through the real provider SDK; no network request
+                is made by this responder.
+            """
             if len(self.cli.requests) == 1:
                 return self.cli.response()
             if provider:
@@ -55,11 +89,20 @@ class KnowledgeExtractionIntegrationTests(unittest.TestCase):
         return (*result, directory, session)
 
     def test_cli_invokes_separate_nodes_with_plan_goals_and_saves_anchored_candidates(self):
-        """The real graph uses the standalone node and preserves source/goal/evidence links."""
+        """The real graph uses the standalone node and preserves source/goal/evidence links.
+
+        Args:
+            self: This unittest case instance, holding its isolated fixtures and assertion
+                methods.
+
+        Returns:
+            None. Assertions fail if the documented behavior regresses; unittest records the
+            result.
+        """
         code, stdout, stderr, directory, session = self.run_extraction()
         self.assertEqual(code, 0, stderr)
-        self.assertEqual(agentic_workflow.extract_knowledge.__module__, "projectclarity.extraction.extract_knowledge_node")
-        self.assertEqual(session["visited_nodes"][-3:], ["extract_knowledge", "validate_evidence", "persist_candidates"])
+        self.assertEqual(agentic_workflow.extract_knowledge.__module__, "projectclarity.nodes.extract_knowledge.node")
+        self.assertEqual(session["visited_nodes"][-4:], ["extract_knowledge", "validate_evidence", "persist_candidates", "schedule_work"])
         self.assertEqual(session["status"], "candidates_saved")
         self.assertEqual(session["usage"]["requests_attempted"], 2)
         self.assertEqual(session["usage"]["input_tokens"], 300)
@@ -90,7 +133,16 @@ class KnowledgeExtractionIntegrationTests(unittest.TestCase):
         self.assertEqual(json.loads((directory / "extraction_config.json").read_text())["max_retries"], 0)
 
     def test_fake_quotes_are_retained_as_invalid_not_published_or_successful(self):
-        """A well-shaped reply with invented evidence produces a visible partial failure."""
+        """A well-shaped reply with invented evidence produces a visible partial failure.
+
+        Args:
+            self: This unittest case instance, holding its isolated fixtures and assertion
+                methods.
+
+        Returns:
+            None. Assertions fail if the documented behavior regresses; unittest records the
+            result.
+        """
         batch = proposed_batch()
         batch["claims"][0]["evidence"][0]["quote"] = "Alice heads the national AI agency."
         code, _, _, directory, session = self.run_extraction(batch=batch)
@@ -102,7 +154,16 @@ class KnowledgeExtractionIntegrationTests(unittest.TestCase):
         self.assertIn("quote_not_found", (directory / "candidates.md").read_text())
 
     def test_budget_exhaustion_keeps_later_passages_visible_and_never_retries(self):
-        """Two allowed total calls means planning plus one passage, not a complete long document."""
+        """Two allowed total calls means planning plus one passage, not a complete long document.
+
+        Args:
+            self: This unittest case instance, holding its isolated fixtures and assertion
+                methods.
+
+        Returns:
+            None. Assertions fail if the documented behavior regresses; unittest records the
+            result.
+        """
         self.document.write_text(SOURCE_TEXT + ("background " * 2500))
         code, _, _, _, session = self.run_extraction(batch={"entities": [], "claims": []})
         self.assertEqual(code, 1)
@@ -115,7 +176,16 @@ class KnowledgeExtractionIntegrationTests(unittest.TestCase):
         self.assertEqual(attempts[-1]["end"], len(text))
 
     def test_empty_findings_are_distinct_from_failure(self):
-        """A completed no-findings reply is recorded without inventing a claim or a gap verdict."""
+        """A completed no-findings reply is recorded without inventing a claim or a gap verdict.
+
+        Args:
+            self: This unittest case instance, holding its isolated fixtures and assertion
+                methods.
+
+        Returns:
+            None. Assertions fail if the documented behavior regresses; unittest records the
+            result.
+        """
         code, _, _, directory, session = self.run_extraction(batch={"entities": [], "claims": []})
         self.assertEqual(code, 0)
         self.assertEqual(session["extraction"]["candidates"], [])
@@ -123,7 +193,16 @@ class KnowledgeExtractionIntegrationTests(unittest.TestCase):
         self.assertIn("not proof", (directory / "candidates.md").read_text())
 
     def test_schema_failure_keeps_answer_in_private_trace_not_operational_logs(self):
-        """A malformed answer is inspectable privately, but is not a claim or log dump."""
+        """A malformed answer is inspectable privately, but is not a claim or log dump.
+
+        Args:
+            self: This unittest case instance, holding its isolated fixtures and assertion
+                methods.
+
+        Returns:
+            None. Assertions fail if the documented behavior regresses; unittest records the
+            result.
+        """
         code, _, _, directory, session = self.run_extraction(
             provider=lambda request: self.cli.response(text='{"private_bad_field":"UNTRUSTED_RAW_REPLY"}'))
         self.assertEqual(code, 1)
@@ -137,7 +216,16 @@ class KnowledgeExtractionIntegrationTests(unittest.TestCase):
                 self.assertNotIn(b"UNTRUSTED_RAW_REPLY", path.read_bytes())
 
     def test_provider_error_stops_remaining_calls_and_marks_usage_unknown(self):
-        """A 429 does not cause automatic retries or a series of new passage calls."""
+        """A 429 does not cause automatic retries or a series of new passage calls.
+
+        Args:
+            self: This unittest case instance, holding its isolated fixtures and assertion
+                methods.
+
+        Returns:
+            None. Assertions fail if the documented behavior regresses; unittest records the
+            result.
+        """
         self.document.write_text(SOURCE_TEXT + "background " * 2500)
         response = httpx2.Response(429, json={"type": "error", "error": {
             "type": "rate_limit_error", "message": planning_tests.TEST_KEY}})
@@ -148,7 +236,17 @@ class KnowledgeExtractionIntegrationTests(unittest.TestCase):
         self.assertEqual(session["extraction"]["attempts"][1]["error_code"], "stopped_after_provider_error")
 
     def test_token_limit_rejects_even_a_parseable_incomplete_reply(self):
-        """Syntactically valid JSON is not a finished extraction when the provider reports truncation."""
+        """Syntactically valid JSON is not a finished extraction when the provider reports
+        truncation.
+
+        Args:
+            self: This unittest case instance, holding its isolated fixtures and assertion
+                methods.
+
+        Returns:
+            None. Assertions fail if the documented behavior regresses; unittest records the
+            result.
+        """
         code, _, _, _, session = self.run_extraction(provider=lambda request:
             self.cli.response(text=json.dumps(proposed_batch()), stop_reason="max_tokens"))
         self.assertEqual(code, 1)
@@ -157,9 +255,27 @@ class KnowledgeExtractionIntegrationTests(unittest.TestCase):
         self.assertEqual(len(self.cli.requests), 2)
 
     def test_source_changed_after_model_call_invalidates_the_candidate(self):
-        """Validation must use the captured document version, not a subsequently edited file."""
+        """Validation must use the captured document version, not a subsequently edited file.
+
+        Args:
+            self: This unittest case instance, holding its isolated fixtures and assertion
+                methods.
+
+        Returns:
+            None. Assertions fail if the documented behavior regresses; unittest records the
+            result.
+        """
         def response(request):
-            """Modify saved text while the model responds to test the later source-version check."""
+            """Modify saved text while the model responds to test the later source-version check.
+
+            Args:
+                request: Actual httpx2.Request emitted by the SDK; inspected locally and answered
+                    with fixture data.
+
+            Returns:
+                A synthetic httpx2.Response passed through the real provider SDK; no network request
+                is made by this responder.
+            """
             directory, _ = self.cli.saved_session()
             (directory / "documents/S1/text.txt").write_text("Changed after extraction.")
             return self.cli.response(text=json.dumps(proposed_batch()))
@@ -168,10 +284,36 @@ class KnowledgeExtractionIntegrationTests(unittest.TestCase):
         self.assertIn("source_version_mismatch", session["extraction"]["candidates"][0]["validation_errors"])
 
     def test_changed_source_before_extraction_never_reaches_provider(self):
-        """A modified acquisition artifact fails before extraction, while telemetry still counts planning."""
+        """A modified acquisition artifact fails before extraction, while telemetry still counts
+        planning.
+
+        Args:
+            self: This unittest case instance, holding its isolated fixtures and assertion
+                methods.
+
+        Returns:
+            None. Assertions fail if the documented behavior regresses; unittest records the
+            result.
+        """
         retrieve = agentic_workflow.retrieve_sources
         def change_after_retrieval(state, output_root, monitor=None, runtime=None):
-            """Run real retrieval, then alter its text before extraction can send a request."""
+            """Run real retrieval, then alter its text before extraction can send a request.
+
+            Args:
+                state: Graph-state dictionary whose session entry is a typed ResearchSession for the
+                    current run.
+                output_root: Local filesystem directory containing research-run subdirectories; not
+                    a URL or an individual run folder.
+                monitor: Optional RunMonitor for progress events and cooperative cancellation; None
+                    disables those hooks.
+                runtime: Invocation-local shared-reader dictionary forwarded unchanged to real
+                    retrieval.
+
+            Returns:
+                A dictionary with one session entry containing the updated ResearchSession.
+                LangGraph merges this update into its state; it is not an answer report or published
+                knowledge.
+            """
             result = retrieve(state, output_root, monitor, runtime)
             session = result["session"]
             (output_root / session.session_id / "documents/S1/text.txt").write_text("Changed before extraction.")
@@ -185,10 +327,28 @@ class KnowledgeExtractionIntegrationTests(unittest.TestCase):
         self.assertEqual(status["metrics"]["llm_requests"], 1)
 
     def test_cancel_after_response_keeps_finished_work_without_starting_next_call(self):
-        """Cooperative cancellation retains completed candidates and stops additional spending."""
+        """Cooperative cancellation retains completed candidates and stops additional spending.
+
+        Args:
+            self: This unittest case instance, holding its isolated fixtures and assertion
+                methods.
+
+        Returns:
+            None. Assertions fail if the documented behavior regresses; unittest records the
+            result.
+        """
         self.document.write_text(SOURCE_TEXT + "background " * 2500)
         def response(request):
-            """Request cancellation as an answer arrives so later passages must remain unattempted."""
+            """Request cancellation as an answer arrives so later passages must remain unattempted.
+
+            Args:
+                request: Actual httpx2.Request emitted by the SDK; inspected locally and answered
+                    with fixture data.
+
+            Returns:
+                A synthetic httpx2.Response passed through the real provider SDK; no network request
+                is made by this responder.
+            """
             directory, _ = self.cli.saved_session()
             (directory / "cancel.request").write_text("{}")
             return self.cli.response(text=json.dumps(proposed_batch()))
@@ -200,34 +360,68 @@ class KnowledgeExtractionIntegrationTests(unittest.TestCase):
         self.assertTrue((directory / "candidates.md").exists())
 
     def test_plan_review_resume_preserves_extraction_opt_in_and_passes_human_guidance(self):
-        """Answering a paused plan resumes into extraction without another planning request."""
+        """Answering a paused plan resumes into extraction without another planning request.
+
+        Args:
+            self: This unittest case instance, holding its isolated fixtures and assertion
+                methods.
+
+        Returns:
+            None. Assertions fail if the documented behavior regresses; unittest records the
+            result.
+        """
         self.cli.plan["clarifications"] = ["Which interpretation should guide this run?"]
         code, _, _, directory, _ = self.run_extraction()
         self.assertEqual(code, 2)
         self.assertEqual(len(self.cli.requests), 1)
         review = get_plan_review(self.cli.output, directory.name)
+        revised_plan = review.plan.model_copy(update={"clarifications": []})
         decision = PlanReviewDecision(run_id=directory.name, review_id=review.review_id, action="answer",
-            answers=[ReviewAnswer(question_id=review.questions[0].question_id, answer="Security of AI systems.")])
+            revised_plan=revised_plan,
+            answers=[ReviewAnswer(question_id=review.questions[0].question_id, answer="Security of AI systems.",
+                question="An incorrect question supplied by a client must not replace the original.")])
         messages = []
         class Extractor:
             """A test-only adapter capturing resumed messages; this case does not exercise provider HTTP."""
             def invoke(self, request):
-                """Record human guidance and return a typed fixture without spending model credits."""
+                """Record human guidance and return a typed fixture without spending model credits.
+
+                Args:
+                    self: Fixture structured-output adapter used to capture the resumed extraction
+                        messages.
+                    request: Ordered application prompt messages passed to the extractor after the
+                        user's review decision.
+
+                Returns:
+                    A structured-adapter dictionary containing an AIMessage, parsed ExtractionBatch and
+                    parsing_error=None.
+                """
                 messages.extend(request)
                 return {"raw": AIMessage(content="", usage_metadata={"input_tokens": 10, "output_tokens": 20, "total_tokens": 30},
                             response_metadata={"stop_reason": "end_turn", "model_name": "fixture"}),
                         "parsed": ExtractionBatch.model_validate(proposed_batch()), "parsing_error": None}
         with patch.dict("os.environ", {"ANTHROPIC_API_KEY": planning_tests.TEST_KEY}), \
-             patch.object(agentic_workflow, "create_planner", side_effect=AssertionError("Do not replan")), \
-             patch("projectclarity.extraction.extract_knowledge_node.create_extractor", return_value=Extractor()):
+             patch("projectclarity.nodes.plan_research.node.create_planner", side_effect=AssertionError("Do not replan")), \
+             patch("projectclarity.nodes.extract_knowledge.node.create_extractor", return_value=Extractor()):
             session = submit_plan_review(self.cli.output, decision)
         self.assertEqual(session.status, "candidates_saved")
         self.assertEqual(session.usage.requests_attempted, 2)
         self.assertEqual(json.loads(messages[1][1])["human_guidance"][0]["answer"], "Security of AI systems.")
+        self.assertEqual(json.loads(messages[1][1])["human_guidance"][0]["question"],
+            "Which interpretation should guide this run?")
 
-    def test_conflicting_modes_and_missing_budget_fail_before_any_provider_call(self):
-        """Opt-in requires a real allowance; plan-only cannot accidentally send source text."""
-        for options in [("--extract",), ("--extract", "--max-requests", "2", "--plan-only")]:
+    def test_conflicting_modes_and_insufficient_budget_fail_before_any_provider_call(self):
+        """Explicitly insufficient budgets fail; plan-only cannot accidentally send source text.
+
+        Args:
+            self: This unittest case instance, holding its isolated fixtures and assertion
+                methods.
+
+        Returns:
+            None. Assertions fail if the documented behavior regresses; unittest records the
+            result.
+        """
+        for options in [("--extract", "--max-requests", "1"), ("--extract", "--max-requests", "2", "--plan-only")]:
             with self.subTest(options=options):
                 code, _, _ = self.cli.run_cli(lambda request: self.fail("No request allowed"),
                     "--document", str(self.document), *options, include_urls=False, plan_only=False)
@@ -236,7 +430,16 @@ class KnowledgeExtractionIntegrationTests(unittest.TestCase):
                 self.assertEqual(list(self.cli.output.glob("*/session.json")), [])
 
     def test_older_session_remains_download_only(self):
-        """Loading a pre-extraction snapshot never silently authorizes new model calls."""
+        """Loading a pre-extraction snapshot never silently authorizes new model calls.
+
+        Args:
+            self: This unittest case instance, holding its isolated fixtures and assertion
+                methods.
+
+        Returns:
+            None. Assertions fail if the documented behavior regresses; unittest records the
+            result.
+        """
         from tests.research.research_test_fixtures import example_session
         saved = example_session().model_dump(mode="json")
         saved["schema_version"] = "1.5"

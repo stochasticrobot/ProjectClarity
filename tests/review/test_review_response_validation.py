@@ -13,15 +13,24 @@ from pathlib import Path
 from pydantic import ValidationError
 
 from projectclarity.plan_review_cli import read_decision_file
-from projectclarity.plan_review_contracts import PlanReviewDecision
-from projectclarity.research_planner import ResearchError
+from projectclarity.nodes.review_plan.plan_review_contracts import PlanReviewDecision
+from projectclarity.nodes.plan_research.research_planner import ResearchError
 
 
 class ReviewResponseValidationTests(unittest.TestCase):
     """Reject contradictory choices, duplicate answers, and oversized transport input."""
 
     def test_invalid_response_shapes_are_not_coerced_into_approval(self):
-        """A typo, duplicate answer, or budget override cannot quietly become an approval."""
+        """A typo, duplicate answer, or budget override cannot quietly become an approval.
+
+        Args:
+            self: This unittest case instance, holding its isolated fixtures and assertion
+                methods.
+
+        Returns:
+            None. Assertions fail if the documented behavior regresses; unittest records the
+            result.
+        """
         base = {"run_id": "run", "review_id": "review", "action": "accept_assumptions"}
         invalid = [dict(base, action="ignore_everything"), dict(base, max_http_requests=1000),
                    dict(base, schema_version="2.0"), dict(base, action="answer", answers=[
@@ -34,7 +43,16 @@ class ReviewResponseValidationTests(unittest.TestCase):
                 PlanReviewDecision.model_validate(payload)
 
     def test_response_files_have_encoding_and_size_limits(self):
-        """The CLI fails oversized or malformed files before constructing a decision."""
+        """The CLI fails oversized or malformed files before constructing a decision.
+
+        Args:
+            self: This unittest case instance, holding its isolated fixtures and assertion
+                methods.
+
+        Returns:
+            None. Assertions fail if the documented behavior regresses; unittest records the
+            result.
+        """
         with tempfile.TemporaryDirectory() as folder:
             path = Path(folder) / "answers.json"
             for raw in (b"x" * 65537, b"\xff", b"not JSON"):

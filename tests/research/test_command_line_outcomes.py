@@ -12,7 +12,7 @@ import unittest
 from unittest.mock import patch
 
 from projectclarity.command_line import main
-from projectclarity.research_planner import ResearchError
+from projectclarity.nodes.plan_research.research_planner import ResearchError
 from tests.research.research_test_fixtures import example_session
 
 
@@ -24,14 +24,34 @@ class CommandLineOutcomeTests(unittest.TestCase):
     """
 
     def invoke(self, *extra_args):
-        """Capture exactly what a script receives from this command invocation."""
+        """Capture exactly what a script receives from this command invocation.
+
+        Args:
+            self: This unittest case instance, holding its isolated fixtures and assertion
+                methods.
+            *extra_args: Additional command-line argument strings appended to this helper's base
+                invocation.
+
+        Returns:
+            A tuple of exit code, captured stdout and captured stderr visible to a script
+            invoking the command.
+        """
         stdout, stderr = io.StringIO(), io.StringIO()
         with contextlib.redirect_stdout(stdout), contextlib.redirect_stderr(stderr):
             code = main(["research", "--question", "Find Canadian AI research", *extra_args])
         return code, stdout.getvalue(), stderr.getvalue()
 
     def test_session_outcomes_map_to_distinct_exit_codes(self):
-        """Success, clarification, failure, and cancellation remain machine-distinguishable."""
+        """Success, clarification, failure, and cancellation remain machine-distinguishable.
+
+        Args:
+            self: This unittest case instance, holding its isolated fixtures and assertion
+                methods.
+
+        Returns:
+            None. Assertions fail if the documented behavior regresses; unittest records the
+            result.
+        """
         cases = [
             ("plan_ready", True, True, 0), ("needs_clarification", True, True, 0),
             ("needs_clarification", False, True, 2), ("sources_retrieved", False, True, 0),
@@ -48,7 +68,16 @@ class CommandLineOutcomeTests(unittest.TestCase):
                 self.assertEqual(code, expected)
 
     def test_execution_errors_are_safe_and_have_failure_exit_codes(self):
-        """Infrastructure exceptions reveal their type, not arbitrary private payloads."""
+        """Infrastructure exceptions reveal their type, not arbitrary private payloads.
+
+        Args:
+            self: This unittest case instance, holding its isolated fixtures and assertion
+                methods.
+
+        Returns:
+            None. Assertions fail if the documented behavior regresses; unittest records the
+            result.
+        """
         cases = [(OSError("PRIVATE_PAYLOAD"), 1, "OSError"),
                  (KeyboardInterrupt(), 130, "Cancelled"),
                  (EOFError(), 130, "Cancelled"),
@@ -62,7 +91,16 @@ class CommandLineOutcomeTests(unittest.TestCase):
                 self.assertNotIn("PRIVATE_PAYLOAD", stdout + stderr)
 
     def test_invalid_cli_input_stops_before_starting_work(self):
-        """A bad configuration is diagnosed locally before a worker or model starts."""
+        """A bad configuration is diagnosed locally before a worker or model starts.
+
+        Args:
+            self: This unittest case instance, holding its isolated fixtures and assertion
+                methods.
+
+        Returns:
+            None. Assertions fail if the documented behavior regresses; unittest records the
+            result.
+        """
         with patch("projectclarity.command_line.run_research") as run:
             code, _, stderr = self.invoke("--max-requests", "-1")
         self.assertEqual(code, 2)
@@ -70,7 +108,16 @@ class CommandLineOutcomeTests(unittest.TestCase):
         run.assert_not_called()
 
     def test_shortcut_help_and_invalid_options_never_start_research(self):
-        """The shortcut preserves argparse validation and a read-only root help command."""
+        """The shortcut preserves argparse validation and a read-only root help command.
+
+        Args:
+            self: This unittest case instance, holding its isolated fixtures and assertion
+                methods.
+
+        Returns:
+            None. Assertions fail if the documented behavior regresses; unittest records the
+            result.
+        """
         cases = [(["--help"], 0), (["--urls", "source_urls.txt"], 2),
                  (["--question", ""], 2), (["--question", "Q", "--unknown-option"], 2),
                  (["--question", "Q", "--max-requests", "-1"], 2)]

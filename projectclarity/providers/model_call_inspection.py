@@ -1,19 +1,31 @@
-"""Inspect saved review/discovery calls without contacting a provider or reading a key.
+"""Inspect saved review, selection and coverage calls without contacting a provider.
 
 The summary lists outcomes and local trace paths. --call prints the captured
 application messages, schema and answer, including failed JSON replies. These are
 private research artifacts, not content-free operational logs or an HTTP dump.
+This inspector reads no API key and does not repeat the original model call.
 """
 import json
 import re
 
 from projectclarity.extraction.extraction_call_tracing import redact_text
-from projectclarity.research_planner import ResearchError
+from projectclarity.nodes.plan_research.research_planner import ResearchError
 from projectclarity.run_status_commands import run_directory
 
 
 def inspect_calls(output_root, run_id, call_id=None):
-    """Return a bounded stored call or receipt summary, refusing arbitrary paths/symlinks."""
+    """Return a bounded stored call or receipt summary, refusing arbitrary paths/symlinks.
+
+    Args:
+        output_root: Local filesystem directory containing research-run subdirectories; not
+            a URL or an individual run folder.
+        run_id: Saved run identifier naming one subdirectory under output_root.
+        call_id: Optional processing-call ID; None lists all saved processing-call receipts.
+
+    Returns:
+        Readable saved-call text for the selected attempt or a run-wide receipt summary; no
+        provider request is made.
+    """
     directory = run_directory(output_root, run_id)
     if call_id is None:
         session = json.loads((directory / "session.json").read_text())

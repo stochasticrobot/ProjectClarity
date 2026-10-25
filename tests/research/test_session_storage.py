@@ -22,13 +22,31 @@ class SessionStorageTests(unittest.TestCase):
     """Inspect real files; no developer sessions or credentials are opened."""
 
     def setUp(self):
-        """Give each storage test a disposable directory so failed writes cannot damage real runs."""
+        """Give each storage test a disposable directory so failed writes cannot damage real runs.
+
+        Args:
+            self: This unittest case instance, holding its isolated fixtures and assertion
+                methods.
+
+        Returns:
+            None. Initialize this test instance's fixtures; unittest calls setUp before each
+            test method.
+        """
         temporary = tempfile.TemporaryDirectory()
         self.addCleanup(temporary.cleanup)
         self.root = Path(temporary.name)
 
     def test_saved_session_round_trips_without_losing_category_or_unicode(self):
-        """The saved snapshot can be decoded with its original data and version."""
+        """The saved snapshot can be decoded with its original data and version.
+
+        Args:
+            self: This unittest case instance, holding its isolated fixtures and assertion
+                methods.
+
+        Returns:
+            None. Assertions fail if the documented behavior regresses; unittest records the
+            result.
+        """
         session = example_session()
         session.request.question = "Qui étudie la sécurité de l’IA?"
         (self.root / session.session_id).mkdir()
@@ -39,7 +57,16 @@ class SessionStorageTests(unittest.TestCase):
         self.assertEqual(restored, session)
 
     def test_successful_write_replaces_previous_snapshot_completely(self):
-        """Shorter new content must not retain the tail of an older snapshot."""
+        """Shorter new content must not retain the tail of an older snapshot.
+
+        Args:
+            self: This unittest case instance, holding its isolated fixtures and assertion
+                methods.
+
+        Returns:
+            None. Assertions fail if the documented behavior regresses; unittest records the
+            result.
+        """
         target = self.root / "session.json"
         target.write_text("previous content much longer than the replacement")
         write_text(target, "new ✓\n")
@@ -47,7 +74,16 @@ class SessionStorageTests(unittest.TestCase):
         self.assertFalse(target.with_suffix(".json.tmp").exists())
 
     def test_failed_replacement_preserves_previous_snapshot_and_raises(self):
-        """A permissions failure is visible to the caller without corrupting old data."""
+        """A permissions failure is visible to the caller without corrupting old data.
+
+        Args:
+            self: This unittest case instance, holding its isolated fixtures and assertion
+                methods.
+
+        Returns:
+            None. Assertions fail if the documented behavior regresses; unittest records the
+            result.
+        """
         target = self.root / "session.json"
         target.write_bytes(b'{"previous": true}\n')
         with patch.object(Path, "replace", side_effect=PermissionError("synthetic failure")):
@@ -56,13 +92,33 @@ class SessionStorageTests(unittest.TestCase):
         self.assertEqual(target.read_bytes(), b'{"previous": true}\n')
 
     def test_partial_temporary_write_preserves_previous_snapshot(self):
-        """Running out of disk during a write cannot publish half a JSON document."""
+        """Running out of disk during a write cannot publish half a JSON document.
+
+        Args:
+            self: This unittest case instance, holding its isolated fixtures and assertion
+                methods.
+
+        Returns:
+            None. Assertions fail if the documented behavior regresses; unittest records the
+            result.
+        """
         target = self.root / "session.json"
         target.write_bytes(b'{"previous": true}\n')
 
         def interrupted_write(path, text, *, encoding):
             # A real partial file makes this stronger than raising before I/O.
-            """Write a partial temporary file, then simulate disk exhaustion before final replacement."""
+            """Write a partial temporary file, then simulate disk exhaustion before final replacement.
+
+            Args:
+                path: Temporary destination Path supplied by the production atomic-write helper.
+                text: Complete intended snapshot text; this fixture deliberately writes only part of
+                    it.
+                encoding: Text encoding passed through the production file-writing interface.
+
+            Returns:
+                Never returns normally; raise OSError after writing a partial temporary file to
+                simulate disk exhaustion.
+            """
             path.write_bytes(b'{"unfinished":')
             raise OSError(errno.ENOSPC, "synthetic disk full")
 

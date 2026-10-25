@@ -17,12 +17,22 @@ import time
 from datetime import UTC, datetime
 from pathlib import Path
 
-from projectclarity.research_planner import ResearchError
+from projectclarity.nodes.plan_research.research_planner import ResearchError
 from projectclarity.run_monitor import safe_text, utc_now
 
 
 def run_directory(output_root: Path, run_id: str) -> Path:
-    """Accept one run name, never a relative path escaping the chosen output folder."""
+    """Accept one run name, never a relative path escaping the chosen output folder.
+
+    Args:
+        output_root: Local filesystem directory containing research-run subdirectories; not
+            a URL or an individual run folder.
+        run_id: Saved run identifier naming one subdirectory under output_root.
+
+    Returns:
+        A Path to the named run beneath output_root; invalid traversal-like names raise an
+        input error.
+    """
     if not re.fullmatch(r"[A-Za-z0-9][A-Za-z0-9_-]{0,63}", run_id):
         raise ResearchError("Invalid run ID. Use the ID printed by the research command.")
     root = output_root.resolve()
@@ -33,7 +43,15 @@ def run_directory(output_root: Path, run_id: str) -> Path:
 
 
 def read_status(directory: Path) -> dict:
-    """Combine the last snapshot with live lock/control observations, without changing it."""
+    """Combine the last snapshot with live lock/control observations, without changing it.
+
+    Args:
+        directory: Local filesystem directory for this one saved research run.
+
+    Returns:
+        A status dictionary augmented with current lock/control observations; no saved files
+        are changed.
+    """
     path = directory / "run_status.json"
     try:
         snapshot = json.loads(path.read_text(encoding="utf-8"))
@@ -62,7 +80,16 @@ def read_status(directory: Path) -> dict:
 
 
 def render_status(snapshot: dict) -> str:
-    """Show observed counts, not guessed completion percentages or download ETAs."""
+    """Show observed counts, not guessed completion percentages or download ETAs.
+
+    Args:
+        snapshot: Status dictionary combining saved counters and current worker/control
+            observations.
+
+    Returns:
+        Human-readable status text with observed work counts and the current execution
+        state.
+    """
     counts = snapshot["counts"]
     metrics = snapshot["metrics"]
     lines = [f"Run: {snapshot['run_id']} | status: {snapshot['status']} | stage: {snapshot['stage']}",
@@ -73,7 +100,7 @@ def render_status(snapshot: dict) -> str:
              f"Elapsed at last update: {snapshot['elapsed_seconds']}s | active source: {snapshot['active_source_id'] or 'none'}",
              f"Configured fetch limits: {json.dumps(snapshot['limits'], sort_keys=True)}"]
     if snapshot["interrupted"]:
-        lines.append("INTERRUPTED: worker lock is released but no final status was recorded. This run cannot resume.")
+        lines.append("INTERRUPTED: worker lock is released but no final status was recorded. Journaled runs may continue with resume; older runs without a journal cannot.")
     if "passages_total" in metrics:
         lines.append(f"Extraction: {metrics.get('passages_completed', 0)}/{metrics['passages_total']} passages completed; "
                      f"{metrics.get('candidate_count', 0)} candidates, {metrics.get('invalid_candidates', 0)} invalid evidence checks; "
@@ -95,9 +122,22 @@ def render_status(snapshot: dict) -> str:
 def show_status(output_root: Path, run_id: str, *, watch=False, json_output=False) -> int:
     """Print once, or watch until finished, interrupted or waiting for human review.
 
-    Watching reports observations; it neither keeps a worker alive nor resumes
-    one. A paused review stops the watch because no progress is expected until
-    the person submits a decision.
+    Watching reports observations; it neither keeps a worker alive nor resumes one. A paused
+    review stops the watch because no progress is expected until the person submits a
+    decision.
+
+    Args:
+        output_root: Local filesystem directory containing research-run subdirectories; not
+            a URL or an individual run folder.
+        run_id: Saved run identifier naming one subdirectory under output_root.
+        watch: Whether to keep polling status until the run stops, pauses for review or the
+            user interrupts.
+        json_output: Whether to print machine-readable JSON instead of the compact human-
+            readable display.
+
+    Returns:
+        Exit code 0 after status display/watch finishes; input or I/O failures may raise to
+        the CLI.
     """
     directory = run_directory(output_root, run_id)
     while True:
@@ -109,7 +149,17 @@ def show_status(output_root: Path, run_id: str, *, watch=False, json_output=Fals
 
 
 def request_cancel(output_root: Path, run_id: str) -> str:
-    """Record an idempotent request; only the worker can record completed cancellation."""
+    """Record an idempotent request; only the worker can record completed cancellation.
+
+    Args:
+        output_root: Local filesystem directory containing research-run subdirectories; not
+            a URL or an individual run folder.
+        run_id: Saved run identifier naming one subdirectory under output_root.
+
+    Returns:
+        An acknowledgment string describing the recorded request or an already-finished run;
+        this is not proof the worker has stopped.
+    """
     directory = run_directory(output_root, run_id)
     snapshot = read_status(directory)
     if snapshot["finished"]:

@@ -23,7 +23,17 @@ class WorkerControlIntegrationTests(unittest.TestCase):
     """A real worker lock and separate CLI process prevent in-process-only false proofs."""
 
     def setUp(self):
-        """Launch one owned slow-source worker in temporary storage so other processes can control it."""
+        """Launch one owned slow-source worker in temporary storage so other processes can control
+        it.
+
+        Args:
+            self: This unittest case instance, holding its isolated fixtures and assertion
+                methods.
+
+        Returns:
+            None. Initialize this test instance's fixtures; unittest calls setUp before each
+            test method.
+        """
         temporary = tempfile.TemporaryDirectory()
         self.addCleanup(temporary.cleanup)
         self.root = Path(temporary.name) / "runs"
@@ -36,13 +46,29 @@ class WorkerControlIntegrationTests(unittest.TestCase):
 
     @staticmethod
     def stop_process(process):
-        """Clean up only the child launched by this test, even when an assertion fails."""
+        """Clean up only the child launched by this test, even when an assertion fails.
+
+        Args:
+            process: Owned subprocess created by this test, never an unrelated system process.
+
+        Returns:
+            None. Terminate and reap only the owned worker process if it has not already exited.
+        """
         if process.poll() is None:
             process.kill()
         process.communicate(timeout=5)
 
     def wait_for_slow_download(self):
-        """Wait for an observed stage, not a fixed sleep guessed to mean progress."""
+        """Wait for an observed stage, not a fixed sleep guessed to mean progress.
+
+        Args:
+            self: This unittest case instance, holding its isolated fixtures and assertion
+                methods.
+
+        Returns:
+            None after the worker reports the slow-source stage; fail the test if the bounded
+            wait expires.
+        """
         deadline = time.monotonic() + 15
         while time.monotonic() < deadline:
             files = list(self.root.glob("*/run_status.json"))
@@ -59,13 +85,35 @@ class WorkerControlIntegrationTests(unittest.TestCase):
         self.fail("Worker did not reach its slow second download")
 
     def command(self, command, *options):
-        """Use the production CLI in another process, not an in-memory control helper."""
+        """Use the production CLI in another process, not an in-memory control helper.
+
+        Args:
+            self: This unittest case instance, holding its isolated fixtures and assertion
+                methods.
+            command: Production CLI subcommand, such as status or cancel, to run against this
+                fixture's saved run.
+            *options: Additional command-line argument strings appended to this helper's base
+                invocation.
+
+        Returns:
+            A subprocess.CompletedProcess containing the independent control command's return
+            code and captured output.
+        """
         return subprocess.run([sys.executable, "-m", "projectclarity", command, self.run_id,
                                "--output-dir", str(self.root), *options], cwd=self.cwd,
                               capture_output=True, text=True, timeout=10)
 
     def assert_cancelled_with_completed_document(self):
-        """Cancellation is distinct from failure; unfinished sources do not become successes."""
+        """Cancellation is distinct from failure; unfinished sources do not become successes.
+
+        Args:
+            self: This unittest case instance, holding its isolated fixtures and assertion
+                methods.
+
+        Returns:
+            None. Assert cancellation preserves the completed source and does not mislabel
+            unfinished sources as successes.
+        """
         _, stderr = self.process.communicate(timeout=5)
         self.assertEqual(self.process.returncode, 130, stderr)
         status = read_status(self.directory)
@@ -84,7 +132,16 @@ class WorkerControlIntegrationTests(unittest.TestCase):
             self.assertNotIn(secret, events + stderr + (self.directory / "run_status.json").read_text())
 
     def test_status_watch_and_cancel_work_from_separate_terminals(self):
-        """Live status precedes completion; stop requests retain S1 and prevent S3 acquisition."""
+        """Live status precedes completion; stop requests retain S1 and prevent S3 acquisition.
+
+        Args:
+            self: This unittest case instance, holding its isolated fixtures and assertion
+                methods.
+
+        Returns:
+            None. Assertions fail if the documented behavior regresses; unittest records the
+            result.
+        """
         self.wait_for_slow_download()
         observed = self.command("status", "--json")
         self.assertEqual(observed.returncode, 0, observed.stderr)
@@ -104,13 +161,31 @@ class WorkerControlIntegrationTests(unittest.TestCase):
         self.assertTrue(json.loads(watched.splitlines()[-1])["finished"])
 
     def test_sigterm_requests_graceful_cancellation(self):
-        """A normal container/service stop signal preserves the same completed artifacts."""
+        """A normal container/service stop signal preserves the same completed artifacts.
+
+        Args:
+            self: This unittest case instance, holding its isolated fixtures and assertion
+                methods.
+
+        Returns:
+            None. Assertions fail if the documented behavior regresses; unittest records the
+            result.
+        """
         self.wait_for_slow_download()
         self.process.send_signal(signal.SIGTERM)
         self.assert_cancelled_with_completed_document()
 
     def test_force_killed_worker_is_reported_as_interrupted_not_running(self):
-        """A stale snapshot cannot falsely claim health after the OS releases its owner lock."""
+        """A stale snapshot cannot falsely claim health after the OS releases its owner lock.
+
+        Args:
+            self: This unittest case instance, holding its isolated fixtures and assertion
+                methods.
+
+        Returns:
+            None. Assertions fail if the documented behavior regresses; unittest records the
+            result.
+        """
         self.wait_for_slow_download()
         self.process.kill()
         self.process.communicate(timeout=5)

@@ -24,7 +24,20 @@ class CombinedMembershipPipelineTests(unittest.TestCase):
     """Keep successful combination, wrong answers and interrupted work observable."""
 
     def run_combined(self, *, wrong_person=False, budget=20):
-        """Run the shipped combined case with four bounded artificial source pages."""
+        """Run the shipped combined case with four bounded artificial source pages.
+
+        Args:
+            self: This unittest case instance, holding its isolated fixtures and assertion
+                methods.
+            wrong_person: Whether to substitute a wrong member while retaining five distinct
+                names, exercising identity checks rather than count alone.
+            budget: Maximum model requests allowed for the fixture run, shared by planning and
+                subsequent model-backed nodes.
+
+        Returns:
+            A tuple of exit code, stdout, stderr, score dictionary, saved session, integration
+            harness and selected reference case.
+        """
         flow = flow_tests.ReviewDiscoveryIntegrationTests()
         flow.setUp()
         self.addCleanup(flow.doCleanups)
@@ -46,14 +59,36 @@ class CombinedMembershipPipelineTests(unittest.TestCase):
                                  'evidence_required': ['Current membership and represented area']}]
         flow.cli.plan['strategy'] = [{'action': 'Combine the supplied membership records.',
             'goal_ids': ['G1'], 'source_ids': list(replies), 'proposed_searches': []}]
+        flow.cli.plan['completion_criteria'] = [{'criterion_id': 'K1', 'goal_ids': ['G1'],
+            'description': 'Identify the current members and their represented areas within the requested scope.',
+            'kind': 'enumeration', 'measurement_method': 'Compare distinct current members against source rosters.',
+            'target_basis': 'research', 'target_count': None, 'limitations': []}]
 
         def extraction(body):
-            """Return the page's fixed reply, never consult the evaluator's expected names."""
+            """Return the page's fixed reply, never consult the evaluator's expected names.
+
+            Args:
+                body: Decoded provider-request JSON passed by the fixture router; contains the
+                    actual serialized task payload.
+
+            Returns:
+                A synthetic httpx2.Response passed through the real provider SDK; no network request
+                is made by this responder.
+            """
             payload = json.loads(body['messages'][0]['content'])
             return flow.cli.response(text=json.dumps(replies[payload['source_id']]))
 
         def review(body):
-            """Supply explicit supported assessments through the normal reviewer adapter."""
+            """Supply explicit supported assessments through the normal reviewer adapter.
+
+            Args:
+                body: Decoded provider-request JSON passed by the fixture router; contains the
+                    actual serialized task payload.
+
+            Returns:
+                A synthetic httpx2.Response passed through the real provider SDK; no network request
+                is made by this responder.
+            """
             payload = json.loads(body['messages'][0]['content'])
             return flow.cli.response(text=json.dumps({'assessments': [
                 {'candidate_id': c['candidate_id'], 'verdict': 'supported', 'in_scope': True,
@@ -65,7 +100,18 @@ class CombinedMembershipPipelineTests(unittest.TestCase):
         output = flow.cli.directory / 'evaluations'
 
         def evaluation_entry(*args, **kwargs):
-            """Enter the actual evaluation command inside the network-denying SDK harness."""
+            """Enter the actual evaluation command inside the network-denying SDK harness.
+
+            Args:
+                *args: Arguments accepted to match the intercepted runpy entry point; the selected
+                    evaluation command comes from the enclosing fixture.
+                **kwargs: Runpy keyword arguments accepted for patch compatibility; no alternate
+                    evaluator is selected from them.
+
+            Returns:
+                Never returns normally; SystemExit carries the actual evaluation CLI result to the
+                harness.
+            """
             raise SystemExit(main(['run', case['case_id'], '--max-requests', str(budget),
                 '--output-dir', str(output)]))
 
@@ -79,7 +125,16 @@ class CombinedMembershipPipelineTests(unittest.TestCase):
         return code, out, err, score, session, flow, case
 
     def test_four_pages_combine_into_exactly_five_people_and_ten_relations(self):
-        """Repeated Balint and alternate Sanders names count once across actual saved artifacts."""
+        """Repeated Balint and alternate Sanders names count once across actual saved artifacts.
+
+        Args:
+            self: This unittest case instance, holding its isolated fixtures and assertion
+                methods.
+
+        Returns:
+            None. Assertions fail if the documented behavior regresses; unittest records the
+            result.
+        """
         code, out, err, score, session, flow, case = self.run_combined()
         self.assertEqual(code, 0, err)
         check = score['acceptance']
@@ -114,7 +169,16 @@ class CombinedMembershipPipelineTests(unittest.TestCase):
             research.assert_not_called()
 
     def test_five_people_with_one_wrong_person_fails_the_real_command(self):
-        """Exactly five is insufficient: Leahy replacing Welch must fail with named differences."""
+        """Exactly five is insufficient: Leahy replacing Welch must fail with named differences.
+
+        Args:
+            self: This unittest case instance, holding its isolated fixtures and assertion
+                methods.
+
+        Returns:
+            None. Assertions fail if the documented behavior regresses; unittest records the
+            result.
+        """
         code, out, _, score, _, flow, case = self.run_combined(wrong_person=True)
         self.assertEqual(code, 1)
         self.assertEqual(score['research_exit_code'], 0)
@@ -132,7 +196,16 @@ class CombinedMembershipPipelineTests(unittest.TestCase):
             research.assert_not_called()
 
     def test_budget_stop_is_incomplete_not_a_pass_or_an_incorrect_answer(self):
-        """The real request cap leaves receipts which the built-in test must expose."""
+        """The real request cap leaves receipts which the built-in test must expose.
+
+        Args:
+            self: This unittest case instance, holding its isolated fixtures and assertion
+                methods.
+
+        Returns:
+            None. Assertions fail if the documented behavior regresses; unittest records the
+            result.
+        """
         code, out, _, score, _, flow, _ = self.run_combined(budget=3)
         self.assertEqual(code, 1)
         self.assertEqual(len(flow.cli.requests), 3)
@@ -141,7 +214,16 @@ class CombinedMembershipPipelineTests(unittest.TestCase):
         self.assertIn('Built-in multi-source test: INCOMPLETE', out)
 
     def test_fetching_four_pages_does_not_prove_multiple_pages_contributed(self):
-        """After a real passing run, falsify provenance alone; the acceptance check must fail."""
+        """After a real passing run, falsify provenance alone; the acceptance check must fail.
+
+        Args:
+            self: This unittest case instance, holding its isolated fixtures and assertion
+                methods.
+
+        Returns:
+            None. Assertions fail if the documented behavior regresses; unittest records the
+            result.
+        """
         _, _, _, score, _, _, case = self.run_combined()
         for candidate in score['scored_candidates']:
             candidate['source_url'] = case['sources'][0]['url']

@@ -29,9 +29,18 @@ class EvidenceInputError(ValueError):
 def read_verified_text(directory: Path, document) -> str:
     """Read bounded UTF-8 text only if its saved path and fingerprint still match.
 
-    The path must resolve inside this run's documents directory; the final file
-    cannot be a symlink. Moving an intact run is allowed. This verifies the
-    normalized evidence version, not the truth of statements or raw-page layout.
+    The path must resolve inside this run's documents directory; the final file cannot be a
+    symlink. Moving an intact run is allowed. This verifies the normalized evidence version,
+    not the truth of statements or raw-page layout.
+
+    Args:
+        directory: Local filesystem directory for this one saved research run.
+        document: RetrievedDocument receipt containing the expected normalized-text path and
+            fingerprint.
+
+    Returns:
+        Decoded normalized source text whose path, size and SHA-256 match the saved receipt;
+        otherwise raise EvidenceInputError.
     """
     try:
         root = directory.resolve()
@@ -52,7 +61,15 @@ def read_verified_text(directory: Path, document) -> str:
 
 
 def iter_passages(text: str):
-    """Yield stable passage IDs and exact offsets covering all the supplied text."""
+    """Yield stable passage IDs and exact offsets covering all the supplied text.
+
+    Args:
+        text: Complete normalized source text to divide into bounded extraction passages.
+
+    Returns:
+        Successive (passage ID, start, end) tuples covering the text. Offsets are Python
+        character indices with an exclusive end.
+    """
     start, number = 0, 1
     while start < len(text):
         end = min(len(text), start + MAX_PASSAGE_CHARACTERS)

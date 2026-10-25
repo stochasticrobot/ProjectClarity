@@ -28,7 +28,16 @@ class KeyInputTests(unittest.TestCase):
     """Exercise input boundaries without reading a developer's real terminal."""
 
     def test_noninteractive_terminal_is_rejected_before_prompting(self):
-        """Piped or redirected input must fail before requesting a secret."""
+        """Piped or redirected input must fail before requesting a secret.
+
+        Args:
+            self: This unittest case instance, holding its isolated fixtures and assertion
+                methods.
+
+        Returns:
+            None. Assertions fail if the documented behavior regresses; unittest records the
+            result.
+        """
         # Arrange a non-terminal input stream; no real prompt should be reached.
         with (
             patch.object(smoke.sys.stdin, "isatty", return_value=False),
@@ -40,10 +49,29 @@ class KeyInputTests(unittest.TestCase):
             prompt.assert_not_called()
 
     def test_hidden_input_warning_stops_visible_fallback(self):
-        """Even a terminal can lack hidden input; its warning must stop entry."""
+        """Even a terminal can lack hidden input; its warning must stop entry.
+
+        Args:
+            self: This unittest case instance, holding its isolated fixtures and assertion
+                methods.
+
+        Returns:
+            None. Assertions fail if the documented behavior regresses; unittest records the
+            result.
+        """
         def cannot_hide_input(_prompt):
             # Reproduce getpass's warning path, not just a non-terminal stream.
-            """Simulate getpass warning before visible input so the test can verify that entry is stopped."""
+            """Simulate getpass warning before visible input so the test can verify that entry is
+            stopped.
+
+            Args:
+                _prompt: Hidden-input prompt accepted to match getpass; no actual credential is read
+                    by this failure fixture.
+
+            Returns:
+                Never returns a credential; emit the hidden-input warning and fail if visible
+                fallback is allowed.
+            """
             warnings.warn("Cannot hide terminal input", smoke.getpass.GetPassWarning)
             self.fail("Visible-input fallback should have been prevented")
 
@@ -55,7 +83,16 @@ class KeyInputTests(unittest.TestCase):
                 smoke.read_key()
 
     def test_blank_key_is_rejected(self):
-        """An empty entry must fail locally instead of reaching the provider."""
+        """An empty entry must fail locally instead of reaching the provider.
+
+        Args:
+            self: This unittest case instance, holding its isolated fixtures and assertion
+                methods.
+
+        Returns:
+            None. Assertions fail if the documented behavior regresses; unittest records the
+            result.
+        """
         with (
             patch.object(smoke.sys.stdin, "isatty", return_value=True),
             patch.object(smoke.getpass, "getpass", return_value="   "),
@@ -68,7 +105,16 @@ class CommandLineTests(unittest.TestCase):
     """Check CLI diagnostics independently of graph and provider behavior."""
 
     def test_unexpected_error_does_not_expose_credentials(self):
-        """An exception containing a secret must print its type, not its body."""
+        """An exception containing a secret must print its type, not its body.
+
+        Args:
+            self: This unittest case instance, holding its isolated fixtures and assertion
+                methods.
+
+        Returns:
+            None. Assertions fail if the documented behavior regresses; unittest records the
+            result.
+        """
         # This is a synthetic credential. Deliberately place it inside the error
         # to catch regressions that print exception bodies or full tracebacks.
         secret = "sk-ant-offline-test-only"

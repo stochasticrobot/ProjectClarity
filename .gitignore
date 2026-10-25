@@ -227,3 +227,18 @@ __marimo__/
 
 # Local documentation; excluded from the repository.
 /docs/
+
+# Local agent instructions, planning and investigation records.
+# Public installation, usage and testing instructions live only in the root README.
+/AGENTS.md
+/DEVELOPMENT_PLAN.md
+/RELIABILITY_PLAN.md
+/RESEARCH_DIRECTIONS.md
+/ROADMAP*.md
+/INVESTIGATION*.md
+/AUDIT*.md
+/evaluation/cases/reference_validation.md
+
+# Keep the public documentation to the root quick-start guide.
+*.md
+!/README.md

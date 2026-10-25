@@ -11,10 +11,21 @@ Only cases that opt into this check get a pass/fail result and a test exit code.
 def check_membership_result(case, score):
     """Compare the combined, reviewed output with the case's exact expectations.
 
-    Count contributing source URLs, not fetched pages or repeated candidate IDs.
-    A source contributes only if it supports a relationship in the answer key.
-    Incomplete acquisition/extraction/review is reported separately from a
-    completed run whose answer is wrong; neither can pass this built-in test.
+    Count contributing source URLs, not fetched pages or repeated candidate IDs. A source
+    contributes only if it supports a relationship in the answer key. Incomplete
+    acquisition/extraction/review is reported separately from a completed run whose answer
+    is wrong; neither can pass this built-in test. Retrieved sources still waiting
+    for passage inventory count as incomplete extraction, not completed empty work.
+
+    Args:
+        case: Combined-membership case defining the exact required people, relationships and
+            minimum source contribution.
+        score: Scorer output containing reviewed relationships, source provenance and
+            execution-completeness evidence.
+
+    Returns:
+        A dictionary with passed, failed or incomplete status, named acceptance checks, identity
+        counts and contributing-source counts.
     """
     policy = case['acceptance']
     expected_people = {member['name'] for member in case['expected_members']}
@@ -35,7 +46,7 @@ def check_membership_result(case, score):
         incomplete.append('source_evidence_unavailable')
     if score['run_status'] != 'candidates_saved':
         incomplete.append('research_not_complete')
-    if score['unfinished_extraction'] or score['extraction_source_errors']:
+    if score['unfinished_extraction'] or score['extraction_source_errors'] or score.get('uninventoried_extraction_sources'):
         incomplete.append('extraction_incomplete')
     if score['unfinished_reviews'] or score['review_errors']:
         incomplete.append('review_incomplete')

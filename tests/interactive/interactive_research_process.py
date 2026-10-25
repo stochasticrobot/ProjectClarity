@@ -15,10 +15,19 @@ from pathlib import Path
 from unittest.mock import patch
 
 import httpx2
+from tests.planning.planning_fixtures import planning_reply
 
 
 def main():
-    """Keep synthetic credentials and provider-call evidence inside the test boundary."""
+    """Keep synthetic credentials and provider-call evidence inside the test boundary.
+
+    Args:
+        None.
+
+    Returns:
+        Never returns normally on the CLI path; the production __main__ raises SystemExit
+        with its command result. Fixture setup errors propagate.
+    """
     directory = Path(sys.argv[1])
     arguments = sys.argv[2:]
     plan = json.loads((Path(__file__).parents[1] / "planning/fixtures/valid_research_plan.json").read_text())
@@ -27,12 +36,22 @@ def main():
     calls = json.loads(counter.read_text()) if counter.exists() else []
 
     def reply(request):
-        """Record each simulated provider call and return a plan requiring two human answers."""
+        """Record each simulated provider call and return a plan requiring two human answers.
+
+        Args:
+            request: Actual httpx2.Request emitted by the SDK; inspected locally and answered
+                with fixture data.
+
+        Returns:
+            A synthetic httpx2.Response with initial-planning scope fields passed through
+            the real provider SDK; no network request
+            is made by this responder.
+        """
         calls.append({"method": request.method, "path": request.url.path})
         counter.write_text(json.dumps(calls))
         return httpx2.Response(200, json={
             "id": "msg_terminal_fixture", "type": "message", "role": "assistant",
-            "model": "claude-haiku-5-5", "content": [{"type": "text", "text": json.dumps(plan)}],
+            "model": "claude-haiku-5-5", "content": [{"type": "text", "text": json.dumps(planning_reply(plan))}],
             "stop_reason": "end_turn", "stop_sequence": None,
             "usage": {"input_tokens": 100, "output_tokens": 200},
         })
@@ -41,8 +60,8 @@ def main():
         httpx2.Client(transport=httpx2.MockTransport(reply)) as client,
         patch("langchain_anthropic.chat_models._get_default_httpx_client", return_value=client),
         patch.dict("os.environ", {"ANTHROPIC_API_KEY": "OFFLINE_TERMINAL_FIXTURE_KEY", "LANGSMITH_TRACING": "false"}),
-        patch("projectclarity.research_planner.dotenv_values", side_effect=AssertionError("No credential files allowed")),
-        patch("projectclarity.research_planner.getpass.getpass", side_effect=AssertionError("No key prompt allowed")),
+        patch("projectclarity.nodes.plan_research.research_planner.dotenv_values", side_effect=AssertionError("No credential files allowed")),
+        patch("projectclarity.nodes.plan_research.research_planner.getpass.getpass", side_effect=AssertionError("No key prompt allowed")),
         patch("socket.getaddrinfo", side_effect=AssertionError("No DNS allowed")),
         patch("socket.socket.connect", side_effect=AssertionError("No network allowed")),
         patch("sys.argv", ["projectclarity", *arguments]),

@@ -10,7 +10,15 @@ SOURCE_TEXT = "Alice works at Lab X. Alice studies adversarial attacks.\n"
 
 
 def proposed_batch():
-    """Return one atomic affiliation claim with local entity IDs and an exact quote."""
+    """Return one atomic affiliation claim with local entity IDs and an exact quote.
+
+    Args:
+        None.
+
+    Returns:
+        A model-shaped dictionary containing local entities and one atomic affiliation claim
+        with an exact source quote.
+    """
     return {
         "entities": [
             {"entity_id": "E1", "name": "Alice", "entity_type": "Person"},

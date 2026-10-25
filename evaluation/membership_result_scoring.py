@@ -20,12 +20,29 @@ from projectclarity.research_schemas import ResearchSession
 
 
 def normalize_name(value):
-    """Ignore case and layout whitespace, but do not guess identities or remove accents."""
+    """Ignore case and layout whitespace, but do not guess identities or remove accents.
+
+    Args:
+        value: Entity name or alias to compare with the reference key.
+
+    Returns:
+        A Unicode-normalized, case-folded name with layout whitespace collapsed; no fuzzy
+        identity matching.
+    """
     return ' '.join(unicodedata.normalize('NFC', value).casefold().split())
 
 
 def reference_relations(suite, case):
-    """Build canonical expected triples and the explicitly permitted name aliases."""
+    """Build canonical expected triples and the explicitly permitted name aliases.
+
+    Args:
+        suite: Reference suite containing canonical people, organizations and aliases.
+        case: Selected evaluation case specifying the expected members and relationships.
+
+    Returns:
+        A pair of the expected canonical relationship-triple set and the explicitly allowed
+        alias-to-canonical-name mapping.
+    """
     aliases = {}
     for canonical, alternatives in suite['entity_aliases'].items():
         for name in [canonical, *alternatives]:
@@ -41,7 +58,18 @@ def reference_relations(suite, case):
 
 
 def relation_metrics(expected, observed):
-    """Return inspectable set comparisons; empty predictions have undefined precision, not 100%."""
+    """Return inspectable set comparisons; empty predictions have undefined precision, not
+    100%.
+
+    Args:
+        expected: Set of canonical relationship triples required by the reference case.
+        observed: Set of canonical relationship triples recovered from eligible candidate
+            evidence.
+
+    Returns:
+        A dictionary containing matched, missing and unexpected triples, counts and
+        precision/recall/F1; empty predictions have undefined precision.
+    """
     correct = expected & observed
     precision = len(correct) / len(observed) if observed else None
     recall = len(correct) / len(expected) if expected else None
@@ -56,9 +84,23 @@ def relation_metrics(expected, observed):
 def score_session(suite, case, session, verified_sources):
     """Score one case-matched session using independently hash-checked source text.
 
-    verified_sources maps source IDs to (hash, original saved text). Missing,
-    altered or invalid evidence never enters either metric. A supported label
-    also needs its successful in-scope review record, not just an entity mention.
+    verified_sources maps source IDs to (hash, original saved text). Missing, altered or
+    invalid evidence never enters either metric. A supported label also needs its successful
+    in-scope review record, not just an entity mention.
+
+    Args:
+        suite: Frozen reference suite used to score this experiment.
+        case: Reference case whose question and expected relationships must match this run.
+        session: Parsed saved-session dictionary from the evaluated run, not a
+            ResearchSession instance.
+        verified_sources: Mapping from source ID to (saved text hash, original normalized
+            text), independently checked before scoring.
+
+    Returns:
+        An inspectable score dictionary with anchored/reviewed relationship metrics,
+        completion information and evidence failures. Uninventoried source IDs
+        are reported separately from unfinished passage counts so incremental
+        scheduling cannot make unread retrieved documents appear complete.
     """
     if session['request']['question'] != case['question']:
         raise ValueError('This run used a different research question; refusing to score the wrong case.')
@@ -117,6 +159,9 @@ def score_session(suite, case, session, verified_sources):
                     'acquired_at': d.get('acquired_at'), 'text_sha256': d.get('text_sha256')} for d in documents],
         'source_coverage_complete': len(documents) == len(expected_urls) and all(d['status'] == 'retrieved' for d in documents),
         'unfinished_extraction': sum(a['status'] != 'completed' for a in extraction.get('attempts', [])),
+        'uninventoried_extraction_sources': sorted({d['source_id'] for d in documents if d['status'] == 'retrieved'}
+            - {a.get('source_id') for a in extraction.get('attempts', [])}
+            - {e.get('source_id') for e in extraction.get('source_errors', [])}),
         'extraction_source_errors': extraction.get('source_errors', []),
         'verified_source_count': len(set(verified_sources) & set(source_urls)),
         'unfinished_reviews': sum(c['evidence_status'] == 'anchored' and not (
@@ -131,7 +176,18 @@ def score_session(suite, case, session, verified_sources):
 
 
 def score_saved_run(suite, case, directory):
-    """Verify saved source hashes before scoring; report corrupt/missing files separately."""
+    """Verify saved source hashes before scoring; report corrupt/missing files separately.
+
+    Args:
+        suite: Reference suite to use, normally the experiment's frozen copy.
+        case: Selected reference case whose expected identities and relationships define
+            this score.
+        directory: Local filesystem directory for this one saved research run.
+
+    Returns:
+        The score dictionary after source-integrity checks, including separate
+        missing/corrupt-artifact failures.
+    """
     session = ResearchSession.model_validate_json((directory / 'session.json').read_text(encoding='utf-8'))
     sources, failures = {}, {}
     for document in session.documents:

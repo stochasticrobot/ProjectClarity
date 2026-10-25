@@ -16,7 +16,16 @@ class RetrievalBudgetTests(unittest.TestCase):
     """Counters are shared across sources and must not silently reset mid-run."""
 
     def test_exact_deadline_blocks_new_requests_and_bytes(self):
-        """The boundary is deterministic, and rejected work does not change counters."""
+        """The boundary is deterministic, and rejected work does not change counters.
+
+        Args:
+            self: This unittest case instance, holding its isolated fixtures and assertion
+                methods.
+
+        Returns:
+            None. Assertions fail if the documented behavior regresses; unittest records the
+            result.
+        """
         budget = RetrievalBudget(RetrievalLimits(max_run_seconds=10), started=100)
         with patch("projectclarity.retrieval.retrieval_limits.time.monotonic", return_value=109.9):
             budget.check_time()
@@ -29,7 +38,16 @@ class RetrievalBudgetTests(unittest.TestCase):
         self.assertEqual((budget.bytes_read, budget.http_requests), (0, 0))
 
     def test_request_limit_allows_exactly_the_configured_number(self):
-        """An exhausted budget refuses a further request before incrementing it."""
+        """An exhausted budget refuses a further request before incrementing it.
+
+        Args:
+            self: This unittest case instance, holding its isolated fixtures and assertion
+                methods.
+
+        Returns:
+            None. Assertions fail if the documented behavior regresses; unittest records the
+            result.
+        """
         budget = RetrievalBudget(RetrievalLimits(max_http_requests=2))
         budget.reserve_request()
         budget.reserve_request()
@@ -39,7 +57,16 @@ class RetrievalBudgetTests(unittest.TestCase):
         self.assertEqual(budget.http_requests, 2)
 
     def test_total_byte_limit_counts_chunks_across_sources(self):
-        """Many small reads cannot bypass the limit; the over-limit chunk stays counted."""
+        """Many small reads cannot bypass the limit; the over-limit chunk stays counted.
+
+        Args:
+            self: This unittest case instance, holding its isolated fixtures and assertion
+                methods.
+
+        Returns:
+            None. Assertions fail if the documented behavior regresses; unittest records the
+            result.
+        """
         budget = RetrievalBudget(RetrievalLimits(max_total_bytes=5))
         budget.charge_bytes(3)
         budget.charge_bytes(2)
@@ -50,11 +77,28 @@ class RetrievalBudgetTests(unittest.TestCase):
         self.assertEqual(budget.summary()["bytes_read"], 6)
 
     def test_stop_request_interrupts_a_long_pacing_wait_before_any_http_attempt(self):
-        """Robots waits remain cancellable instead of trapping a worker in one long sleep."""
+        """Robots waits remain cancellable instead of trapping a worker in one long sleep.
+
+        Args:
+            self: This unittest case instance, holding its isolated fixtures and assertion
+                methods.
+
+        Returns:
+            None. Assertions fail if the documented behavior regresses; unittest records the
+            result.
+        """
         checks = 0
 
         def check_control():
-            """Request a stop on the second poll to verify pacing waits are interruptible."""
+            """Request a stop on the second poll to verify pacing waits are interruptible.
+
+            Args:
+                None.
+
+            Returns:
+                None on the first poll; raise RunCancelled on the second to exercise interruptible
+                pacing.
+            """
             nonlocal checks
             checks += 1
             if checks == 2:

@@ -32,10 +32,19 @@ from projectclarity.run_monitor import MonitoringError
 def read_local(path: Path, budget: RetrievalBudget) -> bytes:
     """Read the registered path, checking regular-file type, byte caps and in-read changes.
 
-    Registration is not an immutable copy: the file may change before retrieval.
-    This check compares size/mtime during this read, not against initialization;
-    the receipt fingerprints the bytes actually acquired. A newly substituted
-    final symlink is refused, but this is not a full hostile-filesystem sandbox.
+    Registration is not an immutable copy: the file may change before retrieval. This check
+    compares size/mtime during this read, not against initialization; the receipt
+    fingerprints the bytes actually acquired. A newly substituted final symlink is refused,
+    but this is not a full hostile-filesystem sandbox.
+
+    Args:
+        path: Registered local file Path to open and check; not a URL.
+        budget: Shared RetrievalBudget charging bytes and checking elapsed time/cancellation
+            during reading.
+
+    Returns:
+        The bounded bytes actually read from the registered local file; unsafe, changed or
+        over-limit files raise RetrievalError.
     """
     budget.check_time()
     # Recheck at the moment of opening: initialization may have happened before
@@ -64,19 +73,35 @@ def read_local(path: Path, budget: RetrievalBudget) -> bytes:
     return b"".join(chunks)
 
 
-def retrieve_one(source: Source, run_directory: Path, web: PublicWebReader) -> RetrievedDocument:
+def retrieve_one(source: Source, run_directory: Path, web: PublicWebReader, *, attempt_number=1) -> RetrievedDocument:
     """Acquire and parse one source, keeping completed artifacts and its outcome.
 
-    A parsing failure can still leave useful raw bytes. Failed/cancelled receipts
-    let the graph decide whether to continue; failure to create/write the receipt
-    itself or loss of monitoring can still raise to the caller. No discovered
-    links or new sources are selected here.
+    A parsing failure can still leave useful raw bytes. Failed/cancelled receipts let the
+    graph decide whether to continue; failure to create/write the receipt itself or loss of
+    monitoring can still raise to the caller. No discovered links or new sources are
+    selected here.
+
+    Args:
+        source: Registered URLSource or FileSource with its stable source ID and
+            address/path.
+        run_directory: Local filesystem directory for this one research run and its document
+            artifacts.
+        attempt_number: Reserved acquisition attempt; retries use separate artifact
+            subdirectories and never overwrite an earlier receipt.
+        web: Invocation-shared PublicWebReader used for URL fetching and the common
+            retrieval budget, including local-file reads.
+
+    Returns:
+        A RetrievedDocument receipt describing successful, failed or cancelled acquisition
+        and any saved artifacts; receipt-write failures can still raise.
     """
     started = time.monotonic()
     record = RetrievedDocument(source_id=source.source_id, source_kind=source.kind,
         original_location=source.url if source.kind == "url" else source.path,
         attempted_at=datetime.now(UTC).isoformat())
     relative = Path("documents") / source.source_id
+    if attempt_number > 1:
+        relative = relative / f'attempt-{attempt_number}'
     directory = run_directory / relative
     directory.mkdir(parents=True, exist_ok=False)
     try:
@@ -120,6 +145,8 @@ def retrieve_one(source: Source, run_directory: Path, web: PublicWebReader) -> R
         raise
     except RetrievalError as exc:
         record.error_code, record.error = exc.code, str(exc)
+        record.http_status = exc.http_status
+        record.retry_after_seconds = exc.retry_after_seconds
     except OSError:
         record.error_code, record.error = "file_io", "A source or output file could not be read or written."
     except Exception as exc:
@@ -131,6 +158,16 @@ def retrieve_one(source: Source, run_directory: Path, web: PublicWebReader) -> R
 
 
 def save_manifest(run_directory: Path, records: list[RetrievedDocument]) -> None:
-    """Write the one-file index of successful and failed sources after each attempt."""
+    """Write the one-file index of successful and failed sources after each attempt.
+
+    Args:
+        run_directory: Local filesystem directory for this one research run and its document
+            artifacts.
+        records: RetrievedDocument receipts accumulated so far, including failures and
+            cancellations.
+
+    Returns:
+        None. Replace documents.json with the complete current receipt index.
+    """
     write_text(run_directory / "documents.json", json.dumps(
         {"schema_version": "1.0", "documents": [record.model_dump() for record in records]}, indent=2) + "\n")

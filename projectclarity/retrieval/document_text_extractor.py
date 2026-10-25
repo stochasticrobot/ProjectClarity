@@ -24,8 +24,23 @@ from projectclarity.retrieval.retrieval_limits import RetrievalError, RetrievalL
 def parse_document(raw: bytes, content_type: str, limits: RetrievalLimits, *, check_control=None, link_inventory=None) -> tuple[str, str]:
     """Return text/parser label; optionally fill a bounded observed-anchor inventory.
 
-    Link capture adds metadata, not network calls. Existing callers can ignore
-    it and keep the two-value text interface. Unsupported/failed parsing raises.
+    Link capture adds metadata, not network calls. Existing callers can ignore it and keep
+    the two-value text interface. Unsupported/failed parsing raises.
+
+    Args:
+        raw: Complete bounded document bytes to send to the parser child.
+        content_type: HTTP-style media type and optional charset describing the raw document
+            bytes.
+        limits: RetrievalLimits specifying parser time, memory, character and PDF-page
+            ceilings.
+        check_control: Optional zero-argument cancellation/deadline callback polled while
+            supervising the parser child.
+        link_inventory: Optional mutable dictionary filled with bounded HTML anchors and
+            truncation metadata; None skips returning link metadata.
+
+    Returns:
+        A pair of normalized text and parser/version label. Failed or unsupported parsing
+        raises RetrievalError; cancellation may propagate.
     """
     header = Message()
     header["content-type"] = content_type

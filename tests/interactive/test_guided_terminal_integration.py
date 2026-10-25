@@ -25,7 +25,16 @@ class GuidedTerminalIntegrationTests(unittest.TestCase):
     """Check guided decisions and safe exits without touching live credentials or URLs."""
 
     def setUp(self):
-        """Create temporary source/output paths and the import environment for terminal children."""
+        """Create temporary source/output paths and the import environment for terminal children.
+
+        Args:
+            self: This unittest case instance, holding its isolated fixtures and assertion
+                methods.
+
+        Returns:
+            None. Initialize this test instance's fixtures; unittest calls setUp before each
+            test method.
+        """
         temporary = tempfile.TemporaryDirectory()
         self.addCleanup(temporary.cleanup)
         self.directory = Path(temporary.name)
@@ -35,37 +44,96 @@ class GuidedTerminalIntegrationTests(unittest.TestCase):
         self.env = dict(os.environ, PYTHONPATH=str(Path(__file__).resolve().parents[2]))
 
     def command(self, *arguments):
-        """Use the HTTP-only fixture, then the real projectclarity.__main__ entry point."""
+        """Use the HTTP-only fixture, then the real projectclarity.__main__ entry point.
+
+        Args:
+            self: This unittest case instance, holding its isolated fixtures and assertion
+                methods.
+            *arguments: Additional command-line argument strings appended to this helper's base
+                invocation.
+
+        Returns:
+            An argument-vector list launching the offline provider fixture and production CLI
+            entry point.
+        """
         return [sys.executable, "-m", "tests.interactive.interactive_research_process", str(self.directory), *arguments]
 
     def terminal(self, *arguments):
-        """Keep stdin/stdout as actual terminals; no isatty patch is permitted here."""
+        """Keep stdin/stdout as actual terminals; no isatty patch is permitted here.
+
+        Args:
+            self: This unittest case instance, holding its isolated fixtures and assertion
+                methods.
+            *arguments: Additional command-line argument strings appended to this helper's base
+                invocation.
+
+        Returns:
+            A TerminalProcess driver for the owned child, with cleanup registered on this test.
+        """
         child = TerminalProcess(self.command(*arguments), cwd=self.directory, env=self.env)
         self.addCleanup(child.close)
         return child
 
     def research(self, *options):
-        """Use the existing advanced command, which must now offer review automatically."""
+        """Use the existing advanced command, which must now offer review automatically.
+
+        Args:
+            self: This unittest case instance, holding its isolated fixtures and assertion
+                methods.
+            *options: Additional command-line argument strings appended to this helper's base
+                invocation.
+
+        Returns:
+            A TerminalProcess running the normal research command with the fixture question and
+            local document.
+        """
         return self.terminal("research", "--question", "Research AI security", "--document", str(self.document), *options)
 
     def saved(self):
-        """Require one run; a review must not secretly start a replacement research job."""
+        """Require one run; a review must not secretly start a replacement research job.
+
+        Args:
+            self: This unittest case instance, holding its isolated fixtures and assertion
+                methods.
+
+        Returns:
+            A pair of the sole run-directory Path and its parsed session dictionary; multiple
+            runs fail the assertion.
+        """
         files = list(self.output.glob("*/session.json"))
         self.assertEqual(len(files), 1)
         return files[0].parent, json.loads(files[0].read_text())
 
     def assert_acquired_once(self):
-        """Verify real acquisition plus unchanged usage, not just a success message."""
+        """Verify real acquisition plus unchanged usage, not just a success message.
+
+        Args:
+            self: This unittest case instance, holding its isolated fixtures and assertion
+                methods.
+
+        Returns:
+            The saved-session dictionary after assertions confirm one acquisition and unchanged
+            planning usage.
+        """
         directory, session = self.saved()
         self.assertEqual(session["status"], "sources_retrieved")
         self.assertEqual(session["usage"]["requests_attempted"], 1)
         self.assertEqual(len(json.loads((self.directory / "provider_calls.json").read_text())), 1)
         self.assertEqual((directory / "documents/S1/text.txt").read_text(), self.document.read_text())
-        self.assertEqual(session["visited_nodes"], ["initialize_research", "plan_research", "review_plan", "retrieve_sources"])
+        self.assertEqual(session["visited_nodes"], ["initialize_research", "plan_research", "review_plan", "schedule_work", "retrieve_sources", "schedule_work"])
         return session
 
     def test_bare_command_guides_setup_answers_and_fetching_in_one_process(self):
-        """The simplest launch needs no command flags, run IDs, or JSON decision file."""
+        """The simplest launch needs no command flags, run IDs, or JSON decision file.
+
+        Args:
+            self: This unittest case instance, holding its isolated fixtures and assertion
+                methods.
+
+        Returns:
+            None. Assertions fail if the documented behavior regresses; unittest records the
+            result.
+        """
         child = self.terminal()
         child.expect("Choose 1-3:")
         child.send("1\n")
@@ -91,7 +159,16 @@ class GuidedTerminalIntegrationTests(unittest.TestCase):
         self.assertEqual(session["review_decision"]["answers"][0]["answer"], "2024–2026")
 
     def test_existing_research_command_can_edit_answers_and_return_to_menu(self):
-        """Draft edits survive menu navigation but only the final answers are submitted."""
+        """Draft edits survive menu navigation but only the final answers are submitted.
+
+        Args:
+            self: This unittest case instance, holding its isolated fixtures and assertion
+                methods.
+
+        Returns:
+            None. Assertions fail if the documented behavior regresses; unittest records the
+            result.
+        """
         child = self.research()
         child.expect("Choose 1-5:")
         child.send("1\n2024\nYes\n")
@@ -109,7 +186,16 @@ class GuidedTerminalIntegrationTests(unittest.TestCase):
         self.assertEqual(session["review_decision"]["answers"][0]["answer"], "2025–2026")
 
     def test_question_shortcut_skips_setup_but_keeps_guided_review(self):
-        """A pasted command starts one run, then asks only the plan's review questions."""
+        """A pasted command starts one run, then asks only the plan's review questions.
+
+        Args:
+            self: This unittest case instance, holding its isolated fixtures and assertion
+                methods.
+
+        Returns:
+            None. Assertions fail if the documented behavior regresses; unittest records the
+            result.
+        """
         question = "Compare 'AI security' research in Canada during 2024–2026."
         # Put another option first and use --question=value: routing must not
         # depend on one particular ordering or split/reinterpret the user's text.
@@ -127,7 +213,16 @@ class GuidedTerminalIntegrationTests(unittest.TestCase):
         self.assertEqual(session["review_decision"]["action"], "answer")
 
     def test_question_shortcut_respects_noninteractive_review_mode(self):
-        """Skipping setup must not override an explicit instruction to avoid all prompts."""
+        """Skipping setup must not override an explicit instruction to avoid all prompts.
+
+        Args:
+            self: This unittest case instance, holding its isolated fixtures and assertion
+                methods.
+
+        Returns:
+            None. Assertions fail if the documented behavior regresses; unittest records the
+            result.
+        """
         child = self.terminal("--question", "Research AI security", "--document", str(self.document),
                               "--non-interactive")
         self.assertEqual(child.finish(), 2, child.output)
@@ -138,7 +233,16 @@ class GuidedTerminalIntegrationTests(unittest.TestCase):
         self.assertFalse((directory / "documents.json").exists())
 
     def test_leave_then_select_paused_review_without_copying_an_id(self):
-        """A later menu finds the pending checkpoint and continues it with no new model call."""
+        """A later menu finds the pending checkpoint and continues it with no new model call.
+
+        Args:
+            self: This unittest case instance, holding its isolated fixtures and assertion
+                methods.
+
+        Returns:
+            None. Assertions fail if the documented behavior regresses; unittest records the
+            result.
+        """
         first = self.research()
         first.expect("Choose 1-5:")
         first.send("4\n")
@@ -158,7 +262,16 @@ class GuidedTerminalIntegrationTests(unittest.TestCase):
         self.assertEqual(after["review_decision"]["action"], "accept_assumptions")
 
     def test_empty_choices_do_not_approve_and_rejection_fetches_nothing(self):
-        """Enter retries a menu and declines an assumption waiver; rejection is explicit."""
+        """Enter retries a menu and declines an assumption waiver; rejection is explicit.
+
+        Args:
+            self: This unittest case instance, holding its isolated fixtures and assertion
+                methods.
+
+        Returns:
+            None. Assertions fail if the documented behavior regresses; unittest records the
+            result.
+        """
         child = self.research()
         child.expect("Choose 1-5:")
         child.send("\n")
@@ -174,7 +287,16 @@ class GuidedTerminalIntegrationTests(unittest.TestCase):
         self.assertFalse((directory / "documents.json").exists())
 
     def test_ctrl_c_during_answers_leaves_checkpoint_pending_and_draft_unsaved(self):
-        """Interrupting a prompt is not approval, nor cancellation of the saved research run."""
+        """Interrupting a prompt is not approval, nor cancellation of the saved research run.
+
+        Args:
+            self: This unittest case instance, holding its isolated fixtures and assertion
+                methods.
+
+        Returns:
+            None. Assertions fail if the documented behavior regresses; unittest records the
+            result.
+        """
         child = self.research()
         child.expect("Choose 1-5:")
         child.send("1\nDraft answer\n")
@@ -189,7 +311,16 @@ class GuidedTerminalIntegrationTests(unittest.TestCase):
         self.assertIn("unfinished answers were not saved", child.output)
 
     def test_terminal_eof_leaves_review_pending(self):
-        """Ctrl-D must leave a retrievable checkpoint instead of manufacturing a decision."""
+        """Ctrl-D must leave a retrievable checkpoint instead of manufacturing a decision.
+
+        Args:
+            self: This unittest case instance, holding its isolated fixtures and assertion
+                methods.
+
+        Returns:
+            None. Assertions fail if the documented behavior regresses; unittest records the
+            result.
+        """
         child = self.research()
         child.expect("Choose 1-5:")
         child.send("\x04")
@@ -199,7 +330,16 @@ class GuidedTerminalIntegrationTests(unittest.TestCase):
         self.assertFalse((directory / "review_decision.json").exists())
 
     def test_noninteractive_flag_disables_prompts_even_in_a_terminal(self):
-        """Automation can keep the previous exit-2 review boundary on a real terminal."""
+        """Automation can keep the previous exit-2 review boundary on a real terminal.
+
+        Args:
+            self: This unittest case instance, holding its isolated fixtures and assertion
+                methods.
+
+        Returns:
+            None. Assertions fail if the documented behavior regresses; unittest records the
+            result.
+        """
         child = self.research("--non-interactive")
         self.assertEqual(child.finish(), 2, child.output)
         self.assertNotIn("Choose 1-5:", child.output)
@@ -207,14 +347,32 @@ class GuidedTerminalIntegrationTests(unittest.TestCase):
         self.assertEqual(session["status"], "awaiting_review")
 
     def test_json_progress_mode_disables_interaction_even_in_a_terminal(self):
-        """Machine event output never starts consuming answers from terminal input."""
+        """Machine event output never starts consuming answers from terminal input.
+
+        Args:
+            self: This unittest case instance, holding its isolated fixtures and assertion
+                methods.
+
+        Returns:
+            None. Assertions fail if the documented behavior regresses; unittest records the
+            result.
+        """
         child = self.research("--progress-json")
         self.assertEqual(child.finish(), 2, child.output)
         self.assertNotIn("Choose 1-5:", child.output)
         self.assertIn('"event": "review_required"', child.output)
 
     def test_piped_input_cannot_be_mistaken_for_interactive_approval(self):
-        """Even plausible menu keystrokes in stdin do not authorize a non-TTY run."""
+        """Even plausible menu keystrokes in stdin do not authorize a non-TTY run.
+
+        Args:
+            self: This unittest case instance, holding its isolated fixtures and assertion
+                methods.
+
+        Returns:
+            None. Assertions fail if the documented behavior regresses; unittest records the
+            result.
+        """
         result = subprocess.run(self.command("research", "--question", "Research AI security", "--document", str(self.document)),
             cwd=self.directory, env=self.env, input="2\ny\n", text=True, capture_output=True, timeout=20)
         self.assertEqual(result.returncode, 2, result.stderr)
@@ -224,7 +382,16 @@ class GuidedTerminalIntegrationTests(unittest.TestCase):
         self.assertFalse((directory / "review_decision.json").exists())
 
     def test_json_review_remains_inspection_only_in_a_terminal(self):
-        """The structured contract used by future adapters is unaffected by guided UX."""
+        """The structured contract used by future adapters is unaffected by guided UX.
+
+        Args:
+            self: This unittest case instance, holding its isolated fixtures and assertion
+                methods.
+
+        Returns:
+            None. Assertions fail if the documented behavior regresses; unittest records the
+            result.
+        """
         first = self.research("--non-interactive")
         self.assertEqual(first.finish(), 2)
         directory, _ = self.saved()
@@ -234,7 +401,16 @@ class GuidedTerminalIntegrationTests(unittest.TestCase):
         self.assertFalse((directory / "review_decision.json").exists())
 
     def test_quit_from_bare_menu_starts_no_work(self):
-        """Opening and closing the UI does not call the model or create a research run."""
+        """Opening and closing the UI does not call the model or create a research run.
+
+        Args:
+            self: This unittest case instance, holding its isolated fixtures and assertion
+                methods.
+
+        Returns:
+            None. Assertions fail if the documented behavior regresses; unittest records the
+            result.
+        """
         child = self.terminal()
         child.expect("Choose 1-3:")
         child.send("3\n")

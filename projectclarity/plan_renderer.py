@@ -7,8 +7,9 @@ Purpose:
     Both displays use the same text so reviewing plan.md shows the same proposal
     as the command output. Formatting does not approve or execute the plan.
 Responsibilities:
-    Format the question category, objectives, scope, goals, strategy, assumptions, clarification needs,
-    supplied-source IDs, acquisition/candidate status, and usage into Markdown. Filter terminal control
+    Format the question category, objectives, scope, goals, completion criteria,
+    strategy, assumptions, clarification needs, registered-source IDs,
+    acquisition/candidate status, coverage and usage into Markdown. Filter terminal control
     characters when the CLI prints model- or user-provided text.
 Typical use:
     agentic_workflow.py saves render_plan(session) as plan.md; command_line.py displays that same
@@ -20,14 +21,23 @@ Boundary:
 """
 
 from projectclarity.research_schemas import ResearchSession
+from projectclarity.coverage.scope_estimation import scope_lines
 
 
 def render_plan(session: ResearchSession) -> str:
     """Show the proposed plan alongside actual retrieval/extraction and review status.
 
-    This remains a plan display, not a findings report. Explicitly label what
-    ran so a completed download or anchored candidate is not mistaken for an
-    independently reviewed answer. The caller chooses whether to save or print it.
+    This remains a plan display, not a findings report. Explicitly label what ran so a
+    completed download or anchored candidate is not mistaken for an independently reviewed
+    answer. The caller chooses whether to save or print it.
+
+    Args:
+        session: ResearchSession containing this run's request, plan, source records,
+            accumulated results and status.
+
+    Returns:
+        Markdown describing the proposed plan and recorded execution status, ready for the
+        caller to save or print.
     """
     plan = session.plan
     if plan is None:
@@ -49,9 +59,20 @@ def render_plan(session: ResearchSession) -> str:
         "", "## Question category", plan.question_category,
         "", "## Objective", plan.objective,
     ]
+    if session.search:
+        lines[4] = "Web search attempted; results are leads, not evidence. No accepted publication or research report generated."
 
     def section(title, items):
-        """Append a titled list, showing an empty section rather than silently omitting it."""
+        """Append a titled list, showing an empty section rather than silently omitting it.
+
+        Args:
+            title: Heading text for this plan section.
+            items: Iterable of display strings to list; an empty iterable produces an explicit
+                empty-section marker.
+
+        Returns:
+            None. Append the heading and rendered list to the enclosing renderer's lines.
+        """
         lines.extend(["", f"## {title}"])
         lines.extend(f"- {item}" for item in items)
         if not items:
@@ -59,6 +80,18 @@ def render_plan(session: ResearchSession) -> str:
 
     section("In scope", plan.scope_in)
     section("Out of scope", plan.scope_out)
+    section("Initial scope estimates — provisional, not verified totals",
+        scope_lines([e.model_dump(mode="json") for e in plan.scope_estimates]))
+    lines.extend(["", "## Completion criteria and coverage"])
+    if not plan.completion_criteria:
+        lines.append("No structured criteria recorded in this legacy plan; coverage is unknown.")
+    for criterion in plan.completion_criteria:
+        target = criterion.target_count if criterion.target_count is not None else "to discover" if criterion.target_basis == "research" else "not a numeric target"
+        lines.extend([f"- **{criterion.criterion_id} ({criterion.kind}):** {criterion.description}",
+            f"  - Goals: {', '.join(criterion.goal_ids)}; target: {target}.",
+            f"  - Measurement: {criterion.measurement_method}"])
+        lines.extend(f"  - Limitation: {item}" for item in criterion.limitations)
+    lines.append("Execution completion and budget exhaustion do not establish research coverage.")
     lines.extend(["", "## Research goals and evidence"])
     for goal in plan.goals:
         lines.append(f"- **{goal.goal_id}:** {goal.question}")
@@ -68,7 +101,7 @@ def render_plan(session: ResearchSession) -> str:
         lines.append(f"{number}. {step.action}")
         lines.append(f"   Goals: {', '.join(step.goal_ids)}")
         lines.append(f"   Supplied sources: {', '.join(step.source_ids) or 'None assigned'}")
-        lines.extend(f"   - Proposed search (not run): {query}" for query in step.proposed_searches)
+        lines.extend(f"   - Proposed search{' (execution receipts in search.json)' if session.search else ' (not run)'}: {query}" for query in step.proposed_searches)
     section("Assumptions to review", plan.assumptions)
     section("Original clarification questions (see human decision below)" if session.review_decision else
             "Clarifications to resolve", plan.clarifications)
@@ -125,5 +158,13 @@ def render_plan(session: ResearchSession) -> str:
 
 
 def terminal_text(text: str) -> str:
-    """Keep model/source text from emitting terminal escape/control sequences."""
+    """Keep model/source text from emitting terminal escape/control sequences.
+
+    Args:
+        text: Potentially model- or source-derived text to show in a terminal.
+
+    Returns:
+        Text with unsafe terminal control characters removed while retaining normal newlines
+        and tabs.
+    """
     return "".join(character for character in text if character.isprintable() or character in "\n\t")

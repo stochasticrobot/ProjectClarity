@@ -1,0 +1,6 @@
+{
+  "default_search_provider": "duckduckgo",
+  "search_providers": ["duckduckgo", "yahoo", "google", "brave", "mojeek", "startpage", "wikipedia"],
+  "default_sources": ["https://www.papernot.fr/", "https://aisafety.ca/research/"],
+  "domains": ["papernot.fr", "aisafety.ca", "vectorinstitute.ai", "cleverhans.io"]
+}

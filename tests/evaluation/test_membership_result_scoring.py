@@ -13,7 +13,16 @@ class MembershipScoringTests(unittest.TestCase):
     """Use small synthetic outputs against the prepared, dated reference cases."""
 
     def setUp(self):
-        """Create an empty case-matched session and a verified synthetic evidence slice."""
+        """Create an empty case-matched session and a verified synthetic evidence slice.
+
+        Args:
+            self: This unittest case instance, holding its isolated fixtures and assertion
+                methods.
+
+        Returns:
+            None. Initialize this test instance's fixtures; unittest calls setUp before each
+            test method.
+        """
         self.suite = load_suite()
         self.case = get_case(self.suite, 'us_vermont_senate')
         self.text = 'A synthetic statement supplied only for scorer plumbing.'
@@ -24,7 +33,22 @@ class MembershipScoringTests(unittest.TestCase):
             'documents': [{'source_id': 'S1', 'status': 'retrieved'}, {'source_id': 'S2', 'status': 'retrieved'}]}
 
     def add_relation(self, subject, predicate, obj, *, supported=True):
-        """Add one independently controlled relationship and its synthetic evidence/review records."""
+        """Add one independently controlled relationship and its synthetic evidence/review records.
+
+        Args:
+            self: This unittest case instance, holding its isolated fixtures and assertion
+                methods.
+            subject: Display name of the synthetic relationship's subject entity.
+            predicate: Relationship predicate to place in the synthetic claim, such as member_of
+                or represents.
+            obj: Display name of the synthetic relationship's object entity.
+            supported: Whether to add a matching successful model-review assessment for the
+                synthetic relationship.
+
+        Returns:
+            None. Append the controlled entity relationship, quote anchor and optional
+            successful review to the scoring fixture.
+        """
         index = len(self.session['extraction']['candidates']) + 1
         cid, bid = f'C{index}', f'B{index}'
         self.session['extraction']['attempts'].append({'batch_id': bid, 'status': 'completed', 'result': {
@@ -37,11 +61,29 @@ class MembershipScoringTests(unittest.TestCase):
             'assessment': {'verdict': 'supported', 'in_scope': supported}}
 
     def score(self):
-        """Call the actual scorer without a model, network request or mock metric implementation."""
+        """Call the actual scorer without a model, network request or mock metric implementation.
+
+        Args:
+            self: This unittest case instance, holding its isolated fixtures and assertion
+                methods.
+
+        Returns:
+            The real scorer's result dictionary for the current synthetic session and
+            independently supplied evidence text.
+        """
         return score_session(self.suite, self.case, self.session, {'S1': ('fixturehash', self.text)})
 
     def test_correct_aliases_and_duplicate_claims_count_once(self):
-        """Bernard/Bernie is an explicit alias; repeated supporting sources cannot inflate recall."""
+        """Bernard/Bernie is an explicit alias; repeated supporting sources cannot inflate recall.
+
+        Args:
+            self: This unittest case instance, holding its isolated fixtures and assertion
+                methods.
+
+        Returns:
+            None. Assertions fail if the documented behavior regresses; unittest records the
+            result.
+        """
         self.add_relation('Bernard Sanders', 'MEMBER_OF', 'U.S. Senate')
         self.add_relation('Bernie Sanders', 'MEMBER_OF', 'United States Senate')
         self.add_relation('Bernie Sanders', 'REPRESENTS', 'Vermont')
@@ -51,7 +93,17 @@ class MembershipScoringTests(unittest.TestCase):
         self.assertEqual((result['predicted_count'], result['correct_count'], result['recall']), (4, 4, 1.0))
 
     def test_wrong_chamber_and_former_member_are_false_positives(self):
-        """Correct-looking names are insufficient: the person/chamber pair must match the reference."""
+        """Correct-looking names are insufficient: the person/chamber pair must match the
+        reference.
+
+        Args:
+            self: This unittest case instance, holding its isolated fixtures and assertion
+                methods.
+
+        Returns:
+            None. Assertions fail if the documented behavior regresses; unittest records the
+            result.
+        """
         self.add_relation('Peter Welch', 'MEMBER_OF', 'United States House of Representatives')
         self.add_relation('Patrick Leahy', 'MEMBER_OF', 'United States Senate')
         result = self.score()['supported_relationships']
@@ -60,7 +112,16 @@ class MembershipScoringTests(unittest.TestCase):
         self.assertEqual(result['recall'], 0)
 
     def test_unreviewed_claims_and_unrelated_predicates_do_not_score_as_supported(self):
-        """Extraction coverage and reviewed coverage are different observations."""
+        """Extraction coverage and reviewed coverage are different observations.
+
+        Args:
+            self: This unittest case instance, holding its isolated fixtures and assertion
+                methods.
+
+        Returns:
+            None. Assertions fail if the documented behavior regresses; unittest records the
+            result.
+        """
         self.add_relation('Peter Welch', 'MEMBER_OF', 'United States Senate', supported=False)
         self.add_relation('Bernie Sanders', 'KNOWS', 'Peter Welch')
         result = self.score()
@@ -69,7 +130,16 @@ class MembershipScoringTests(unittest.TestCase):
         self.assertEqual(result['ignored_candidate_counts']['not_a_requested_relationship'], 1)
 
     def test_invalid_offsets_and_absent_sources_cannot_score(self):
-        """A correct reference triple without intact supporting evidence is not eligible."""
+        """A correct reference triple without intact supporting evidence is not eligible.
+
+        Args:
+            self: This unittest case instance, holding its isolated fixtures and assertion
+                methods.
+
+        Returns:
+            None. Assertions fail if the documented behavior regresses; unittest records the
+            result.
+        """
         self.add_relation('Peter Welch', 'MEMBER_OF', 'United States Senate')
         self.session['extraction']['candidates'][0]['evidence'][0]['end'] -= 1
         self.assertEqual(self.score()['anchored_relationships']['correct_count'], 0)
@@ -80,7 +150,17 @@ class MembershipScoringTests(unittest.TestCase):
         self.assertEqual(result['sources'][1]['error_code'], 'robots_unavailable')
 
     def test_empty_output_and_wrong_case_are_not_successful_research(self):
-        """Empty predictions have zero recall; an unrelated question cannot be scored against this case."""
+        """Empty predictions have zero recall; an unrelated question cannot be scored against this
+        case.
+
+        Args:
+            self: This unittest case instance, holding its isolated fixtures and assertion
+                methods.
+
+        Returns:
+            None. Assertions fail if the documented behavior regresses; unittest records the
+            result.
+        """
         result = self.score()['supported_relationships']
         self.assertEqual(result['recall'], 0)
         self.assertIsNone(result['precision'])
@@ -91,8 +171,16 @@ class MembershipScoringTests(unittest.TestCase):
     def test_reference_pack_has_dates_sources_and_no_duplicate_expected_facts(self):
         """Every expected person has a dated source audit, without inventing human approval.
 
-        This checks completeness of the recorded audit, not live political truth;
-        the independent source inspection is documented in reference_validation.md.
+        This checks completeness of the recorded audit, not live political truth; the
+        dated source references are retained in the case JSON's reference_validation field.
+
+        Args:
+            self: This unittest case instance, holding its isolated fixtures and assertion
+                methods.
+
+        Returns:
+            None. Assertions fail if the documented behavior regresses; unittest records the
+            result.
         """
         self.assertEqual(self.suite['human_reference_review'], 'not_performed')
         validation = self.score()['reference_validation']
@@ -128,7 +216,16 @@ class MembershipScoringTests(unittest.TestCase):
                 self.assertEqual(exclusion['names'], case['negative_controls'])
 
     def test_old_frozen_reference_is_not_silently_marked_verified(self):
-        """An earlier experiment keeps its original pending label, not today's new audit."""
+        """An earlier experiment keeps its original pending label, not today's new audit.
+
+        Args:
+            self: This unittest case instance, holding its isolated fixtures and assertion
+                methods.
+
+        Returns:
+            None. Assertions fail if the documented behavior regresses; unittest records the
+            result.
+        """
         self.suite.pop('reference_validation')
         self.suite['human_reference_review'] = 'pending'
         result = self.score()

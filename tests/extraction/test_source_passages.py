@@ -19,7 +19,16 @@ class SourcePassageTests(unittest.TestCase):
     """Exercise real file reads and exact text coordinates without network access."""
 
     def test_passages_cover_all_characters_once_with_stable_bounded_offsets(self):
-        """Long prose and Unicode cannot disappear at chunk boundaries or exceed the cap."""
+        """Long prose and Unicode cannot disappear at chunk boundaries or exceed the cap.
+
+        Args:
+            self: This unittest case instance, holding its isolated fixtures and assertion
+                methods.
+
+        Returns:
+            None. Assertions fail if the documented behavior regresses; unittest records the
+            result.
+        """
         text = "é" * 15000 + "\n" + "Paragraph.\n" * 1700
         passages = list(iter_passages(text))
         self.assertEqual("".join(text[start:end] for _, start, end in passages), text)
@@ -27,7 +36,16 @@ class SourcePassageTests(unittest.TestCase):
         self.assertEqual([item[0] for item in passages], [f"P{i}" for i in range(1, len(passages) + 1)])
 
     def test_modified_text_and_escaping_paths_are_rejected(self):
-        """An existing file is not evidence unless it matches the registered saved version."""
+        """An existing file is not evidence unless it matches the registered saved version.
+
+        Args:
+            self: This unittest case instance, holding its isolated fixtures and assertion
+                methods.
+
+        Returns:
+            None. Assertions fail if the documented behavior regresses; unittest records the
+            result.
+        """
         with tempfile.TemporaryDirectory() as temporary:
             root = Path(temporary)
             (root / "documents").mkdir()
@@ -43,7 +61,16 @@ class SourcePassageTests(unittest.TestCase):
                 read_verified_text(root, doc)
 
     def test_oversized_saved_text_is_refused_before_decoding_or_model_use(self):
-        """A bounded read prevents a replaced file from consuming unlimited memory."""
+        """A bounded read prevents a replaced file from consuming unlimited memory.
+
+        Args:
+            self: This unittest case instance, holding its isolated fixtures and assertion
+                methods.
+
+        Returns:
+            None. Assertions fail if the documented behavior regresses; unittest records the
+            result.
+        """
         with tempfile.TemporaryDirectory() as temporary:
             root = Path(temporary)
             (root / "documents").mkdir()

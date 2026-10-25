@@ -15,13 +15,21 @@ from unittest.mock import patch
 
 
 def main():
-    """Fail immediately if a review command attempts unrelated external work."""
+    """Fail immediately if a review command attempts unrelated external work.
+
+    Args:
+        None.
+
+    Returns:
+        Never returns normally on the CLI path; the production __main__ raises SystemExit
+        with its command result. Fixture setup errors propagate.
+    """
     with (
         patch("socket.socket.connect", side_effect=AssertionError("Review attempted networking")),
         patch("socket.getaddrinfo", side_effect=AssertionError("Review attempted DNS")),
-        patch("projectclarity.research_planner.dotenv_values", side_effect=AssertionError("Review read credentials")),
-        patch("projectclarity.research_planner.getpass.getpass", side_effect=AssertionError("Review prompted for a key")),
-        patch("projectclarity.agentic_workflow.create_planner", side_effect=AssertionError("Review reran the planner")),
+        patch("projectclarity.nodes.plan_research.research_planner.dotenv_values", side_effect=AssertionError("Review read credentials")),
+        patch("projectclarity.nodes.plan_research.research_planner.getpass.getpass", side_effect=AssertionError("Review prompted for a key")),
+        patch("projectclarity.nodes.plan_research.node.create_planner", side_effect=AssertionError("Review reran the planner")),
     ):
         runpy.run_module("projectclarity", run_name="__main__")
 

@@ -22,8 +22,16 @@ PAGE_MEMBERS = [
 def page_and_reply(members):
     """Create source HTML and a provider-shaped extraction from explicit fixture rows.
 
-    Each person has two atomic claims anchored to one exact sentence. Entity IDs
-    are local to this page, just as in real independently extracted documents.
+    Each person has two atomic claims anchored to one exact sentence. Entity IDs are local
+    to this page, just as in real independently extracted documents.
+
+    Args:
+        members: Fixture rows of (person name, chamber name, represented area) used to
+            create matching page text and extraction output.
+
+    Returns:
+        A pair of HTML bytes and a structured extraction dictionary containing local
+        entities and two claims per person.
     """
     entities, claims, sentences = [], [], []
     for index, (name, chamber, region) in enumerate(members):

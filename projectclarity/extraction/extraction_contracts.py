@@ -11,7 +11,10 @@ provider, separately from its plain-language prompt. ExtractedEntity,
 ExtractedRelationship, ExtractedClaim and QuotedEvidence are parts of that reply.
 ExtractionAttempt, AnchoredEvidence, CandidateClaim and ExtractionRecord are
 application-owned records, not fields the LLM can submit. These classes validate
-field shapes; validate_evidence_node.py checks references against actual data.
+field shapes; nodes/validate_evidence/node.py checks references against actual data.
+Claims also carry research_roles: answer evidence, leads, context, coverage
+evidence or counterevidence. A role describes how a claim may help research;
+it neither certifies the claim nor requires global entity reconciliation.
 This file does not read documents, call models, or approve claims.
 
 Maintenance gotcha: Pydantic class docstrings and Field descriptions appear in
@@ -59,14 +62,17 @@ class ExtractedClaim(Contract):
     entity_ids: list[Identifier] = Field(max_length=12)
     relationship: ExtractedRelationship | None
     qualifications: list[Text] = Field(max_length=6, description="Dates, attribution, uncertainty or scope restrictions; empty when none are stated.")
+    research_roles: list[Literal["answer_evidence", "lead", "context", "coverage_evidence", "counterevidence"]] = Field(
+        default_factory=lambda: ["answer_evidence"], min_length=1, max_length=5,
+        description="How this finding can help research; roles do not imply certainty or acceptance.")
     evidence: list[QuotedEvidence] = Field(min_length=1, max_length=4)
 
 
 class ExtractionBatch(Contract):
     """The complete LLM reply for one passage; empty lists are a valid no-findings result."""
 
-    entities: list[ExtractedEntity] = Field(max_length=30)
-    claims: list[ExtractedClaim] = Field(max_length=12)
+    entities: list[ExtractedEntity]
+    claims: list[ExtractedClaim]
 
 
 class ExtractionAttempt(Contract):
@@ -127,7 +133,7 @@ class ExtractionRecord(Contract):
     """Versioned local work record, including coverage gaps and validation outcomes."""
 
     schema_version: Literal["1.0", "1.1", "1.2", "1.3"] = "1.3"
-    prompt_version: Literal["knowledge-extraction-v1"] = "knowledge-extraction-v1"
+    prompt_version: Literal["knowledge-extraction-v1", "knowledge-extraction-v2", "knowledge-extraction-v3"] = "knowledge-extraction-v3"
     retrieval_incomplete: bool = False
     attempts: list[ExtractionAttempt] = Field(default_factory=list)
     # These are application-owned codes, not raw provider/file exception messages.
