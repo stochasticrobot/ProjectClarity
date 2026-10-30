@@ -2,7 +2,7 @@
 
 For example, a missing category should name that field, while a model-invented
 field containing a secret must be shown only as <unknown-field>. Integration
-checks run the real CLI, graph, LangChain parser, and file writes against synthetic
+checks run the real terminal entry point, graph, LangChain parser, and file writes against synthetic
 provider HTTP. Small unit checks cover unusual exception chains and empty parser
 results. No real key, source fetch, or paid model call is used.
 
@@ -22,7 +22,7 @@ class PlanningFailureIntegrationTests(unittest.TestCase):
     """Exercise real SDK exceptions and ensure invalid answers cannot start retrieval."""
 
     def run_rejected_reply(self, *, mutate=None, text=None):
-        """Return safe diagnostics from an isolated real CLI run with one fake reply.
+        """Return safe diagnostics from an isolated real terminal entry point run with one fake reply.
 
         Args:
             self: This unittest case instance, holding its isolated fixtures and assertion

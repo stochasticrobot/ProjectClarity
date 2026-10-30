@@ -10,7 +10,7 @@ Responsibilities:
     Format the question category, objectives, scope, goals, completion criteria,
     strategy, assumptions, clarification needs, registered-source IDs,
     acquisition/candidate status, coverage and usage into Markdown. Filter terminal control
-    characters when the CLI prints model- or user-provided text.
+    characters when the terminal interface prints model- or user-provided text.
 Typical use:
     agentic_workflow.py saves render_plan(session) as plan.md; command_line.py displays that same
     representation after passing it through terminal_text(). The canonical
@@ -61,6 +61,21 @@ def render_plan(session: ResearchSession) -> str:
     ]
     if session.search:
         lines[4] = "Web search attempted; results are leads, not evidence. No accepted publication or research report generated."
+    if session.answer_schema:
+        report = session.answer_schema
+        lines.extend(['', '## Designed answer', report['title'], report['scope']])
+        for item in report['sections']:
+            lines.append(f"- {item['goal_id']} · {item['title']} ({item['format']})")
+            for field in item['fields']:
+                lines.append(f"  - {field['name']}: {field['meaning']} {field['absence_meaning']}")
+            if item['identity_fields']:
+                lines.append('  Identity fields: ' + ', '.join(item['identity_fields']))
+        lines.extend('Interpretation: ' + note for note in report['interpretation_notes'])
+    for adjustment in session.workflow.get('result_contract_adjustments', []):
+        fields = ', '.join(adjustment['provenance_fields'])
+        lines.append(f"Result contract ({adjustment['goal_id']}): {fields} recorded as evidence provenance, not item fields.")
+        if adjustment['status'] == 'item_identity_undefined':
+            lines.append('No item identity was defined; this goal cannot report an enumeration count.')
 
     def section(title, items):
         """Append a titled list, showing an empty section rather than silently omitting it.
@@ -96,6 +111,9 @@ def render_plan(session: ResearchSession) -> str:
     for goal in plan.goals:
         lines.append(f"- **{goal.goal_id}:** {goal.question}")
         lines.extend(f"  - Evidence needed: {item}" for item in goal.evidence_required)
+        if goal.result_shape:
+            lines.append(f"  - Result unit: {goal.result_shape.unit}; required fields: "
+                + ', '.join(goal.result_shape.required_fields))
     lines.extend(["", "## Proposed strategy"])
     for number, step in enumerate(plan.strategy, start=1):
         lines.append(f"{number}. {step.action}")

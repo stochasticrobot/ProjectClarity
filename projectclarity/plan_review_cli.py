@@ -21,7 +21,7 @@ from projectclarity.terminal_research_interface import interactive_plan_review, 
 
 
 def add_review_command(commands) -> None:
-    """Keep review-specific flags separate from source-acquisition CLI options.
+    """Keep review-specific flags separate from source-acquisition terminal interface options.
 
     Args:
         commands: argparse subparser collection to which the review command is added.

@@ -1,7 +1,7 @@
 """Build small, artificial research sessions for focused component tests.
 
 For example, storage tests need a session to save and renderer tests need a plan
-to display. Both use the same handwritten plan as the mocked CLI checks, without
+to display. Both use the same handwritten plan as the mocked terminal interface checks, without
 calling a model or reading the developer's saved runs. Each call returns fresh
 objects so one test's changes cannot affect another test.
 """

@@ -1,12 +1,33 @@
-"""Persist bounded crawl waves between search batches without adding model tasks.
+"""Limit how much link-following work runs before another search opportunity.
 
-The existing selector still chooses links and the existing coverage task proposes
-queries. This module owns timing only: complete runnable analysis, expand through
-the relative horizon, assess gaps, then search. A horizon is not a crawl limit.
-It also is not a page/call quota: the whole runnable frontier inside that horizon
-has priority, so a wide frontier can exhaust the budget before coverage/search.
-The scheduler has no protected search allowance; smaller depth is not a guarantee.
+For the older scheduling policy, an exploration cycle is the work done between
+search batches. These helpers remember the cycle's starting link depth and model
+usage, then select eligible work until its depth or request checkpoint is reached.
+For example, a wide set of linked pages must not indefinitely postpone a queued
+search. The saved counters survive restart. This module selects work and updates
+in-memory bookkeeping; it does not make searches, retrieve pages or call a model.
 """
+
+MAX_EXPLORE_MODEL_CALLS = 12
+
+
+def exploration_budget_due(session):
+    """Recognize a crawl checkpoint before frontier breadth consumes all calls.
+
+    Args:
+        session: Run with current exploration cycle and cumulative request usage.
+
+    Returns:
+        True after twelve calls in this wave or with four requests left. Disabled
+        exploration returns False. Review flushing can still consume the remaining
+        allowance; this is not a guarantee of successful search or new evidence.
+    """
+    cycle = session.workflow.get('exploration_cycle')
+    spent = session.usage.requests_attempted - (cycle or {}).get('start_model_requests', session.usage.requests_attempted)
+    return bool(session.request.explore_before_search_depth and session.request.web_search
+        and session.request.follow_links and cycle and (
+            spent >= MAX_EXPLORE_MODEL_CALLS
+            or (spent > 0 and session.request.budget.max_requests - session.usage.requests_attempted <= 4)))
 
 
 def prepare_cycle(session, reason=None):
@@ -32,6 +53,7 @@ def prepare_cycle(session, reason=None):
             history.append({k: cycle.get(k) for k in
                 ('number', 'depths', 'phase', 'release_reason', 'coverage_status', 'search_round')})
         cycle.update(number=cycle.get('number', 0) + 1, limit=request.explore_before_search_depth,
+            start_model_requests=session.usage.requests_attempted,
             depths={s.source_id: 0 for s in session.sources}, phase='explore',
             start_reason=reason or 'initial_sources', release_reason=None,
             coverage_status=None, search_round=session.search.get('round', 0), history=history)
@@ -56,12 +78,24 @@ def choose_cycle_work(session, available, delayed):
         inventory once). Failed/uncertain/budget-blocked tasks never masquerade as
         successful analysis. A ready search can proceed when only delayed local
         work remains; cooldown search does not freeze deeper independent crawling.
-        Optional capture is not a prerequisite for search, but runnable analysis
-        and link expansion take priority; their breadth can consume all model calls.
+        Optional capture is not a prerequisite for search. At the call checkpoint,
+        pending review precedes gap assessment and search; unfinished crawl work
+        stays queued. When search is unavailable, independent crawling continues.
     """
     cycle = session.workflow.get('exploration_cycle')
     if not (session.request.explore_before_search_depth and cycle):
         return available
+    cycle.setdefault('start_model_requests', session.usage.requests_attempted)
+    if exploration_budget_due(session):
+        for actions, phase in (
+            ({'review_claims', 'validate_evidence'}, 'flush_reviews'),
+            ({'assess_research_gaps'}, 'assess_gaps'),
+            ({'select_sources', 'web_search'}, 'search'),
+        ):
+            ready = [task for task in available if task['action'] in actions]
+            if ready:
+                cycle.update(phase=phase, release_reason='crawl_call_quantum')
+                return ready
     for actions, phase in (
         ({'select_sources'}, 'existing_search_results'),
         ({'retrieve_sources', 'extract_knowledge', 'validate_evidence', 'review_claims'}, 'analyze'),

@@ -1,4 +1,11 @@
-"""Verify auxiliary capture limits through production CLI and the actual model boundary."""
+"""Check that optional broad knowledge capture cannot spend an independent extra budget.
+
+The public research command and model-call path run with controlled provider
+responses. Tests verify that answer extraction alone does not enable capture and
+that an exhausted capture allowance leaves answer-focused research usable without
+requesting credentials for another capture. Counts come from actual saved attempts;
+these tests do not measure live knowledge-extraction quality.
+"""
 import json
 import unittest
 
@@ -16,7 +23,7 @@ class CaptureObjectiveBudgetTests(unittest.TestCase):
         """Exercise --extract without either capture opt-in or the legacy disable flag.
 
         Args:
-            self: Real CLI fixture with a local document and synthetic model transport.
+            self: Real terminal interface fixture with a local document and synthetic model transport.
 
         Returns:
             None. Assert only planning/extraction calls, no capture store, and an explicit
@@ -58,7 +65,7 @@ class CaptureObjectiveBudgetTests(unittest.TestCase):
         """Stop optional broad capture at its cap and continue answer extraction normally.
 
         Args:
-            self: Production CLI fixture with a long document and synthetic model replies.
+            self: Production terminal interface fixture with a long document and synthetic model replies.
 
         Returns:
             None. Assert independent cap, retained windows, subsequent research calls,

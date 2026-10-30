@@ -1,6 +1,6 @@
 """Verify text graph views against real research execution, without live services.
 
-The provider reply is synthetic, but the CLI, compiled graph, review checkpoints,
+The provider reply is synthetic, but the terminal interface, compiled graph, review checkpoints,
 local text parsing and output files are real. A paused or failed node must not
 look completed, and inspecting a graph must not start another model call. These
 checks prove the present sequential route view, not a general tracing engine.
@@ -28,7 +28,7 @@ class RunGraphVisualizationTests(unittest.TestCase):
     """Use production entry points and inspect persisted evidence, not just pretty text."""
 
     def new_run(self, *, plan_only=False, failed=False, questions=False):
-        """Create one isolated real CLI run for a chosen planner outcome.
+        """Create one isolated real terminal entry point run for a chosen planner outcome.
 
         Args:
             self: This unittest case instance, holding its isolated fixtures and assertion
@@ -40,7 +40,7 @@ class RunGraphVisualizationTests(unittest.TestCase):
             questions: Whether the synthetic plan includes blocking clarification questions.
 
         Returns:
-            A tuple of CLI harness, run directory, saved session, graph snapshot, graph text,
+            A tuple of terminal interface harness, run directory, saved session, graph snapshot, graph text,
             exit code, stdout and stderr.
         """
         cli = planning_tests.PlanningCLIIntegrationTests()

@@ -1,9 +1,11 @@
-"""Replaceable free-search adapter using one explicit DDGS or Wikipedia backend.
+"""Run a configured free web-search engine in a separate, time-limited process.
 
-Queries go to the search engine, not a model or database. A short-lived worker
-gets no API-key environment and a 20-second wall-clock ceiling. The provider's
-internal HTTP traffic is NOT counted as source-retrieval traffic. The calling node
-enforces acquisition time and any explicit query cap. Results are leads, never evidence.
+The research search executor supplies a query, engine and limits. This adapter
+starts the worker, collects normalized search-result references and reports timeout
+or provider failure distinctly from a successful query with no results. The worker
+uses an explicitly chosen DDGS backend or Wikipedia search; it does not download
+the returned pages. This process boundary allows cancellation and timeout handling
+without leaving an unbounded search request in the research worker.
 """
 import json
 import os

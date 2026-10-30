@@ -1,7 +1,10 @@
-"""Failure-first scheduler tests; no model/network operation is replaced by success.
+"""Check task-queue decisions directly with constructed research-session histories.
 
-These unit tests inspect journal decisions. test_workflow_control_cli separately
-exercises the actual entry point, adapters, parser, retrieval and saved artifacts.
+These unit tests examine which work is ready, delayed, blocked, completed or
+uncertain after failures and interruptions. They do not replace a failed model or
+network operation with a successful research result. The companion command-line
+suite executes the same scheduler inside the real graph, parsers and file writes;
+this file isolates queue and restart policy from external service behavior.
 """
 import tempfile
 import unittest
@@ -247,7 +250,7 @@ class WorkflowControlTests(unittest.TestCase):
 
         Returns:
             None. Assert S6_L56 and S1_L70 survive the intervening invented S12_L1.
-            The CLI fault-combination test separately proves continued acquisition.
+            The terminal interface fault-combination test separately proves continued acquisition.
         """
         offered = {
             'S6_L56': {'url': 'https://www.canada.ca/en/communications-security/news/2024/07/cse-and-nserc-to-fund-research-on-robust-secure-and-safe-artificial-intelligence.html'},

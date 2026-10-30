@@ -84,7 +84,7 @@ class KnowledgeGraphEvaluationTests(unittest.TestCase):
 
         Args:
             self: Fixture owning its independent provider response and temporary output root.
-            *options: Additional evaluator CLI flags, such as a deliberately small request cap.
+            *options: Additional evaluator terminal interface flags, such as a deliberately small request cap.
 
         Returns:
             Exit code, experiment directory, saved score and printed report output from one

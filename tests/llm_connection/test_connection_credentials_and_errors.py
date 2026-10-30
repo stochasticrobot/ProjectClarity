@@ -1,4 +1,4 @@
-"""Isolated unit checks for the standalone connection smoke check's input and CLI.
+"""Isolated unit checks for the standalone connection smoke check's input and terminal interface.
 
 Purpose:
     Check small parts of the connection check without contacting Anthropic.
@@ -102,7 +102,7 @@ class KeyInputTests(unittest.TestCase):
 
 
 class CommandLineTests(unittest.TestCase):
-    """Check CLI diagnostics independently of graph and provider behavior."""
+    """Check terminal interface diagnostics independently of graph and provider behavior."""
 
     def test_unexpected_error_does_not_expose_credentials(self):
         """An exception containing a secret must print its type, not its body.

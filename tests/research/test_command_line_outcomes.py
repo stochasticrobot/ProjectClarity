@@ -2,7 +2,7 @@
 
 For example, a cancelled run must return 130, not look like a completed job.
 The graph is replaced with a returned session or an injected exception so a
-failure here points to CLI handling, not Anthropic, retrieval, or storage. The
+failure here points to terminal interface handling, not Anthropic, retrieval, or storage. The
 separate integration tests still check that the actual graph is connected.
 """
 

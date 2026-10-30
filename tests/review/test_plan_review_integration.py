@@ -14,6 +14,7 @@ extraction after review is separately checked in tests/extraction/.
 
 import json
 import os
+import sqlite3
 import subprocess
 import sys
 import unittest
@@ -68,6 +69,9 @@ class PlanReviewIntegrationTests(unittest.TestCase):
         self.assertEqual(self.session["status"], "awaiting_review")
         self.assertFalse((self.directory / "documents.json").exists())
         self.review = get_plan_review(self.cli.output, self.directory.name)
+        with sqlite3.connect(self.cli.output / "workflow_checkpoints.sqlite") as connection:
+            count = connection.execute("SELECT count(*) FROM checkpoints").fetchone()[0]
+        self.assertEqual(count, 1, "A review pause must save one checkpoint, not each prior step")
 
     def command(self, name, *options):
         """A fresh interpreter must load the checkpoint, not reuse in-memory graph state.
@@ -75,7 +79,7 @@ class PlanReviewIntegrationTests(unittest.TestCase):
         Args:
             self: This unittest case instance, holding its isolated fixtures and assertion
                 methods.
-            name: Production CLI subcommand to invoke through the network-denying review-process
+            name: Production terminal interface subcommand to invoke through the network-denying review-process
                 fixture.
             *options: Additional command-line argument strings appended to this helper's base
                 invocation.
@@ -152,6 +156,9 @@ class PlanReviewIntegrationTests(unittest.TestCase):
         self.assertEqual(saved["visited_nodes"], ["initialize_research", "plan_research", "review_plan", "schedule_work", "retrieve_sources", "schedule_work"])
         self.assertEqual((self.directory / "documents/S1/text.txt").read_text(), self.document.read_text())
         self.assertEqual(len(self.cli.requests), 1)
+        with sqlite3.connect(self.cli.output / "workflow_checkpoints.sqlite") as connection:
+            count = connection.execute("SELECT count(*) FROM checkpoints").fetchone()[0]
+        self.assertEqual(count, 2, "The separate-process continuation adds only its exit checkpoint")
         final = read_status(self.directory)
         self.assertTrue(final["finished"])
         self.assertFalse(final["waiting_for_input"])
@@ -200,7 +207,8 @@ class PlanReviewIntegrationTests(unittest.TestCase):
         self.assertEqual(session.status, "sources_retrieved")
         self.assertEqual(session.plan.objective, revised.objective)
         original = json.loads((self.directory / "review_request.json").read_text())
-        self.assertEqual(original["plan"], self.cli.plan)
+        self.assertEqual(original["plan"],
+            {**self.cli.plan, "goals": [{**g, "requirement_ids": []} for g in self.cli.plan["goals"]]})
         self.assertEqual(json.loads((self.directory / "plan.json").read_text()), revised.model_dump())
 
     def test_rejection_finishes_without_fetching_or_rerunning_the_planner(self):
@@ -464,7 +472,7 @@ class PlanReviewIntegrationTests(unittest.TestCase):
         self.assertFalse((self.directory / "documents.json").exists())
 
     def test_full_decision_file_uses_the_same_contract_as_a_nonterminal_adapter(self):
-        """Machine-oriented CLI submission reaches the same validation and reject branch.
+        """Machine-oriented terminal interface submission reaches the same validation and reject branch.
 
         Args:
             self: This unittest case instance, holding its isolated fixtures and assertion

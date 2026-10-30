@@ -17,7 +17,7 @@ to stop at its next control check. Callers supply content-free event fields;
 start() receives a session but selects only IDs, hostnames and limits for storage.
 The allowlist checks field names, not arbitrary values: it is not a redactor.
 Do not pass source text, prompts, credentials, URL queries or full local paths
-as event values. The separate final CLI summary deliberately shows research text.
+as event values. The separate final terminal interface summary deliberately shows research text.
 """
 
 import fcntl
@@ -102,6 +102,7 @@ class RunMonitor:
     # An allowlist prevents an accidental `response=...` or `api_key=...` from
     # turning operational logging into a dump of confidential application data.
     DETAIL_FIELDS = {
+        "attempt_id", "attempt_number",
         "stage", "run_status", "source_status", "error_code", "error_type", "host", "node_name",
         "request_kind", "http_status", "wait_seconds", "request_seconds", "source_seconds",
         "byte_count", "character_count", "text_path", "raw_path", "http_requests", "bytes_read",
@@ -115,6 +116,7 @@ class RunMonitor:
         "query_id", "search_provider", "result_count", "cooldown_until", "engine_exhausted",
         "branch_status", "unproductive_count", "branch_limit",
         "exploration_cycle", "exploration_phase", "exploration_depth",
+        "document_focus_status", "remaining_passages",
     }
 
     def __init__(self, output_root: Path, sink=None):

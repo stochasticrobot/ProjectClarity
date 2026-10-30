@@ -1,15 +1,18 @@
-"""Execute planned or evidence-guided searches with a cumulative query ledger.
+"""Run permitted search queries and retain every query's outcome and result references.
 
-The initial round uses the plan's proposed_searches; later rounds may use
-coverage gaps and leads. All queries/results/omissions are retained. URL
-normalization and duplicate rejection happen before the model selects sources.
-No search snippet enters the extraction pipeline as supporting evidence.
+Initial queries come from the research plan; later suggestions can address gaps
+identified in the collected evidence. This step applies request and source limits,
+uses the shared search executor for provider recovery, normalizes returned URLs
+and records failures separately from genuinely empty results. A later selection
+step decides which results become sources. Search snippets themselves never serve
+as quotations supporting extracted claims.
 """
 import json
 import time
 from itertools import zip_longest
 
 from projectclarity.discovery.observed_link_inventory import canonical_url
+from projectclarity.discovery.search_result_urls import normalize_search_result_url
 from projectclarity.discovery.search_provider import SearchProviderError, search_web
 from projectclarity.discovery.search_execution import execute_search
 from projectclarity.discovery.search_engines import engine_order, search_readiness
@@ -43,18 +46,29 @@ def proposed_queries(session):
             accumulated results and status.
 
     Returns:
-        Under exploration-cycle scheduling, fresh coverage proposals first, then
+        During the preliminary study, only its validated, unattempted queries.
+        Before any main-research query is attempted, planner proposals first, preserving their
+        strategy/within-step order for the broad overview round. Later, under
+        exploration-cycle scheduling, fresh coverage proposals first, then
         deferred failed queries and unused strategy queries. Legacy runs interleave
         coverage/strategy after deferred queries. Duplicate normalized proposals
         are removed; successful queries never repeat. At the logical-query ceiling,
         prioritize remaining deferred receipts exclusively so new proposals cannot
-        hide retry identity. Without retries, retain blocked proposals for reporting.
-        No new query text or topic-specific ordering is synthesized here.
+        hide retry identity. Designed-report blocker queries precede unused planner
+        queries even before the initial main-research round; otherwise a scheduler
+        handoff could execute unrelated broad searches. Without retries, retain
+        blocked proposals for reporting.
+        Study queries retain separate purpose labels and do not suppress that broad
+        initial main-research round. No query text or topic-specific ordering is synthesized here.
     """
     attempted = {q['query'].casefold() for q in session.search.get('queries', [])}
     groups = [[{"query": q, "goal_ids": step.goal_ids, "reason": step.action}
         for q in step.proposed_searches] for step in session.plan.strategy]
-    planned = [q for row in zip_longest(*groups) for q in row
+    initial = not any(q.get('purpose') != 'coverage_study' for q in session.search.get('queries', []))
+    if session.coverage_study.get('status') == 'running' and session.coverage_study.get('phase') == 'search':
+        return [q for q in session.coverage_study['plan']['queries']
+            if ' '.join(q['query'].split()).casefold() not in attempted]
+    planned = [q for row in (groups if initial else zip_longest(*groups)) for q in row
         if q is not None and ' '.join(q['query'].split()).casefold() not in attempted]
     coverage = [q for q in session.coverage.get('next_searches', [])
         if ' '.join(q['query'].split()).casefold() not in attempted]
@@ -63,8 +77,11 @@ def proposed_queries(session):
     cap = session.request.max_search_queries
     if deferred and cap is not None and len(session.search.get('queries', [])) >= cap:
         return deferred
-    ordered = (coverage + deferred + planned if session.request.explore_before_search_depth and session.request.follow_links
+    ordered = (planned + coverage + deferred if initial else
+        coverage + deferred + planned if session.request.explore_before_search_depth and session.request.follow_links
         else deferred + [q for row in zip_longest(coverage, planned) for q in row if q is not None])
+    if session.answer_schema and coverage:
+        ordered = coverage + deferred + planned
     unique = {}
     for query in ordered:
         key = ' '.join(query['query'].split()).casefold()
@@ -160,14 +177,16 @@ def search_stop_reason(session):
     return None
 
 
-def web_search(state, output_root, monitor=None, web=None):
+def web_search(state, output_root, monitor=None, web=None, *, record_visit=True):
     """Execute authorized, bounded search queries to discover source leads for the current
     research goals.
 
     Reserve each logical query before invoking engines so failures consume its
     allowance. Deferred rounds reuse that receipt and retain all engine attempts;
     their separate recovery bound prevents unlimited replay. Keep result provenance,
-    exclusions and stop reasons in a cumulative ledger.
+    exclusions and stop reasons in a cumulative ledger. Retain original URLs,
+    exclude known advertising-click endpoints, and decode recognized organic
+    wrappers locally before destination policy and deduplication checks.
     This node neither downloads result pages nor extracts facts from snippets.
 
     Args:
@@ -179,6 +198,8 @@ def web_search(state, output_root, monitor=None, web=None):
             disables those hooks.
         web: Optional shared retrieval runtime; its elapsed time and acquisition budgets
             also prevent new search attempts after retrieval is exhausted.
+        record_visit: False when the early-study node reuses this executor internally;
+            do not invent a separate graph-node visit for nested work.
 
     Returns:
         A dictionary with one session entry containing the updated ResearchSession.
@@ -186,7 +207,8 @@ def web_search(state, output_root, monitor=None, web=None):
         knowledge.
     """
     session = state["session"]
-    session.visited_nodes.append("web_search")
+    if record_visit:
+        session.visited_nodes.append("web_search")
     proposals = proposed_queries(session)
     search = session.search
     search.setdefault("schema_version", "1.0")
@@ -239,6 +261,8 @@ def web_search(state, output_root, monitor=None, web=None):
             "query": query, "goal_ids": proposal["goal_ids"], "reason": proposal["reason"],
             "status": "started", "error_code": None, "provider": session.request.search_provider}
         if not retry:
+            if session.coverage_study.get('phase') == 'search' and session.coverage_study.get('status') == 'running':
+                receipt['purpose'] = 'coverage_study'
             search["queries"].append(receipt)
         receipt.update(status='started', error_code=None, rounds=receipt.get('rounds', 0) + 1,
             execution_round=search['round'])
@@ -255,11 +279,13 @@ def web_search(state, output_root, monitor=None, web=None):
             for result in results[:session.request.search_results_per_query]:
                 if not isinstance(result, dict):
                     raise SearchProviderError("invalid_search_response")
-                url = canonical_url(str(result.get("url", "")))
-                exclusion = "invalid_or_nonpublic_url" if not url else url_denial(url, session.request.url_policy) or ("duplicate_url" if url in seen_urls else None)
+                original_url = str(result.get("url", ""))
+                url, exclusion = normalize_search_result_url(original_url)
+                if exclusion is None:
+                    exclusion = url_denial(url, session.request.url_policy) or ("duplicate_url" if url in seen_urls else None)
                 item = {"result_id": f"R{len(search['results']) + 1}", "query_id": receipt["query_id"],
                     "provider": receipt['provider'],
-                    "round": search["round"], "url": url,
+                    "round": search["round"], "url": url, "original_url": original_url[:2048],
                     "title": str(result.get("title", ""))[:300], "snippet": str(result.get("snippet", ""))[:700],
                     "eligible": exclusion is None, "exclusion_reason": exclusion}
                 search["results"].append(item)

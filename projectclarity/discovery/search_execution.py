@@ -1,4 +1,12 @@
-"""Execute explicit free-engine fallback with persisted, bounded cooldown recovery."""
+"""Try enabled search engines in order while preserving failure and retry history.
+
+The web-search step calls execute_search for a query. If an eligible engine fails,
+the executor records the failure and may try another enabled engine within the
+same run limits. Engines in cooldown are skipped until their retry time; when all
+are delayed, control returns to the scheduler instead of sleeping indefinitely.
+The query's results, attempts and timing remain in the supplied session. This is
+source discovery only: search snippets are not retrieved-page evidence.
+"""
 import time
 
 from projectclarity.discovery.search_engines import cool_engine, engine_order, engine_state, search_readiness

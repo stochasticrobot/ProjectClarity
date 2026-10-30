@@ -1,8 +1,8 @@
-"""Run the real research CLI in a child process with a deliberately slow source.
+"""Run the real research tool’s terminal entry point in a child process with a deliberately slow source.
 
 The monitoring integration tests start this module, then run normal status/cancel
 commands in other processes. Only Anthropic HTTP, source HTTP, and DNS are faked;
-the CLI, LangGraph, parsers, files, locks, progress events, and cancellation checks
+the terminal interface, LangGraph, parsers, files, locks, progress events, and cancellation checks
 are production code. Source one is quick, source two downloads slowly, and source
 three proves that a stop request prevents later work. This is not a live smoke
 test or evidence about provider/research quality.
@@ -11,7 +11,6 @@ test or evidence about provider/research quality.
 import argparse
 import json
 import runpy
-import sys
 import time
 from pathlib import Path
 from unittest.mock import patch
@@ -29,7 +28,7 @@ def main():
         None.
 
     Returns:
-        Never returns normally on the CLI path; the production __main__ raises SystemExit
+        Never returns normally on the terminal interface path; the production __main__ raises SystemExit
         with its command result. Fixture setup errors propagate.
     """
     parser = argparse.ArgumentParser()

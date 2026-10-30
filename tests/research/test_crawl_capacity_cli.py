@@ -1,4 +1,4 @@
-"""Prove larger/deeper crawling through the CLI, not a helper-only simulation.
+"""Prove larger/deeper crawling through the terminal interface, not a helper-only simulation.
 
 HTTP/DNS/model transports and pacing sleep are synthetic; graph scheduling,
 selection validation, robots, parsing, budgets and saved receipts remain real.
@@ -53,7 +53,7 @@ class CrawlCapacityCLITests(unittest.TestCase):
         return (200, {'Content-Type': 'text/html'}, html.encode() + b'<!--' + b'x' * (640 * 1024) + b'-->')
 
     def run_crawl(self, *flags):
-        """Run real CLI traversal while skipping only wall-clock pacing sleeps.
+        """Run real terminal entry point traversal while skipping only wall-clock pacing sleeps.
 
         Args:
             self: Fixture with synthetic SDK/source responses and real application nodes.
@@ -62,13 +62,13 @@ class CrawlCapacityCLITests(unittest.TestCase):
                 whose synthetic pages intentionally contain no useful claims.
 
         Returns:
-            CLI exit code, run directory, saved state and captured stderr.
+            terminal interface exit code, run directory, saved state and captured stderr.
         """
         with patch('projectclarity.retrieval.retrieval_limits.time.sleep'):
             return self.flow.run_workflow('--max-requests', '200', '--max-unproductive-depth', '0', *flags)
 
     def test_default_capacity_crosses_all_old_limits_and_depth_two(self):
-        """Require acquired documents at CLI capacity defaults with pruning disabled.
+        """Require acquired documents at terminal interface capacity defaults with pruning disabled.
 
         Args:
             self: Seven-branch fixture with no source/HTTP/byte/depth overrides.
@@ -119,7 +119,7 @@ class CrawlCapacityCLITests(unittest.TestCase):
         self.assertIn('source_limit', saved['workflow']['stop_details'])
 
     def test_legacy_defaults_and_expanded_operator_ceilings(self):
-        """Preserve old API defaults while allowing larger validated CLI requests.
+        """Preserve old API defaults while allowing larger validated terminal interface requests.
 
         Args:
             self: Test instance using schema validation without model or network calls.

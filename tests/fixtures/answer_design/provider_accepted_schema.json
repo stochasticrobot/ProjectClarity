@@ -1,0 +1,297 @@
+{
+  "$defs": {
+    "AnswerCompletionCheck": {
+      "additionalProperties": false,
+      "description": "An answer requirement with an explicit counting unit and optional report-inventory binding.",
+      "properties": {
+        "criterion_id": {
+          "pattern": "^[A-Za-z][A-Za-z0-9_-]{0,31}$",
+          "title": "Criterion Id",
+          "type": "string"
+        },
+        "goal_ids": {
+          "items": {
+            "pattern": "^[A-Za-z][A-Za-z0-9_-]{0,31}$",
+            "type": "string"
+          },
+          "maxItems": 8,
+          "minItems": 1,
+          "title": "Goal Ids",
+          "type": "array"
+        },
+        "description": {
+          "maxLength": 1600,
+          "minLength": 1,
+          "title": "Description",
+          "type": "string"
+        },
+        "kind": {
+          "enum": [
+            "enumeration",
+            "constraints",
+            "evidence_sufficiency"
+          ],
+          "title": "Kind",
+          "type": "string"
+        },
+        "measurement_method": {
+          "maxLength": 1600,
+          "minLength": 1,
+          "title": "Measurement Method",
+          "type": "string"
+        },
+        "target_basis": {
+          "enum": [
+            "research",
+            "user_request",
+            "not_applicable"
+          ],
+          "title": "Target Basis",
+          "type": "string"
+        },
+        "target_count": {
+          "anyOf": [
+            {
+              "maximum": 1000000,
+              "minimum": 0,
+              "type": "integer"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Target Count"
+        },
+        "limitations": {
+          "items": {
+            "maxLength": 1600,
+            "minLength": 1,
+            "type": "string"
+          },
+          "maxItems": 6,
+          "title": "Limitations",
+          "type": "array"
+        },
+        "unit": {
+          "maxLength": 200,
+          "minLength": 1,
+          "title": "Unit",
+          "type": "string"
+        },
+        "result_goal_id": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "title": "Result Goal Id"
+        },
+        "evidence_required": {
+          "items": {
+            "type": "string"
+          },
+          "maxItems": 6,
+          "minItems": 1,
+          "title": "Evidence Required",
+          "type": "array"
+        }
+      },
+      "required": [
+        "criterion_id",
+        "goal_ids",
+        "description",
+        "kind",
+        "measurement_method",
+        "target_basis",
+        "unit",
+        "result_goal_id",
+        "evidence_required"
+      ],
+      "title": "AnswerCompletionCheck",
+      "type": "object"
+    },
+    "ReportField": {
+      "additionalProperties": false,
+      "description": "One required answer field, with explicit meaning and representation rules.",
+      "properties": {
+        "name": {
+          "pattern": "^[A-Za-z][A-Za-z0-9_]{0,63}$",
+          "title": "Name",
+          "type": "string"
+        },
+        "meaning": {
+          "maxLength": 1000,
+          "minLength": 1,
+          "title": "Meaning",
+          "type": "string"
+        },
+        "value_kind": {
+          "enum": [
+            "person_name",
+            "organization_name",
+            "text",
+            "date",
+            "number"
+          ],
+          "title": "Value Kind",
+          "type": "string"
+        },
+        "absence_meaning": {
+          "maxLength": 500,
+          "minLength": 1,
+          "title": "Absence Meaning",
+          "type": "string"
+        }
+      },
+      "required": [
+        "name",
+        "meaning",
+        "value_kind",
+        "absence_meaning"
+      ],
+      "title": "ReportField",
+      "type": "object"
+    },
+    "ReportSection": {
+      "additionalProperties": false,
+      "description": "A report section linked to one research goal, not an inferred finding.",
+      "properties": {
+        "goal_id": {
+          "pattern": "^G[1-9][0-9]*$",
+          "title": "Goal Id",
+          "type": "string"
+        },
+        "title": {
+          "maxLength": 200,
+          "minLength": 1,
+          "title": "Title",
+          "type": "string"
+        },
+        "question": {
+          "maxLength": 2000,
+          "minLength": 1,
+          "title": "Question",
+          "type": "string"
+        },
+        "format": {
+          "enum": [
+            "records",
+            "timeline",
+            "comparison",
+            "narrative"
+          ],
+          "title": "Format",
+          "type": "string"
+        },
+        "unit": {
+          "maxLength": 200,
+          "minLength": 1,
+          "title": "Unit",
+          "type": "string"
+        },
+        "fields": {
+          "items": {
+            "$ref": "#/$defs/ReportField"
+          },
+          "maxItems": 8,
+          "title": "Fields",
+          "type": "array"
+        },
+        "identity_fields": {
+          "items": {
+            "type": "string"
+          },
+          "maxItems": 8,
+          "title": "Identity Fields",
+          "type": "array"
+        },
+        "evidence_requirements": {
+          "items": {
+            "type": "string"
+          },
+          "maxItems": 6,
+          "minItems": 1,
+          "title": "Evidence Requirements",
+          "type": "array"
+        }
+      },
+      "required": [
+        "goal_id",
+        "title",
+        "question",
+        "format",
+        "unit",
+        "fields",
+        "identity_fields",
+        "evidence_requirements"
+      ],
+      "title": "ReportSection",
+      "type": "object"
+    }
+  },
+  "additionalProperties": false,
+  "description": "The requested report structure; contains no answers or population estimates.",
+  "properties": {
+    "title": {
+      "maxLength": 200,
+      "minLength": 1,
+      "title": "Title",
+      "type": "string"
+    },
+    "scope": {
+      "maxLength": 2000,
+      "minLength": 1,
+      "title": "Scope",
+      "type": "string"
+    },
+    "as_of": {
+      "anyOf": [
+        {
+          "type": "string"
+        },
+        {
+          "type": "null"
+        }
+      ],
+      "title": "As Of"
+    },
+    "sections": {
+      "items": {
+        "$ref": "#/$defs/ReportSection"
+      },
+      "maxItems": 8,
+      "minItems": 1,
+      "title": "Sections",
+      "type": "array"
+    },
+    "interpretation_notes": {
+      "items": {
+        "type": "string"
+      },
+      "maxItems": 8,
+      "title": "Interpretation Notes",
+      "type": "array"
+    },
+    "completion_checks": {
+      "items": {
+        "$ref": "#/$defs/AnswerCompletionCheck"
+      },
+      "maxItems": 12,
+      "title": "Completion Checks",
+      "type": "array"
+    }
+  },
+  "required": [
+    "title",
+    "scope",
+    "as_of",
+    "sections",
+    "interpretation_notes"
+  ],
+  "title": "AnswerSchema",
+  "type": "object"
+}

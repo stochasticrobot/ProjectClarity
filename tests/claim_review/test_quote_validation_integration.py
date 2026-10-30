@@ -1,7 +1,10 @@
-"""Prove whitespace anchoring and per-claim review isolation through the real CLI.
+"""Check quotation matching and claim-by-claim review failures through the research command.
 
-Only external HTTP/DNS/provider replies are fixtures. Nodes, saved source parsing,
-model schema parsing, validation, adjudication and artifact writes stay real.
+A source with wrapped whitespace tests whether a model's normalized quotation maps
+back to the original text offsets. A fabricated review quote must leave its own
+claim unresolved without discarding valid neighboring assessments. External
+responses are simulated; parsing, evidence validation, adjudication and saved
+files run through the real workflow. No live model judgment is measured.
 """
 import copy
 import json
@@ -54,7 +57,7 @@ class QuoteValidationIntegrationTests(unittest.TestCase):
             """
             return self.flow.cli.response(text=json.dumps({"assessments": [{
                 "candidate_id": "S1_P1_C1", "verdict": "supported", "in_scope": True,
-                "rationale": "The passage states the affiliation.", "evidence_quotes": ["Alice works at Lab X."]}]}))
+                "rationale": "The passage states the affiliation.", "report_mappings": [], "evidence_quotes": ["Alice works at Lab X."]}]}))
         self.flow.overrides["ClaimReviewBatch"] = review
         code, _, err, directory, session = self.flow.run_research(follow=False)
         self.assertEqual(code, 0, err)
@@ -99,9 +102,9 @@ class QuoteValidationIntegrationTests(unittest.TestCase):
             """
             return self.flow.cli.response(text=json.dumps({"assessments": [
                 {"candidate_id": "S1_P1_C1", "verdict": "supported", "in_scope": True,
-                 "rationale": "Affiliation is stated.", "evidence_quotes": ["Alice works at Lab X."]},
+                 "rationale": "Affiliation is stated.", "report_mappings": [], "evidence_quotes": ["Alice works at Lab X."]},
                 {"candidate_id": "S1_P1_C2", "verdict": "supported", "in_scope": True,
-                 "rationale": "Fault fixture.", "evidence_quotes": ["This quotation is fabricated."]}]}))
+                 "rationale": "Fault fixture.", "report_mappings": [], "evidence_quotes": ["This quotation is fabricated."]}]}))
         self.flow.overrides["ClaimReviewBatch"] = review
         code, _, _, _, session = self.flow.run_research(follow=False)
         self.assertEqual(code, 1)

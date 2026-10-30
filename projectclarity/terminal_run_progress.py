@@ -6,8 +6,9 @@ RunMonitor sends safe events here; private source labels are read separately
 from the run snapshot. They never get added to events.jsonl or status telemetry.
 Committed graph additions are read from the local database using cursor ranges;
 new nodes, edges and attributes appear without enabling private prompt display.
-Budget summaries at event boundaries expose remaining allowances and reported
-tokens. The display neither enforces limits nor invents a whole-run token cap.
+Periodic compact budgets and threshold warnings expose remaining allowances;
+full accounting appears at startup and shutdown. Findings are status deltas, not
+repeated prefixes of the candidate inventory. The display never enforces limits.
 
 With --show-prompts, explicit private callbacks also display the actual model
 messages and returned answer text. Those callbacks do not write operational logs,
@@ -26,9 +27,12 @@ from projectclarity.extraction.extraction_call_tracing import capture_answer, re
 from projectclarity.plan_renderer import terminal_text
 from projectclarity.knowledge.graph_store import read_committed_additions
 from projectclarity.coverage.scope_estimation import scope_lines
+from projectclarity.research_results import result_progress, structure_status, progress_line
 
 
 NODE_EXPLANATIONS = {
+    'design_answer': ('Design the answer', 'Defining the report sections, entry identities and required information before planning.'),
+    'study_coverage': ('Study the research scope', 'Deciding whether a small coverage probe is useful, then gathering a preliminary estimate before recursive research.'),
     "web_search": ("Search the web", "Executing bounded queries; search snippets are leads, not supporting evidence."),
     "accumulate_knowledge": ("Capture the knowledge graph", "Recording source-grounded entities, attributes and connections without requiring answer relevance."),
     "schedule_work": ("Choose remaining work", "Checking queued work, retry readiness and shared budgets."),
@@ -157,6 +161,11 @@ class ResearchConsole:
         self.step = 0
         self.reported_intersections = set()
         self.retrieval_clock = None
+        self.last_budget_at = None
+        self.budget_bands = set()
+        self.candidate_states = {}
+        self.displayed_findings = set()
+        self.review_awaiting_result = False
 
     def say(self, text="", *, secret=None):
         """Write private human-facing text safely, without attaching it to operational events.
@@ -198,13 +207,164 @@ class ResearchConsole:
             node: Registered workflow-node name just announced by execution monitoring.
 
         Returns:
-            None. Print the active node name and a plain-language explanation of its work.
+            None. Print meaningful work headings. Routine scheduling/persistence and
+            adjudication headings stay in detailed events unless prompt display is enabled.
         """
+        if not self.show_prompts and node in {'schedule_work', 'validate_evidence',
+                                             'persist_candidates', 'adjudicate_claims'}:
+            return
         title, explanation = NODE_EXPLANATIONS.get(node, (node.replace("_", " "), ""))
         self.step += 1
         self.say(f"\nStep {self.step} · {title} [{node}]")
         if explanation:
             self.say("  " + explanation)
+
+    def selected_work(self):
+        """Explain the scheduler's saved choice rather than announcing a generic node.
+
+        Args:
+            self: Console reading only its active run's saved task reservation.
+
+        Returns:
+            None. Print the chosen source/passage/action and document-focus reason,
+            or the actual wait/stop reason. No scheduling or model call is performed.
+        """
+        session = self.session()
+        workflow = session.get('workflow', {})
+        action = workflow.get('next')
+        if action in {'stop', 'wait'}:
+            self.say('  Next: ' + ('stop — ' + explain_reason(workflow.get('stop_reason'))
+                if action == 'stop' else 'wait for the next permitted retry; no runnable work remains.'))
+            return
+        task = workflow.get('tasks', {}).get(workflow.get('active'), {})
+        if not task:
+            return
+        attempts = (session.get('extraction') or {}).get('attempts', [])
+        attempt = next((a for a in attempts if a['batch_id'] == task.get('batch_id')), {})
+        sid = task.get('source_id') or attempt.get('source_id')
+        source = next((s for s in session.get('sources', []) if s['source_id'] == sid), None)
+        where = f"{sid} · {source_label(source)}" if source else ''
+        if action == 'extract_knowledge' and attempt:
+            base = [a for a in attempts if a['source_id'] == sid and not a.get('refinement_parent')]
+            ordinal = next((i for i, a in enumerate(base, 1) if a['batch_id'] == attempt['batch_id']), None)
+            work = (f"targeted follow-up to {attempt['refinement_parent']}" if attempt.get('refinement_parent')
+                    else f"read passage {ordinal}/{len(base)}")
+            focus = workflow.get('document_focus', {})
+            reason = ('continuing a document with relevant findings' if focus.get('source_id') == sid
+                      and focus.get('status') == 'reading' else 'next eligible passage in the exploration queue')
+            if focus.get('probe_batch_id') == attempt['batch_id']:
+                reason = 'giving another downloaded source a turn during focused reading'
+            elif any(p['batch_id'] == attempt['batch_id'] for p in
+                     workflow.get('document_structure', {}).get(sid, {}).get('probes', [])):
+                reason = 'sampling a table/card section; relevance still needs evidence review'
+            self.say(f"  Next: {work} · {where}\n    Why: {reason}.")
+        elif action == 'extract_knowledge':
+            inventoried = {a['source_id'] for a in attempts}
+            inventoried.update(e['source_id'] for e in (session.get('extraction') or {}).get('source_errors', []))
+            inventoried.update((session.get('extraction') or {}).get('source_aliases', {}))
+            new = {d['source_id'] for d in session.get('documents', [])
+                   if d['status'] == 'retrieved' and d['source_id'] not in inventoried}
+            labels = [s['source_id'] + ' · ' + source_label(s) for s in session.get('sources', []) if s['source_id'] in new]
+            action_label = ('inventory passages (no model call)' if workflow.get('controller_policy') == 'answer-cycle-v1'
+                            else 'inventory passages and begin reading newly retrieved sources')
+            self.say('  Next: ' + action_label + ': ' + '; '.join(labels) + '.')
+        elif action == 'review_claims':
+            count = sum(c['evidence_status'] == 'anchored' and c['candidate_id'] not in session.get('claim_reviews', {})
+                        for c in (session.get('extraction') or {}).get('candidates', []))
+            self.say(f'  Next: review an evidence batch ({count} claims awaiting review in this run).')
+        else:
+            title = NODE_EXPLANATIONS.get(action, (str(action).replace('_', ' '), ''))[0]
+            self.say(f"  Next: {title}" + (f' · {where}' if where else '') + '.')
+
+    def finding_changes(self, *, reviewed=False):
+        """Show newly anchored findings and changed verdicts, never the first old claims.
+
+        Args:
+            self: Console with run-local display history, reset for a new run.
+            reviewed: Whether this notification follows adjudication rather than anchoring.
+
+        Returns:
+            None. Emit changed goal-linked answer/counterevidence statements and a delta
+            summary. Repeated identical statements/verdicts are not re-announced; this
+            display deduplication never merges stored claims or resolves identities.
+        """
+        from collections import Counter
+        session = self.session()
+        changes = Counter()
+        for candidate in (session.get('extraction') or {}).get('candidates', []):
+            cid, claim = candidate['candidate_id'], candidate['proposal']
+            status = (candidate.get('adjudication_status', 'pending')
+                      if candidate['evidence_status'] == 'anchored' else 'invalid_evidence')
+            previous = self.candidate_states.get(cid)
+            if previous == status:
+                continue
+            self.candidate_states[cid] = status
+            changes[status] += 1
+            if not set(claim.get('research_roles', [])) & {'answer_evidence', 'counterevidence'}:
+                continue
+            if status == 'invalid_evidence':
+                continue
+            signature = (status, ' '.join(claim['statement'].split()),
+                tuple(claim.get('qualifications', [])), tuple(sorted(claim['goal_ids'])))
+            if signature in self.displayed_findings:
+                continue
+            self.displayed_findings.add(signature)
+            label = ('Supported finding' if status == 'supported' else 'Discovered candidate' if status == 'pending'
+                     else 'Finding now ' + status.replace('_', ' '))
+            if 'counterevidence' in claim.get('research_roles', []):
+                label += ' (counterevidence)'
+            self.say(f"  {label}: {short_text(claim['statement'], 350)} [{cid}]")
+            for qualification in claim.get('qualifications', []):
+                self.say('    Qualification: ' + short_text(qualification))
+            structure = structure_status(claim)
+            if structure in {'needs_structure', 'needs_classification', 'inconsistent_structure'}:
+                self.say('    Structure: ' + structure.replace('_', ' ') + '; not a completed structured result.')
+        if changes:
+            summary = ', '.join(f'{n} {status.replace("_", " ")}' for status, n in sorted(changes.items()))
+            self.say('  ' + ('Review changes: ' if reviewed else 'New/changed evidence: ') + summary + '.')
+            if reviewed:
+                for row in result_progress(session)['goals']:
+                    self.say('  ' + progress_line(row))
+        elif reviewed:
+            self.say('  Review: no new verdict changes.')
+
+    def maybe_budget(self, *, force=False):
+        """Throttle accounting to one minute, new 80/90/100% bands, and run boundaries.
+
+        Args:
+            self: Console with current session counters and a monotonic display clock.
+            force: Print full accounting at startup/shutdown, even inside the interval.
+
+        Returns:
+            None. Print at most one compact periodic line or a full forced summary.
+            Threshold warnings are once per resource/band per run; limits never change.
+        """
+        session = self.session()
+        request = session.get('request', {})
+        if not request:
+            return
+        now = time.monotonic()
+        calls = session.get('usage', {}).get('requests_attempted', 0)
+        cap = request['budget']['max_requests']
+        limits = request['fetch_limits']
+        usage = session.get('retrieval_usage', {})
+        elapsed = (self.retrieval_clock[0] + max(0, now - self.retrieval_clock[1])
+                   if self.retrieval_clock else usage.get('elapsed_seconds', 0))
+        resources = {'model calls': (calls, cap), 'time': (elapsed, limits['max_run_seconds']),
+            'HTTP': (usage.get('http_requests', 0), limits['max_http_requests']),
+            'bytes': (usage.get('bytes_read', 0), limits['max_total_bytes'])}
+        crossed = {(label, band) for label, (used, total) in resources.items() if total > 0
+                   for band in (80, 90, 100) if used * 100 >= total * band} - self.budget_bands
+        self.budget_bands.update(crossed)
+        if not force and not crossed and self.last_budget_at is not None and now - self.last_budget_at < 60:
+            return
+        self.last_budget_at = now
+        if force:
+            self.budget_status()
+            return
+        warning = (' · limit warning: ' + ', '.join(sorted({label for label, _ in crossed}))) if crossed else ''
+        self.say(f"  Budget: {calls}/{cap} model calls · "
+            f"{max(0, limits['max_run_seconds'] - elapsed):.0f}s remaining{warning}.")
 
     def budget_status(self):
         """Expose remaining allowances without altering research or inventing a token cap.
@@ -380,7 +540,13 @@ class ResearchConsole:
             completed node.
         """
         session = self.session()
-        if node == "plan_research" and session.get("plan"):
+        if node == 'design_answer' and session.get('answer_schema'):
+            schema = session['answer_schema']
+            self.say('  Report: ' + short_text(schema['title']))
+            for section in schema['sections']:
+                fields = ', '.join(f['name'] for f in section['fields']) or 'narrative evidence requirements'
+                self.say(f"  • {section['title']}: {fields}")
+        elif node == "plan_research" and session.get("plan"):
             plan = session["plan"]
             self.say(f"  Plan: {short_text(plan['objective'])}")
             for goal in plan["goals"]:
@@ -389,13 +555,20 @@ class ResearchConsole:
                 self.say('  ' + line)
         elif node == "review_plan" and session.get("status") == "plan_ready":
             self.say("  Plan can proceed." if session.get("review_decision") else "  No blocking questions; continuing without a human approval step.")
-        elif node == "adjudicate_claims":
-            candidates = (session.get("extraction") or {}).get("candidates", [])
-            for candidate in candidates[:5]:
-                self.say(f"  {candidate['candidate_id']} — {candidate['adjudication_status'].replace('_', ' ')}: "
-                    + short_text(candidate["proposal"]["statement"]))
-            if len(candidates) > 5:
-                self.say(f"  {len(candidates) - 5} more candidates in candidates.md.")
+        elif node == 'study_coverage' and session.get('coverage_study'):
+            study = session['coverage_study']
+            from projectclarity.coverage.readiness import readiness_lines
+            for line in readiness_lines(study, session.get('coverage', {})):
+                self.say('  ' + line)
+            self.say('  Coverage study: ' + study['status'] + '. Preliminary, not a completion certificate.')
+            if study.get('estimate_outcome') == 'no_numeric_estimate':
+                self.say('  No numeric coverage estimate established.')
+            if study.get('summary'):
+                self.say('  ' + short_text(study['summary'], 500))
+            if study.get('error_code'):
+                self.say('  Study issue: ' + str(study['error_code']))
+        elif node == 'schedule_work':
+            self.selected_work()
         elif node == "select_followup_sources":
             discovery = session.get("discovery", {})
             context = discovery.get('context_inventory')
@@ -421,6 +594,9 @@ class ResearchConsole:
                     self.say("    Why: " + short_text(choice["reason"]))
         elif node == 'assess_research_gaps':
             coverage = session.get('coverage', {})
+            from projectclarity.coverage.readiness import readiness_lines
+            for line in readiness_lines(session.get('coverage_study', {}), coverage):
+                self.say('  ' + line)
             for line in scope_lines(coverage.get('scope_estimates', [])):
                 self.say('  ' + line)
             revision = (coverage.get('scope_estimate_history') or [{}])[-1]
@@ -485,7 +661,7 @@ class ResearchConsole:
             event: Whitelisted progress-event dictionary emitted by RunMonitor.
 
         Returns:
-            None. Render selected events, branch-progress decisions and budget summaries at work boundaries. Track
+            None. Render selected events, document continuation, branch decisions and budget summaries. Track
             the retrieval clock across rounds without changing limits; protocol details
             stay in the JSON event log and quiet/JSON modes do not use this sink.
         """
@@ -494,6 +670,12 @@ class ResearchConsole:
         source_id = event.get("source_id")
         if name == "run_started":
             self.retrieval_clock = None
+            self.last_budget_at = None
+            self.budget_bands = set()
+            self.candidate_states = {c['candidate_id']: c.get('adjudication_status', 'pending')
+                for c in (self.session().get('extraction') or {}).get('candidates', [])}
+            self.displayed_findings = set()
+            self.review_awaiting_result = False
         if name == "retrieval_started" and self.retrieval_clock is None:
             elapsed = self.session().get("retrieval_usage", {}).get("elapsed_seconds", 0)
             self.retrieval_clock = (elapsed, time.monotonic())
@@ -504,6 +686,8 @@ class ResearchConsole:
             self.say(f"Run: {event['run_id']}\nRun folder: {self.directory.resolve()}")
             self.heading("initialize_research")
         elif name == "node_started":
+            if details['node_name'] == 'review_claims':
+                self.review_awaiting_result = True
             self.heading(details["node_name"])
         elif name == "node_finished":
             self.node_result(details["node_name"])
@@ -535,6 +719,16 @@ class ResearchConsole:
                 + (source_label(source) if source else "registered source"))
         elif name == "source_parsing":
             self.say(f"  {source_id}: converting the document into readable text…")
+        elif name == 'document_focus_changed':
+            status = details['document_focus_status']
+            message = {
+                'reading': f"useful answer evidence found; continuing this document before more search ({details['remaining_passages']} passages queued).",
+                'reviewing': 'finishing queued claim reviews before returning to exploration.',
+                'blocked': 'document continuation paused; unfinished passages are retained.',
+                'paused': 'recent passages added no new goal-level findings; checking another source or search. Unread passages are retained.',
+                'released': 'document continuation ended: ' + (details.get('stop_reason') or 'work exhausted') + '.',
+            }[status]
+            self.say(f"  Document {source_id}: {message}")
         elif name == 'exploration_phase_changed':
             labels = {'explore': 'exploring links', 'analyze': 'analyzing available pages',
                 'existing_search_results': 'using existing search results', 'assess_gaps': 'reassessing evidence gaps',
@@ -555,6 +749,12 @@ class ResearchConsole:
                 self.say(f"  Saved {source_id}: {details.get('character_count', 0):,} characters → {details.get('text_path')}")
             else:
                 self.say(f"  Could not finish {source_id}: {explain_reason(details.get('error_code'))}")
+        elif name == 'model_retry_scheduled':
+            self.say(f"  Model retry {details.get('attempt_number')}: {details.get('batch_id')} "
+                f"after {details.get('wait_seconds', 0):.1f}s · {details.get('error_code')} · shares the run budget.")
+        elif name == 'model_attempt_finished' and details.get('call_status') in {'failed', 'uncertain'}:
+            self.say(f"  Model attempt {details.get('attempt_id')}: {details.get('call_status')} "
+                f"· {details.get('error_code') or 'outcome unknown'}. Diagnostics saved in model_attempts.json.")
         elif name in {"extraction_call_started", "model_call_started"}:
             label = details.get("batch_id", "model request")
             self.say(f"  Asking the model: {label} · request {details.get('llm_requests', '?')}")
@@ -570,16 +770,15 @@ class ResearchConsole:
                 attempts = (self.session().get("extraction") or {}).get("attempts", [])
                 attempt = next((a for a in attempts if a["batch_id"] == details["batch_id"]), {})
                 claims = (attempt.get("result") or {}).get("claims", [])
-                for claim in claims[:2]:
-                    self.say("    Candidate: " + short_text(claim["statement"]))
                 if not claims:
                     self.say("    No claims proposed from this passage; that is not proof of absence.")
         elif name == "knowledge_committed":
             self.knowledge_added(event)
         elif name == "evidence_validation_finished":
-            self.say(f"  Checked {details['candidate_count']} candidates; {details['invalid_candidates']} have invalid evidence references.")
+            self.finding_changes()
         elif name == "claims_adjudicated":
-            self.say(f"  {details['supported_claims']} supported by review; {details['unresolved_claims']} unresolved. Nothing published.")
+            self.finding_changes(reviewed=self.review_awaiting_result)
+            self.review_awaiting_result = False
         elif name == "review_required":
             self.say(f"  Waiting for your input: {details.get('question_count', 0)} planning question(s). The run is paused.")
         elif name == "rate_limit_wait":
@@ -592,4 +791,4 @@ class ResearchConsole:
             self.say("\nRun stopped: " + str(details.get("run_status", "unknown")).replace("_", " ") + ".")
         if name in {"run_started", "node_finished", "source_finished", "model_call_finished",
                 "extraction_call_finished", "search_query_finished", "run_finished", "run_failed"}:
-            self.budget_status()
+            self.maybe_budget(force=name in {'run_started', 'run_finished', 'run_failed'})

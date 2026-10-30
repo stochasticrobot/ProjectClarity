@@ -1,4 +1,12 @@
-"""Explicit free engine catalogue and durable, bounded provider cooldown state."""
+"""Record which search providers may be tried and when failed providers may retry.
+
+Search execution uses an explicit ordered list of engines rather than allowing a
+library to silently choose one. A failure can put an engine into a cooldown: it
+cannot be tried again until a saved time. Other enabled engines can remain usable.
+These helpers read and update provider-health records in the session; they do not
+send queries or sleep while waiting. Saved attempt limits also prevent endless
+retry cycles across restarts.
+"""
 import time
 
 SUPPORTED_SEARCH_PROVIDERS = {'duckduckgo', 'brave', 'google', 'yahoo', 'mojeek', 'startpage', 'wikipedia'}

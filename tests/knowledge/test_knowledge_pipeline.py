@@ -1,18 +1,16 @@
-"""Verify real CLI/graph/parser/SDK/store behavior with synthetic provider HTTP only.
+"""Verify real terminal entry point/graph/parser/SDK/store behavior with synthetic provider HTTP only.
 
 These fixtures establish integration and evidence handling, not live-model recall.
 The fixtures explicitly enable capture regardless of answer relevance and inspect
 commits through a separate SQLite reader. Fixture ordering does not make capture
 completion a prerequisite for answer extraction in every scheduling mode.
 """
-import copy
 import contextlib
 import io
 import json
 import re
 import sys
 import unittest
-from pathlib import Path
 from unittest.mock import patch
 
 from projectclarity.nodes.accumulate_knowledge.node import capture_windows
@@ -22,13 +20,13 @@ from tests.planning import test_planning_cli_integration as planning_tests
 
 
 class KnowledgePipelineTests(unittest.TestCase):
-    """Exercise explicitly enabled capture through the real production CLI."""
+    """Exercise explicitly enabled capture through the real production terminal entry point."""
 
     def setUp(self):
         """Create a held-out roster with no specialist claims to expose relevance filtering.
 
         Args:
-            self: Test case owning the temporary CLI fixture and synthetic capture records.
+            self: Test case owning the temporary terminal interface fixture and synthetic capture records.
 
         Returns:
             None. Register cleanup and prepare a local source plus task-shaped SDK replies.
@@ -90,12 +88,12 @@ class KnowledgePipelineTests(unittest.TestCase):
         return self.cli.response(text=json.dumps(answer))
 
     def run_capture(self, *options, expected=0):
-        """Run the real CLI with explicit graph-capture opt-in and no live credentials/network.
+        """Run the real terminal entry point with explicit graph-capture opt-in and no live credentials/network.
 
         Args:
             self: Fixture owning its local source, output root and fake HTTP responder.
-            *options: Additional production CLI flags, including explicit request limits.
-            expected: Required CLI exit code, preventing saved partial artifacts from
+            *options: Additional production terminal entry point flags, including explicit request limits.
+            expected: Required terminal interface exit code, preventing saved partial artifacts from
                 hiding a failed production invocation in persistence assertions.
 
         Returns:
@@ -138,7 +136,7 @@ class KnowledgePipelineTests(unittest.TestCase):
         self.assertTrue(all(e['seq'] > changes['cursor'] for e in following['events']))
 
     def test_console_shows_every_new_record_before_next_model_task(self):
-        """Prove the normal CLI displays committed graph content during research, not just at exit.
+        """Prove the normal terminal interface displays committed graph content during research, not just at exit.
 
         Args:
             self: Fixture exercising real graph, capture, monitor, console and SQLite paths.
@@ -170,7 +168,7 @@ class KnowledgePipelineTests(unittest.TestCase):
         """Keep new-record announcements faithful when research revisits a known source.
 
         Args:
-            self: Fixture preserving its SQLite database across three production CLI runs.
+            self: Fixture preserving its SQLite database across three production terminal entry point runs.
 
         Returns:
             None. Assert replay has no new-record lines, while a later inserted assertion
@@ -221,10 +219,10 @@ class KnowledgePipelineTests(unittest.TestCase):
         """Keep a display-read failure separate from successful database capture.
 
         Args:
-            self: Production CLI fixture with only the console's store reader made unavailable.
+            self: Production terminal interface fixture with only the console's store reader made unavailable.
 
         Returns:
-            None. Assert the CLI succeeds with saved graph records and an honest unavailable
+            None. Assert the terminal interface succeeds with saved graph records and an honest unavailable
             details message, rather than reporting zero additions or failing research.
         """
         with patch('projectclarity.terminal_run_progress.read_committed_additions', side_effect=OSError('unavailable')):
@@ -234,7 +232,7 @@ class KnowledgePipelineTests(unittest.TestCase):
         self.assertNotIn('+ Node [', err)
 
     def test_dense_roster_continues_beyond_single_reply_capacity(self):
-        """Exercise windows and continuation through the CLI so thirty entities is not a page cap.
+        """Exercise windows and continuation through the terminal interface so thirty entities is not a page cap.
 
         Args:
             self: Fixture supplying eighty synthetic names through the real saved-text path.

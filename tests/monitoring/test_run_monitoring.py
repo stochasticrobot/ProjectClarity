@@ -3,7 +3,7 @@
 For example, releasing the worker lock without a final event must be reported
 as interruption, not a healthy running job. Temporary folders and synthetic
 sessions exercise real JSON files and file locks. These checks isolate logging,
-status, and control behaviour from acquisition; cross-process CLI tests cover
+status, and control behaviour from acquisition; cross-process terminal interface tests cover
 the connection to the worker itself.
 """
 

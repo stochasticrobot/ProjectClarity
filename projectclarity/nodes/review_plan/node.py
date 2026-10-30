@@ -1,4 +1,11 @@
-"""Pause and apply a human plan decision without embedding terminal UI behavior."""
+"""Pause research for human clarification when the proposed plan requires a decision.
+
+The workflow calls this step after planning. If clarification is needed, it saves
+a review request and uses LangGraph's interrupt mechanism to preserve the paused
+execution. A later terminal or dashboard decision can answer the questions, replace
+the plan or reject it. This file applies that decision; it does not display menus
+or read keyboard input. A plan that needs no review can continue without a pause.
+"""
 from datetime import UTC, datetime
 from pathlib import Path
 from langgraph.types import interrupt

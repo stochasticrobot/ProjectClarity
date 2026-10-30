@@ -13,14 +13,16 @@
       "question": "Which Canadian groups study vulnerabilities in AI systems?",
       "evidence_required": [
         "Relevant publications and institutional research pages"
-      ]
+      ],
+      "result_shape": null
     },
     {
       "goal_id": "G2",
       "question": "What work and affiliations establish each group's relevance?",
       "evidence_required": [
         "Dated publication and affiliation records"
-      ]
+      ],
+      "result_shape": null
     }
   ],
   "strategy": [

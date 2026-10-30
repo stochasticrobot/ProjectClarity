@@ -1,8 +1,15 @@
-"""Load user-owned task instructions without embedding fallback prompts in code.
+"""Read the text files containing instructions for each language-model task.
 
-Task modules load their adjacent prompts/*.txt files when imported. Resolving
-from this module, rather than the working directory, keeps CLI and inspection
-paths consistent. Restart the Python process after editing a prompt file.
+For example, load_prompt("design_answer.txt") returns the contents of
+projectclarity/prompts/design_answer.txt. The path is resolved relative to this
+Python file, so launching the program from another directory does not change
+which instructions are read. Contents are returned exactly as UTF-8 text, without
+formatting, trimming or replacement instructions if the file is missing.
+
+Task modules normally load their instructions when imported. Restart the Python
+process after editing a prompt file so those modules read the new text. This
+module only loads instructions; it neither constructs model requests nor sends
+them to a provider.
 """
 from pathlib import Path
 

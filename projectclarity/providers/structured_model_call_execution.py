@@ -1,19 +1,24 @@
-"""Execute one capture, review, source-selection or coverage call under the shared allowance.
+"""Send a structured research-model request and retain its response and usage records.
 
-Nodes own prompts and domain checks. This helper owns the repeated mechanics:
-reserve a request before sending, retain malformed answers for debugging, total
-reported usage, and emit content-free progress. No automatic retry or fallback
-occurs. A response passing its JSON schema is NOT yet authorized application data.
+A task such as answer design, claim review, source selection or coverage supplies
+messages and a Pydantic response schema, which describes the fields expected back.
+This helper handles common execution mechanics: request-size checks, private call
+traces, budget accounting, response parsing and progress notifications. The shared
+attempt executor reserves each request and handles limited temporary-error retries.
+Task code remains responsible for judging whether a parsed reply is acceptable.
 
-Private llm_calls/*.json files contain application messages and answers, not HTTP
-headers, hidden reasoning or provider exception bodies. They are mode 0600. A
-call receipt is also saved in the session so budget/failure gaps remain visible.
-Cancellation is cooperative; an in-flight blocking call may still incur usage.
+Private llm_calls/*.json files retain application messages, schema and response
+text with owner-only permissions. Full provider failures are saved separately.
+Operational progress events omit that private content. Cancellation is cooperative:
+an already sent request may still return and incur usage. No provider fallback or
+change to task instructions happens here.
 """
 import hashlib
 import json
 import re
 import time
+
+from projectclarity.coverage.checkpoints import model_request_ceiling
 
 from projectclarity.extraction.extraction_call_tracing import capture_answer, redact_text, write_private_text
 from projectclarity.providers.structured_model_provider import create_structured_model
@@ -21,8 +26,26 @@ from projectclarity.retrieval.retrieval_limits import RunCancelled
 from projectclarity.run_monitor import MonitoringError
 from projectclarity.session_storage import save_session
 from projectclarity.knowledge.capture_budget import capture_remaining
+from projectclarity.providers.model_retry import invoke_with_retries
+from projectclarity.providers.model_failures import ModelCallFailure, describe_model_failure
+from projectclarity.providers.validation_diagnostics import validation_issues
 
 MAX_MESSAGE_CHARACTERS = 48_000
+MAX_COVERAGE_CHARACTERS = 512_000
+
+
+def message_character_limit(task):
+    """Bound aggregate evidence assessment separately from passage-sized tasks.
+
+    Args:
+        task: Application task name; coverage assesses the aggregate, while
+            summarize_evidence consumes one bounded 128,000-character batch.
+    Returns:
+        Serialized-character ceiling, not a token estimate. Coverage can inspect
+        a larger aggregate; per-call output, time and shared request budgets remain.
+    """
+    return (MAX_COVERAGE_CHARACTERS if task == 'assess_research_gaps' else
+            128_000 if task == 'summarize_evidence' else MAX_MESSAGE_CHARACTERS)
 
 
 def save_call_trace(directory, trace, secret):
@@ -58,12 +81,13 @@ def save_call_trace(directory, trace, secret):
 
 
 def invoke_structured(session, output_root, *, call_id, task, prompt_version, messages, schema, key_reader, monitor=None):
-    """Execute one structured model request under the run's shared request allowance so review,
+    """Execute one logical model task under the run's shared request allowance so review,
     knowledge capture, search selection and coverage obey the same overall ceiling.
     Capture also obeys its explicitly configured auxiliary allowance, checked before
     credentials or model construction. Failed capture calls consume that allowance.
+    Scheduled non-coverage work also honors the scheduler's last-call reservation.
 
-    Reserve the attempt, capture private inputs and bounded output, validate adapter
+    Reserve each initial/retry attempt, capture private inputs and bounded output, validate adapter
     completion, and persist usage and a safe receipt. Failure returns no parsed answer
     rather than allowing later nodes to treat a malformed or interrupted response as usable
     knowledge.
@@ -73,7 +97,7 @@ def invoke_structured(session, output_root, *, call_id, task, prompt_version, me
             accumulated results and status.
         output_root: Local filesystem directory containing research-run subdirectories; not
             a URL or an individual run folder.
-        call_id: Application call identifier selecting one saved model attempt, not a
+        call_id: Application identifier associating a logical call with its wire attempts, not a
             filesystem path.
         task: Workflow task name used to identify the model call in receipts and displays.
         prompt_version: Version label identifying the application prompt used for this model
@@ -94,20 +118,21 @@ def invoke_structured(session, output_root, *, call_id, task, prompt_version, me
     if not re.fullmatch(r"[A-Za-z][A-Za-z0-9_-]{0,63}", call_id):
         raise ValueError("Invalid internal call ID")
     receipt = {"call_id": call_id, "task": task, "status": "not_attempted", "error_code": None,
-        "trace_path": None, "input_tokens": None, "output_tokens": None, "total_tokens": None}
+        "trace_path": None, "input_tokens": None, "output_tokens": None, "total_tokens": None,
+        "attempt_accounting": "wire_ledger"}
     session.processing_calls.append(receipt)
     started, trace, secret, parsed = time.monotonic(), None, None, None
     try:
         if monitor:
             monitor.check_cancel()
-        if session.usage.requests_attempted >= session.request.budget.max_requests:
+        if session.usage.requests_attempted >= model_request_ceiling(session, task):
             receipt["error_code"] = "request_limit"
             return None, receipt
         if task == 'accumulate_knowledge' and capture_remaining(session) <= 0:
             receipt['error_code'] = 'knowledge_request_limit'
             return None, receipt
         serialized = json.dumps(messages, ensure_ascii=False)
-        if len(serialized) > MAX_MESSAGE_CHARACTERS:
+        if len(serialized) > message_character_limit(task):
             receipt["error_code"] = "input_too_large"
             return None, receipt
         secret = key_reader()
@@ -117,7 +142,8 @@ def invoke_structured(session, output_root, *, call_id, task, prompt_version, me
             "input_sha256": hashlib.sha256(serialized.encode()).hexdigest(),
             "output_schema": schema.model_json_schema(), "requested_model": session.request.model,
             "max_output_tokens": session.request.budget.max_output_tokens,
-            "max_retries": 0, "timeout_seconds": 60, "effort": "low",
+            "max_retries": 0, "application_retries": session.request.model_retries,
+            "timeout_seconds": session.request.model_timeout_seconds, "effort": "low",
             "response_text": None, "non_text_blocks_omitted": False,
             "response_text_truncated": False, "status": "prepared"}
         receipt["trace_path"] = f"llm_calls/{call_id}.json"
@@ -125,18 +151,18 @@ def invoke_structured(session, output_root, *, call_id, task, prompt_version, me
         if secret and secret in serialized:
             receipt["error_code"] = "credential_in_input"
             return None, receipt
-        model = create_structured_model(secret, session, schema)
         if monitor:
             monitor.check_cancel()
-        session.usage.requests_attempted += 1
         receipt["status"] = "started"
         save_session(session, output_root)
         if monitor:
             monitor.observe("model_call_started", stage=task, batch_id=call_id,
-                llm_requests=session.usage.requests_attempted, trace_path=receipt["trace_path"])
+                llm_requests=session.usage.requests_attempted + 1, trace_path=receipt["trace_path"])
         if monitor:
             monitor.model_input(task, call_id, messages, schema, secret)
-        response = model.invoke(messages)
+        response = invoke_with_retries(session, output_root, task=task, call_id=call_id,
+            messages=messages, model_factory=lambda timeout: create_structured_model(
+                secret, session, schema, timeout_seconds=timeout), monitor=monitor, secret=secret)
         raw = response["raw"]
         if monitor:
             monitor.model_output(task, call_id, raw, secret)
@@ -154,6 +180,7 @@ def invoke_structured(session, output_root, *, call_id, task, prompt_version, me
             receipt["error_code"] = "incomplete_model_output"
         elif response.get("parsing_error") is not None or response.get("parsed") is None:
             receipt["error_code"] = "invalid_output_schema"
+            receipt['validation_issues'] = validation_issues(response.get('parsing_error'), schema)
         else:
             parsed = schema.model_validate(response["parsed"])
             if secret and secret in parsed.model_dump_json():
@@ -169,8 +196,13 @@ def invoke_structured(session, output_root, *, call_id, task, prompt_version, me
         parsed = None
     except MonitoringError:
         raise
-    except Exception:
+    except ModelCallFailure as exc:
+        receipt.update(error_code=exc.code, diagnostics=exc.diagnostics,
+            last_attempt_id=exc.attempt_id)
+        parsed = None
+    except Exception as exc:
         receipt["error_code"] = "provider_or_adapter_error"
+        receipt['diagnostics'] = describe_model_failure(exc, secret)
         parsed = None
     finally:
         if receipt["status"] == "started":

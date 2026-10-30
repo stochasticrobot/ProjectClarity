@@ -2,7 +2,7 @@
 
 A review is advice. This node requires an unchanged, structurally anchored source
 and a complete checked assessment before assigning supported/contradicted status.
-Absent or failed review becomes needs_review; bad evidence becomes invalid_evidence.
+Queued review remains pending; failed review becomes needs_review; bad evidence becomes invalid_evidence.
 Out-of-scope assertions are retained for inspection but not accepted as answers.
 
 Supported means this model assessed this passage as supporting the candidate.
@@ -20,7 +20,8 @@ def adjudicate_claims(state, output_root, monitor=None):
     can distinguish supported, contradicted, unreviewed and invalid-evidence claims.
 
     Recheck source integrity and quote anchors before applying deterministic status rules,
-    then refresh candidate files. Supported means model-assessed passage support, not
+    then refresh candidate files. Independently queue source-bound report mapping
+    repairs; supported factual verdicts remain unchanged by mapping defects. Supported means model-assessed passage support, not
     independently established truth, resolved identity or permission to publish.
 
     Args:
@@ -44,8 +45,8 @@ def adjudicate_claims(state, output_root, monitor=None):
         review = session.claim_reviews.get(candidate.candidate_id)
         assessment = review.get("assessment") if review else None
         candidate.review_status = "reviewed" if assessment else "review_failed" if review else "unreviewed"
-        candidate.adjudication_status = "needs_review"
-        candidate.adjudication_reason = (review or {}).get("error_code") or "no_completed_review"
+        candidate.adjudication_status = "needs_review" if review else "pending"
+        candidate.adjudication_reason = ((review or {}).get("error_code") or "no_completed_review") if review else "review_queued"
         try:
             doc = documents[candidate.source_id]
             text = read_verified_text(output_root / session.session_id, doc)
@@ -64,8 +65,11 @@ def adjudicate_claims(state, output_root, monitor=None):
         elif assessment and not review.get("error_code") and review["text_sha256"] == candidate.text_sha256:
             candidate.adjudication_status = assessment["verdict"] if assessment["in_scope"] else "out_of_scope"
             candidate.adjudication_reason = assessment["rationale"]
+    from projectclarity.claim_review.report_mapping import queue_mapping_repairs
+    queue_mapping_repairs(session, record)
     session.extraction = record.model_dump(mode="json")
-    # Reuse storage, not a fake graph visit. This node is the caller on this path.
+    # Refresh the candidate files without recording persist_candidates as an
+    # executed workflow step; this update is part of adjudicate_claims.
     persist_candidates({"session": session}, output_root, monitor, record_visit=False)
     if monitor:
         monitor.observe("claims_adjudicated", stage="adjudicate_claims", candidate_count=len(record.candidates),

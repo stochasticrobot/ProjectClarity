@@ -1,8 +1,10 @@
-"""Small free-search subprocess: normalize leads only; never retrieve result pages.
+"""Execute one search query in the subprocess started by the search adapter.
 
-The parent supplies a hard wall-clock deadline and removes credential variables.
-One named backend avoids hidden metasearch fallback. Backend HTML/rate-limit
-failures retain bounded diagnostics, not silently replaced by another provider.
+The parent sends query/options as JSON on standard input. This worker selects the
+requested DDGS engine or Wikipedia API, normalizes its results and writes a JSON
+reply to standard output. It refuses implicit automatic engine substitution.
+Search results are leads with URLs and snippets, not retrieved-page evidence.
+Users normally launch research, not this internal worker directly.
 """
 import json
 import sys

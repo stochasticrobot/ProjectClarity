@@ -1,4 +1,11 @@
-"""Prove answer reporting through the actual CLI with synthetic transports only."""
+"""Check that the research command prints and saves findings without another model call.
+
+Controlled external replies drive the normal workflow, then tests inspect the
+terminal answer and saved report. Unreviewed or contrary claims must not become
+positive findings, and changed source text must invalidate saved support during
+inspection. Budget exhaustion still permits reporting what was already collected.
+The tests do not measure live answer quality or generated prose.
+"""
 
 import contextlib
 import hashlib
@@ -34,9 +41,9 @@ class ProvisionalAnswerCLITests(unittest.TestCase):
 
         Args:
             self: Test case supplying page-specific provider responses.
-            flags: Additional real CLI flags, including budget and crawl controls.
+            flags: Additional real terminal entry point flags, including budget and crawl controls.
             review: Enable semantic review; False tests pending-claim presentation.
-            details: Select the CLI's full-plan display instead of its default summary.
+            details: Select the terminal interface's full-plan display instead of its default summary.
 
         Returns:
             Exit code, stdout, run directory and saved session. All source/network
@@ -71,7 +78,7 @@ class ProvisionalAnswerCLITests(unittest.TestCase):
         return output.getvalue()
 
     def test_default_prints_substantive_answer_and_saves_evidence_without_extra_calls(self):
-        """Check normal CLI findings, citations and artifacts rather than helper metadata.
+        """Check normal terminal interface findings, citations and artifacts rather than helper metadata.
 
         Args:
             self: Synthetic source with one supported answer statement.

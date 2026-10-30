@@ -1,10 +1,11 @@
-"""Exercise the actual CLI, graph, SDK, parsers and file persistence without live services.
+"""Exercise the actual terminal interface, graph, SDK, parsers and file persistence without live services.
 
 Only provider HTTP responses, source connection pools and DNS are synthetic.
 The shared harness forbids real sockets and scans all artifacts for its fake key.
 These tests establish orchestration and fail-closed policy, not model judgment
 quality. Review labels below are authored fixtures, not benchmark scores.
 """
+from tests.claim_review.mapping_fixtures import fixture_mappings
 import json
 import unittest
 from unittest.mock import patch
@@ -67,6 +68,8 @@ class ReviewDiscoveryIntegrationTests(unittest.TestCase):
         Returns:
             A synthetic httpx2.Response passed through the real provider SDK; no network request
             is made by this responder.
+        Review replies include authored report-mapping judgments; these do not
+        establish live semantic recognition accuracy.
         """
         body = json.loads(request.content)
         schema = body["output_config"]["format"]["schema"]["title"]
@@ -80,10 +83,11 @@ class ReviewDiscoveryIntegrationTests(unittest.TestCase):
             batch = {"entities": [], "claims": []} if self.empty_seed and payload["source_id"] == "S1" else proposed_batch()
             return self.cli.response(text=json.dumps(batch))
         if schema == "ClaimReviewBatch":
-            self.assertIn(SOURCE_TEXT.strip(), payload["passage"]["text"])
+            for group in payload.get('passages', [payload]):
+                self.assertIn(SOURCE_TEXT.strip(), group["passage"]["text"])
             answer = {"assessments": [{"candidate_id": c["candidate_id"], "verdict": self.review_verdict,
                 "in_scope": self.review_in_scope, "rationale": "Fixture assessment against saved passage.",
-                "evidence_quotes": ["Alice works at Lab X."]} for c in payload["candidates"]]}
+                "report_mappings": fixture_mappings(c, payload), "evidence_quotes": ["Alice works at Lab X."]} for c in payload["candidates"]]}
             return self.cli.response(text=json.dumps(answer))
         self.assertEqual(schema, "FollowupPlan")
         self.assertEqual([l["link_id"] for l in payload["links"]], ["S1_L1"])
@@ -98,19 +102,19 @@ class ReviewDiscoveryIntegrationTests(unittest.TestCase):
         return self.cli.response(text=json.dumps(answer))
 
     def run_research(self, *flags, follow=True, budget=8):
-        """Start from the root CLI shortcut and return actual persisted results.
+        """Start from the root terminal interface shortcut and return actual persisted results.
 
         Args:
             self: This unittest case instance, holding its isolated fixtures and assertion
                 methods.
             follow: Whether to enable link discovery with this fixture's explicitly
-                requested one-hop, seed-origin restrictions (not current CLI defaults).
+                requested one-hop, seed-origin restrictions (not current terminal interface defaults).
             budget: Maximum model requests allowed for the fixture run, shared by planning and
                 subsequent model-backed nodes.
-            *flags: Extra CLI argument strings appended to the extraction/review invocation.
+            *flags: Extra terminal interface argument strings appended to the extraction/review invocation.
 
         Returns:
-            A tuple of CLI exit code, captured stdout, captured stderr, run-directory Path and
+            A tuple of terminal interface exit code, captured stdout, captured stderr, run-directory Path and
             saved-session dictionary.
         """
         # These legacy restriction tests explicitly request the former one-hop/origin scope.
@@ -162,12 +166,12 @@ class ReviewDiscoveryIntegrationTests(unittest.TestCase):
         self.assertEqual(status["counts"]["total"], 2)
         self.assertEqual(status["counts"]["retrieved"], 2)
         self.assertIn("supported=2", out)
-        self.assertIn("2 supported by review", err)
+        self.assertIn("2 supported answer facts", err)
         graph = (directory / "workflow_graph.txt").read_text()
         self.assertNotIn("edge absent", graph)
         self.assertIn("[select_followup_sources]", graph)
         trace = json.loads((directory / "llm_calls/review_S1_P1.json").read_text())
-        self.assertEqual(trace["prompt_version"], "claim-review-v2")
+        self.assertEqual(trace["prompt_version"], "claim-review-v6")
         self.assertEqual(trace["parsed_result"]["assessments"][0]["candidate_id"], "S1_P1_C1")
         self.assertEqual((directory / "llm_calls/review_S1_P1.json").stat().st_mode & 0o777, 0o600)
         request_count = len(self.cli.requests)
@@ -219,7 +223,7 @@ class ReviewDiscoveryIntegrationTests(unittest.TestCase):
             """
             return self.cli.response(text=json.dumps({"assessments": [{"candidate_id": "invented",
                 "verdict": "supported", "in_scope": True, "rationale": "Looks supported.",
-                "evidence_quotes": ["Alice works at Lab X."]}]}))
+                "report_mappings": [], "evidence_quotes": ["Alice works at Lab X."]}]}))
         self.overrides["ClaimReviewBatch"] = wrong_id
         code, _, _, _, session = self.run_research(follow=False)
         self.assertEqual(code, 1)
@@ -403,7 +407,7 @@ class ReviewDiscoveryIntegrationTests(unittest.TestCase):
         """
         self.overrides["ClaimReviewBatch"] = lambda body: self.cli.response(text=json.dumps({
             "assessments": [{"candidate_id": "S1_P1_C1", "verdict": "supported", "in_scope": True,
-                "rationale": "Invented support.", "evidence_quotes": ["A sentence absent from this source."]}]}))
+                "rationale": "Invented support.", "report_mappings": [], "evidence_quotes": ["A sentence absent from this source."]}]}))
         code, _, _, _, session = self.run_research(follow=False)
         self.assertEqual(code, 1)
         self.assertEqual(session["claim_reviews"]["S1_P1_C1"]["error_code"], "review_quote_not_found")
@@ -435,7 +439,7 @@ class ReviewDiscoveryIntegrationTests(unittest.TestCase):
             (directory / "documents/S1/text.txt").write_text("Changed after the reviewer read it.")
             return self.cli.response(text=json.dumps({"assessments": [{"candidate_id": "S1_P1_C1",
                 "verdict": "supported", "in_scope": True, "rationale": "Was supported.",
-                "evidence_quotes": ["Alice works at Lab X."]}]}))
+                "report_mappings": [], "evidence_quotes": ["Alice works at Lab X."]}]}))
         self.overrides["ClaimReviewBatch"] = change_source
         code, _, _, _, session = self.run_research(follow=False)
         self.assertEqual(code, 1)
@@ -510,7 +514,7 @@ class ReviewDiscoveryIntegrationTests(unittest.TestCase):
         self.assertEqual(len(session["extraction"]["candidates"]), 1)
 
     def test_llm_allowance_is_shared_and_reserves_minimum_followup_work(self):
-        """Two seed pages use five calls; one remaining call cannot authorize an unfinished hop.
+        """Two seeds share one review; two remaining calls cannot fund selection plus analysis.
 
         Args:
             self: This unittest case instance, holding its isolated fixtures and assertion
@@ -524,7 +528,7 @@ class ReviewDiscoveryIntegrationTests(unittest.TestCase):
         self.routes[("example.org", "/seed-two")] = (200, {"Content-Type": "text/plain"}, SOURCE_TEXT.encode())
         code, _, err, _, session = self.run_research(budget=6)
         self.assertEqual(code, 1, err)
-        self.assertEqual(len(self.cli.requests), 5)
+        self.assertEqual(len(self.cli.requests), 4)
         self.assertEqual(session['workflow']['stop_reason'], 'budget_exhausted')
         self.assertIn('model_request_limit', session['workflow']['stop_details'])
         self.assertEqual(len(session["documents"]), 2)
@@ -572,7 +576,7 @@ class ReviewDiscoveryIntegrationTests(unittest.TestCase):
             readers[0].budget.started -= 181
             return self.cli.response(text=json.dumps({"assessments": [{"candidate_id": "S1_P1_C1",
                 "verdict": "supported", "in_scope": True, "rationale": "Fixture review.",
-                "evidence_quotes": ["Alice works at Lab X."]}]}))
+                "report_mappings": [], "evidence_quotes": ["Alice works at Lab X."]}]}))
 
         self.overrides["ClaimReviewBatch"] = slow_review
         with patch.object(PublicWebReader, "fetch", remember_reader):

@@ -1,10 +1,13 @@
-"""Turn saved documents into inspectable candidate claims, not accepted facts.
+"""Turn saved source passages into proposed claims with inspectable evidence links.
 
-Start with nodes/extract_knowledge to follow the work. extraction_contracts.py
-defines the records; saved_source_passages.py reads evidence; knowledge_extraction_messages.py
-owns the model prompt; nodes/validate_evidence checks quotations; and
-nodes/persist_candidates saves the results. agentic_workflow.py connects these steps.
-extraction_call_tracing.py privately captures each prompt/answer, while
-extraction_inspection.py explains those records in the CLI without another call.
-No module in this package searches the web or publishes accepted knowledge.
+A candidate claim is a statement suggested by the extraction model, not an accepted
+fact. Modules here define the response and saved-attempt formats, read exact saved
+text, build request messages, match quotations and retain private call diagnostics.
+For example, a proposed affiliation must keep the source passage and quotation that
+will later be checked and reviewed.
+
+The processing step lives in nodes/extract_knowledge; agentic_workflow connects it
+to later validation and saving steps. Task instructions are loaded from the user's
+prompt text files, not authored by this package initializer. Importing this package
+starts no model request, web search or publication.
 """

@@ -17,12 +17,15 @@ from projectclarity.prompt_loader import PROMPT_DIRECTORY, load_prompt
 
 
 PROMPTS = {
+    'projectclarity.coverage.contract_assessment': ('DIGEST_PROMPT', 'summarize_evidence.txt'),
+    'projectclarity.nodes.design_answer.node': ('SYSTEM_PROMPT', 'design_answer.txt'),
     "projectclarity.nodes.plan_research.research_planner": ("SYSTEM_PROMPT", "research_planner.txt"),
     "projectclarity.nodes.select_sources.node": ("SYSTEM_PROMPT", "select_search_sources.txt"),
     "projectclarity.nodes.select_followup_sources.node": ("SYSTEM_PROMPT", "select_followup_sources.txt"),
     "projectclarity.extraction.knowledge_extraction_messages": ("SYSTEM_PROMPT", "extract_knowledge.txt"),
     "projectclarity.claim_review.claim_review_messages": ("SYSTEM_PROMPT", "review_claims.txt"),
     "projectclarity.nodes.assess_research_gaps.node": ("SYSTEM_PROMPT", "assess_research_gaps.txt"),
+    "projectclarity.nodes.study_coverage.node": ("SYSTEM_PROMPT", "study_coverage.txt"),
     "projectclarity.nodes.accumulate_knowledge.node": ("SYSTEM_PROMPT", "capture_knowledge.txt"),
     "tests.llm_connection.live_connection_check": ("PROMPT", "connection_test.txt"),
 }

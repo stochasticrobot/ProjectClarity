@@ -1,9 +1,12 @@
-"""Derive path-aware crawl stopping from existing evidence; never ask a model.
+"""Decide whether following another link along a source path is still productive.
 
-This is a deterministic novelty/support proxy, not semantic fact deduplication
-or calibrated confidence. Seeds are neutral. Pending/failed child analysis pauses
-that path, while useful findings can release a long page before every passage
-finishes. Only complete, successful no-gain analysis increments the dry streak.
+A branch is a sequence of pages reached by following links from a starting source.
+The scheduler can stop extending a branch after a configured number of analyzed
+pages produce no qualifying new evidence. These helpers compare claims, review
+outcomes and remaining passage work, while preserving alternate routes to a page.
+For example, an unproductive route must not hide the same page when it is reachable
+through a productive source. No model is asked to make this decision; unread or
+failed analysis is not treated as a successful read with no findings.
 """
 from collections import defaultdict, deque
 from urllib.parse import urljoin
@@ -14,7 +17,8 @@ from projectclarity.discovery.url_policy import url_denial
 
 USEFUL_ROLES = {'answer_evidence', 'lead', 'coverage_evidence', 'counterevidence'}
 REJECTED = {'contradicted', 'out_of_scope', 'invalid_evidence'}
-# Bound combinatorial simple-path analysis. Exhaustion is unknown, never pruning.
+# Limit exploration of alternate link paths; exceeding this analysis limit means
+# progress is unknown, not that the source branch should be closed.
 PATH_STATE_LIMIT = 10_000
 
 
@@ -156,7 +160,8 @@ def branch_progress(session):
     while queue and complete:
         parent, route = queue.popleft()
         if route not in routes[parent]:
-            continue  # A later route dominated this queued path.
+            continue  # Another retained route reaches this page with an equal or better
+            # progress history, so this queued alternative need not be expanded.
         dry, path = route
         if dry >= limit:
             continue

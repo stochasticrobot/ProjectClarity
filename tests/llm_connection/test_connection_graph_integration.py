@@ -165,7 +165,7 @@ class GraphProviderIntegrationTests(unittest.TestCase):
         ):
             code = smoke.main()
 
-        # Count wire attempts as well as checking the CLI result: a hidden retry
+        # Count wire attempts as well as checking the terminal interface result: a hidden retry
         # could otherwise pass while violating this smoke test's request budget.
         self.assertEqual(code, 1)
         self.assertEqual(len(requests), 1)

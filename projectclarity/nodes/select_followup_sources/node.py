@@ -1,24 +1,22 @@
-"""Select successive bounded batches from an observed-link frontier, separately from search.
+"""Choose additional sources from hyperlinks found in pages already acquired.
 
-The model sees research goals, bounded candidate/review summaries and actual
-eligible links. It may propose leads even when extraction found nothing. Python
-then checks every ID, goal and quota before registering URLs. Public cross-site links
-are permitted by the CLI unless same-origin or whitelist-only restrictions are enabled.
-Each round must add new canonical URLs or advance through deferred context to continue.
-Selection quality and saturation
-are not proven by these checks; they need the project's later evaluation dataset.
+This step offers the model a size-limited selection of observed URLs and labels,
+research goals and recorded findings. Python checks proposed IDs, goal links and
+capacity before registering destinations. For example, a university directory can
+lead to a staff profile even if the directory yielded no answer claims. The model
+cannot authorize a URL absent from the offered link inventory.
 
-State in discovery.json records the offered pool, exclusions, model proposal,
-selected-source ancestry and local outcome. The central workflow scheduler
-chooses subsequent retrieval, unconsidered frontier work or independent tasks;
-a selector failure does not decide run termination. Earlier source receipts remain;
-the cumulative session and candidate displays are refreshed as work proceeds.
+Unconsidered links can remain available for later turns. Decisions and source
+ancestry are saved in discovery.json; the scheduler chooses subsequent retrieval
+or other work. URL restrictions still apply, including optional same-origin or
+whitelist-only rules. Successful validation of a choice is not proof of relevance,
+complete discovery or source truth.
 """
 import json
 import time
 from collections import Counter
 
-from projectclarity.discovery.followup_selection_contracts import FollowupPlan
+from projectclarity.discovery.followup_selection_contracts import FollowupPlan, ContractFollowupPlan
 from projectclarity.discovery.branch_progress import branch_progress
 from projectclarity.discovery.observed_link_inventory import inventory_links, seed_origins, discovery_connections
 from projectclarity.discovery.inventory_context import pack_inventory, payload_messages
@@ -61,7 +59,8 @@ def select_followup_sources(state, output_root, key_reader=read_api_key, monitor
     register eligible selections up to capacity, retain surplus proposals and unmentioned
     offers after a full batch in the frontier (a non-full reply can decline unused offers),
     and save the selection or the reason
-    expansion stopped. This node selects sources; the retrieval node downloads them.
+    expansion stopped. This node selects sources; the retrieval node downloads them. Versioned answer
+    runs require explicit dispositions and requirement links at the shared boundary.
     Offer complete claim summaries and paired human guidance within the context budget;
     link depth and deterministic branch progress stay in eligibility checks, not the
     model's ranking payload. Save paused/pruned parent decisions even without a call.
@@ -191,10 +190,12 @@ def select_followup_sources(state, output_root, key_reader=read_api_key, monitor
         return {"session": session}
     discovery["selection_attempted"] = True
     save_discovery(session, output_root)
+    from projectclarity.nodes.schedule_work.answer_controller import enabled
+    controlled = enabled(session)
     answer, receipt = invoke_structured(session, output_root, call_id=f"discovery_hop{discovery['round']}",
-        task="select_followup_sources", prompt_version="followup-selection-v6",
+        task="select_followup_sources", prompt_version="followup-dispositions-v1" if controlled else "followup-selection-v6",
         messages=payload_messages(SYSTEM_PROMPT, payload),
-        schema=FollowupPlan, key_reader=key_reader, monitor=monitor)
+        schema=ContractFollowupPlan if controlled else FollowupPlan, key_reader=key_reader, monitor=monitor)
     discovery["call_id"] = receipt["call_id"]
     if answer is None:
         discovery["stop_reason"] = receipt["error_code"] or "selection_failed"

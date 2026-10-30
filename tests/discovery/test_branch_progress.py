@@ -1,4 +1,9 @@
-"""Focused adversarial checks for branch policy boundaries not owned by model prompts."""
+"""Check when a linked-source path is eligible for further exploration.
+
+Controlled request and source histories test older-run defaults and alternate
+paths to the same destination. A blocked first parent must not hide a usable
+second route. These are direct policy checks, not live browsing or model tests.
+"""
 import unittest
 
 from projectclarity.discovery.branch_progress import branch_progress

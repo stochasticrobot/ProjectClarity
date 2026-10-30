@@ -18,10 +18,10 @@ from projectclarity.retrieval import source_retrieval
 
 
 class RetrievalCLIIntegrationTests(unittest.TestCase):
-    """Reuse the existing real-module CLI harness without duplicating its test cases."""
+    """Reuse the existing real-module terminal interface harness without duplicating its test cases."""
 
     def setUp(self):
-        """Reuse the real CLI harness and substitute source HTTP, with a plan that permits
+        """Reuse the real terminal entry point harness and substitute source HTTP, with a plan that permits
         retrieval.
 
         Args:
@@ -189,8 +189,10 @@ class RetrievalCLIIntegrationTests(unittest.TestCase):
                 later checks.
             """
             directory, session = self.cli.saved_session()
-            self.assertEqual(session["plan"], self.cli.plan)
-            self.assertEqual(json.loads((directory / "plan.json").read_text()), self.cli.plan)
+            self.assertEqual(session["plan"],
+                {**self.cli.plan, "goals": [{**g, "requirement_ids": []} for g in self.cli.plan["goals"]]})
+            self.assertEqual(json.loads((directory / "plan.json").read_text()),
+                {**self.cli.plan, "goals": [{**g, "requirement_ids": []} for g in self.cli.plan["goals"]]})
             self.assertEqual(session['visited_nodes'][:3], ['initialize_research', 'plan_research', 'review_plan'])
             self.assertEqual(session['visited_nodes'][-1], 'retrieve_sources')
             self.assertEqual(session['visited_nodes'].count('retrieve_sources'), len(acquisitions) + 1)
@@ -285,7 +287,8 @@ class RetrievalCLIIntegrationTests(unittest.TestCase):
             plan_only=False, source_dns=public_dns)
         self.assertEqual(code, 0, stderr)
         directory, session = self.cli.saved_session()
-        self.assertEqual(session["plan"], self.cli.plan)
+        self.assertEqual(session["plan"],
+                {**self.cli.plan, "goals": [{**g, "requirement_ids": []} for g in self.cli.plan["goals"]]})
         self.assertEqual(session["status"], "sources_retrieved")
         self.assertEqual(session["visited_nodes"], ["initialize_research", "plan_research", "review_plan", "schedule_work", "retrieve_sources", "schedule_work"])
         self.assertIsNone(session["pending_review"])

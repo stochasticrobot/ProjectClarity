@@ -4,7 +4,7 @@ For example, a file that disappears after planning should leave a failed receipt
 while an unreadable format should retain its raw bytes for inspection. Temporary
 files keep developer documents untouched. Parser results are substituted in the
 receipt tests to isolate acquisition/storage failures; real parsing is covered
-in test_document_text_extraction.py and the CLI integration tests.
+in test_document_text_extraction.py and the terminal interface integration tests.
 """
 
 import json

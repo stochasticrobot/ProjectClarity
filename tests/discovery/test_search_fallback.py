@@ -1,4 +1,11 @@
-"""Verify explicit multi-engine recovery at adapters, journals and the production CLI."""
+"""Check search-engine fallback, cooldown and recovery across saved research state.
+
+Synthetic engine replies and controlled timing exercise direct search helpers and
+the public research command. Tests require another enabled engine to remain usable,
+persist retry timing across restart, preserve other page work while search waits,
+and enforce eventual retry limits. Wikipedia API behavior is checked with fake
+responses. These are offline recovery tests, not evidence of current engine availability.
+"""
 import json
 import tempfile
 import unittest
@@ -201,7 +208,7 @@ class FreeSearchRecoveryTests(unittest.TestCase):
 
 
 class SearchFallbackCLITests(unittest.TestCase):
-    """Exercise production CLI selection, acquisition, cooldown and recovery."""
+    """Exercise production terminal entry point selection, acquisition, cooldown and recovery."""
 
     def test_failed_primary_successful_fallback_reaches_real_acquisition(self):
         """A fallback result must become a retrieved source, not just adapter output.
@@ -317,7 +324,7 @@ class SearchFallbackCLITests(unittest.TestCase):
         """An interrupted cooldown must remain deferred across the public resume command.
 
         Args:
-            self: CLI integration case using virtual wall time and synthetic transports.
+            self: terminal interface integration case using virtual wall time and synthetic transports.
 
         Returns:
             None. Assert the saved deadline survives restart, no immediate provider
@@ -386,7 +393,7 @@ class SearchFallbackCLITests(unittest.TestCase):
         """Persistent failure cannot create infinite deferred query tasks.
 
         Args:
-            self: CLI case with two unavailable engines and one logical query.
+            self: terminal interface case with two unavailable engines and one logical query.
 
         Returns:
             None. Assert three rounds per engine, retained six failures, terminal

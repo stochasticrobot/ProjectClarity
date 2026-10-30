@@ -1,9 +1,10 @@
-"""Exercise question-only discovery through the production CLI and LangGraph.
+"""Exercise question-only discovery through the production terminal entry point and LangGraph.
 
 Only search-provider results, model HTTP replies and source HTTP/DNS are fixtures.
 These prove routing/reference/budget behavior, not search relevance or judgment
 accuracy. The search adapter/worker have separate transport-boundary checks.
 """
+from tests.claim_review.mapping_fixtures import fixture_mappings
 import json
 import unittest
 from unittest.mock import patch
@@ -85,6 +86,8 @@ class SearchCoveragePipelineTests(unittest.TestCase):
         Returns:
             A synthetic httpx2.Response passed through the real provider SDK; no network request
             is made by this responder.
+        Review replies include authored report-mapping judgments; these do not
+        establish live semantic recognition accuracy.
         """
         body = json.loads(request.content)
         schema = body["output_config"]["format"]["schema"]["title"]
@@ -107,9 +110,9 @@ class SearchCoveragePipelineTests(unittest.TestCase):
                 answer["claims"][0].update(statement="The current roster has one member, Alice.",
                     research_roles=["coverage_evidence"], evidence=[{"passage_id": "P1", "quote": "The current roster has one member, Alice."}])
         elif schema == "ClaimReviewBatch":
-            quote = "The current roster has one member, Alice." if payload["source_id"] == "S2" else "Alice works at Lab X."
             answer = {"assessments": [{"candidate_id": c["candidate_id"], "verdict": "supported", "in_scope": True,
-                "rationale": "Fixture review only.", "evidence_quotes": [quote]} for c in payload["candidates"]]}
+                "rationale": "Fixture review only.", "report_mappings": fixture_mappings(c, payload), "evidence_quotes": [c['proposal']['evidence'][0]['quote']]}
+                for c in payload["candidates"]]}
         elif schema == "CoverageAssessment":
             self.round += 1
             directory, _ = self.cli.saved_session()
@@ -148,7 +151,7 @@ class SearchCoveragePipelineTests(unittest.TestCase):
                 invocation.
 
         Returns:
-            A tuple of CLI exit code, captured stdout, captured stderr, run-directory Path and
+            A tuple of terminal interface exit code, captured stdout, captured stderr, run-directory Path and
             saved-session dictionary.
         """
         args = ["--search", "--max-requests", str(budget), "--max-output-tokens", "4096"]
@@ -163,8 +166,57 @@ class SearchCoveragePipelineTests(unittest.TestCase):
         directory, session = self.cli.saved_session()
         return (*result, directory, session)
 
+    def test_trailing_nbsp_official_directory_reaches_selection_and_retrieval(self):
+        """Replay the observed Commons URL defect through the real research entry point.
+
+        Args:
+            self: Production graph harness with synthetic search, provider and HTTP transports.
+        Returns:
+            None. Assert original URL provenance survives, normalized duplicates merge,
+            the directory is offered/selected/retrieved and its text is extracted.
+            No real Commons or paid model requests occur; this tests routing, not facts.
+        """
+        target = 'https://www.ourcommons.ca/Members'
+        self.http.routes[('www.ourcommons.ca', '/robots.txt')] = (
+            200, {'Content-Type': 'text/plain'}, b'User-agent: *\nAllow: /\n')
+        self.http.routes[('www.ourcommons.ca', '/Members')] = (
+            200, {'Content-Type': 'text/plain'}, SOURCE_TEXT.encode())
+
+        def padded_search(query, max_results, monitor=None):
+            """Substitute the failed provider URL while preserving ordinary discovery rounds.
+
+            Args:
+                query: Production query recorded by the existing search fixture.
+                max_results: Requested provider result limit.
+                monitor: Production observer forwarded unchanged.
+            Returns:
+                Search results with the observed NBSP defect and a clean duplicate
+                on the first round; later rounds use the original fixture.
+            """
+            rows = self.search(query, max_results, monitor)
+            if len(self.search_calls) == 1:
+                rows[0]['url'] = target + '\u00a0'
+                rows[1]['url'] = target
+            return rows
+
+        code, _, err, directory, session = self.run_pipeline(search=padded_search)
+        self.assertEqual(code, 0, err)
+        result = session['search']['results'][0]
+        self.assertEqual(result['original_url'], target + '\u00a0')
+        self.assertEqual(result['url'], target)
+        self.assertTrue(result['eligible'])
+        self.assertIn(result['result_id'], session['search']['selections'][0]['offered_ids'])
+        self.assertEqual(session['sources'][0]['url'], target)
+        self.assertEqual(session['sources'][0]['discovered_from_search'], result['result_id'])
+        document = session['documents'][0]
+        self.assertEqual(document['status'], 'retrieved')
+        self.assertEqual(document['final_url'], target)
+        self.assertEqual((directory / document['text_path']).read_text().strip(), SOURCE_TEXT.strip())
+        self.assertTrue(any(c['source_id'] == document['source_id']
+                            and c['evidence_status'] == 'anchored' for c in session['extraction']['candidates']))
+
     def test_question_only_two_rounds_search_extract_and_measure(self):
-        """The real CLI discovers pages, then a benchmark, without supplied URLs or special
+        """The real terminal entry point discovers pages, then a benchmark, without supplied URLs or special
         politics rules.
 
         Args:
@@ -342,19 +394,21 @@ class SearchCoveragePipelineTests(unittest.TestCase):
         self.assertIn("unknown", out)
 
     def test_request_limit_cannot_claim_coverage(self):
-        """The assessment uses the same model budget as planning/selection/extraction.
+        """Do not buy a selection without enough calls for reading and assessment.
 
         Args:
             self: This unittest case instance, holding its isolated fixtures and assertion
                 methods.
 
         Returns:
-            None. Assertions fail if the documented behavior regresses; unittest records the
-            result.
+            None. A three-call question-only run cannot afford planning, selection,
+            extraction and coverage. Assert it stops after planning with explicit
+            limits, no fabricated findings and no assessed-completion claim.
         """
         code, _, _, _, session = self.run_pipeline(budget=3)
         self.assertEqual(code, 1)
-        self.assertEqual(len(self.cli.requests), 3)
+        self.assertEqual(len(self.cli.requests), 1)
+        self.assertEqual(session['sources'], [])
         self.assertEqual(session["coverage"]["assessment_status"], "not_assessed")
         self.assertIn("request_limit", session["coverage"]["limits_reached"])
 

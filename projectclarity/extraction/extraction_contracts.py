@@ -53,6 +53,20 @@ class QuotedEvidence(Contract):
     quote: Annotated[str, StringConstraints(min_length=1, max_length=4000)]
 
 
+class ResultField(Contract):
+    """A result-shape field name and its passage-supported value."""
+
+    name: Identifier
+    value: Text
+
+
+class ResultRecord(Contract):
+    """One item sought by a goal, retaining missing fields rather than guessing them."""
+
+    goal_id: Identifier
+    fields: list[ResultField] = Field(max_length=8)
+
+
 class ExtractedClaim(Contract):
     """One checkable assertion, its research purpose and its proposed evidence."""
 
@@ -61,6 +75,11 @@ class ExtractedClaim(Contract):
     goal_ids: list[Identifier] = Field(min_length=1, max_length=8)
     entity_ids: list[Identifier] = Field(max_length=12)
     relationship: ExtractedRelationship | None
+    # Defaults load historical receipts without inventing classification or data.
+    # Incomplete relational claims remain valid proposals for bounded refinement;
+    # they are never promoted to completed structured results just by parsing.
+    claim_kind: Literal["relational", "non_relational"] | None = None
+    result_records: list[ResultRecord] = Field(default_factory=list, max_length=8)
     qualifications: list[Text] = Field(max_length=6, description="Dates, attribution, uncertainty or scope restrictions; empty when none are stated.")
     research_roles: list[Literal["answer_evidence", "lead", "context", "coverage_evidence", "counterevidence"]] = Field(
         default_factory=lambda: ["answer_evidence"], min_length=1, max_length=5,
@@ -90,6 +109,9 @@ class ExtractionAttempt(Contract):
     # Relative to this run's folder. Older records and skipped/preparation-failed
     # passages can lack a trace. A trace is diagnostic data, not accepted evidence.
     trace_path: str | None = None
+    # Application-only safe transport diagnostics; never model instructions or raw errors.
+    diagnostics: dict | None = None
+    last_attempt_id: str | None = None
     response_model: str | None = None
     stop_reason: str | None = None
     input_tokens: int | None = None
@@ -97,6 +119,14 @@ class ExtractionAttempt(Contract):
     total_tokens: int | None = None
     elapsed_seconds: float | None = None
     result: ExtractionBatch | None = None
+    # Application-only receipt; never included in the model's response schema.
+    identifier_aliases: dict[str, str] = Field(default_factory=dict)
+    # Bounded input refinement and attention receipts, not model-facing instructions
+    # or a claim that the source's meaning has been completely extracted.
+    refinement_parent: str | None = None
+    record_followup_ids: list[str] = Field(default_factory=list)
+    unquoted_record_ids: list[str] = Field(default_factory=list)
+    unstructured_record_ids: list[str] = Field(default_factory=list)
 
 
 class AnchoredEvidence(Contract):
@@ -132,10 +162,13 @@ class CandidateClaim(Contract):
 class ExtractionRecord(Contract):
     """Versioned local work record, including coverage gaps and validation outcomes."""
 
-    schema_version: Literal["1.0", "1.1", "1.2", "1.3"] = "1.3"
-    prompt_version: Literal["knowledge-extraction-v1", "knowledge-extraction-v2", "knowledge-extraction-v3"] = "knowledge-extraction-v3"
+    schema_version: Literal["1.0", "1.1", "1.2", "1.3", "1.4"] = "1.4"
+    prompt_version: Literal["knowledge-extraction-v1", "knowledge-extraction-v2", "knowledge-extraction-v3", "knowledge-extraction-v4", "knowledge-extraction-v5"] = "knowledge-extraction-v5"
     retrieval_incomplete: bool = False
     attempts: list[ExtractionAttempt] = Field(default_factory=list)
     # These are application-owned codes, not raw provider/file exception messages.
     source_errors: list[dict[str, str]] = Field(default_factory=list)
+    # Run-local work aliases, not additional independent evidence or paid receipts.
+    # Each value binds the canonical source_id to the acquired text_sha256.
+    source_aliases: dict[str, dict[str, str]] = Field(default_factory=dict)
     candidates: list[CandidateClaim] = Field(default_factory=list)

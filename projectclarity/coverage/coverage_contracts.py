@@ -1,8 +1,12 @@
-"""Typed model assessments of criteria, evidence-backed items and further searches.
+"""Define structured model replies about evidence coverage and remaining research gaps.
 
-Item keys are model-proposed groupings for this assessment, not canonical entity
-IDs. Python checks references and arithmetic; it does not certify semantic
-identity, completeness, attribution or feasibility.
+The coverage task asks which answer requirements are satisfied, which list items
+have evidence, and which searches could address missing information. These
+Pydantic models constrain that reply format. Proposed item keys group results
+within an assessment; they are not independently established entity identities.
+Later Python checks validate references and arithmetic, while meaning, currentness
+and sufficiency remain model judgments. Class and field descriptions here are
+included in the model's response schema.
 """
 from typing import Literal
 from pydantic import Field
@@ -21,7 +25,7 @@ class CoverageItem(Contract):
     """One proposed distinct item satisfying the criterion, with retained evidence references."""
 
     key: str = Field(min_length=1)
-    candidate_ids: list[str] = Field(min_length=1, max_length=20)
+    candidate_ids: list[str] = Field(min_length=1)
 
 
 class CriterionAssessment(Contract):
@@ -29,10 +33,11 @@ class CriterionAssessment(Contract):
 
     criterion_id: Identifier
     judgment: Literal["unknown", "partial", "satisfied"]
-    items: list[CoverageItem] = Field(max_length=100)
+    items: list[CoverageItem] = Field(max_length=1000)
     target_count: int | None = Field(ge=0, le=1000000)
-    benchmark_candidate_ids: list[str] = Field(max_length=20)
-    evidence_candidate_ids: list[str] = Field(max_length=40)
+    result_goal_id: Identifier | None = None
+    benchmark_candidate_ids: list[str]
+    evidence_candidate_ids: list[str]
     gaps: list[Text]
     rationale: Text
 
@@ -40,7 +45,7 @@ class CriterionAssessment(Contract):
 class CoverageAssessment(Contract):
     """Assess every offered criterion and propose bounded searches for remaining gaps."""
 
-    assessments: list[CriterionAssessment] = Field(max_length=12)
+    assessments: list[CriterionAssessment]
     next_searches: list[ResearchSearch]
     # Historical fixture/record compatibility; missing revisions are explicitly recorded.
     scope_estimates: list[ScopeEstimate] = Field(default_factory=list, max_length=12)

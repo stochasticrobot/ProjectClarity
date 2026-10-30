@@ -1,10 +1,11 @@
-"""Exercise the built-in five-person test through the production CLI and graph.
+"""Exercise the built-in five-person test through the production terminal entry point and graph.
 
 Only external HTTP/DNS and provider replies are substituted. The actual source
 retriever, extractor parser, evidence validator, reviewer, adjudicator, saved
 session and evaluator execute. A passing fixture proves cross-source wiring and
 test assertions, not that a live LLM will return these answers on current pages.
 """
+from tests.claim_review.mapping_fixtures import fixture_mappings
 import copy
 import io
 import json
@@ -88,12 +89,14 @@ class CombinedMembershipPipelineTests(unittest.TestCase):
             Returns:
                 A synthetic httpx2.Response passed through the real provider SDK; no network request
                 is made by this responder.
+            Review replies include authored report-mapping judgments; these do not
+            establish live semantic recognition accuracy.
             """
             payload = json.loads(body['messages'][0]['content'])
             return flow.cli.response(text=json.dumps({'assessments': [
                 {'candidate_id': c['candidate_id'], 'verdict': 'supported', 'in_scope': True,
                  'rationale': 'Synthetic source explicitly states this relationship.',
-                 'evidence_quotes': [c['proposal']['evidence'][0]['quote']]}
+                 'report_mappings': fixture_mappings(c, payload), 'evidence_quotes': [c['proposal']['evidence'][0]['quote']]}
                 for c in payload['candidates']]}))
 
         flow.overrides.update(ExtractionBatch=extraction, ClaimReviewBatch=review)
@@ -109,7 +112,7 @@ class CombinedMembershipPipelineTests(unittest.TestCase):
                     evaluator is selected from them.
 
             Returns:
-                Never returns normally; SystemExit carries the actual evaluation CLI result to the
+                Never returns normally; SystemExit carries the actual evaluation terminal interface result to the
                 harness.
             """
             raise SystemExit(main(['run', case['case_id'], '--max-requests', str(budget),
@@ -145,7 +148,7 @@ class CombinedMembershipPipelineTests(unittest.TestCase):
         self.assertEqual(score['supported_relationships']['correct_count'], 10)
         self.assertEqual(len(session['extraction']['candidates']), 12)
         self.assertEqual(len(session['documents']), 4)
-        self.assertEqual(len(flow.cli.requests), 9)  # One plan + four extractions + four reviews.
+        self.assertEqual(len(flow.cli.requests), 6)  # One plan + four extractions + one source-bound review.
         self.assertIn('Built-in multi-source test: PASSED', out)
         for node in ['retrieve_sources', 'extract_knowledge', 'validate_evidence', 'review_claims', 'adjudicate_claims']:
             self.assertIn(node, session['visited_nodes'])

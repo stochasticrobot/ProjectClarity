@@ -1,7 +1,7 @@
 """Print the connected steps recorded for a research run, using LangGraph's topology.
 
-For example, a completed download run shows START -> initialize -> plan -> review
--> retrieve -> END, while a paused review stops before retrieval. Nodes and edges
+For example, the view distinguishes a run that reached source retrieval from
+one paused at human plan review; scheduling steps and loops remain visible. Nodes and edges
 come from get_graph(), not a second hand-maintained workflow definition.
 
 The workflow saves workflow_graph.json and workflow_graph.txt when an invocation

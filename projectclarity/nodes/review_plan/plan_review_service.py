@@ -1,16 +1,16 @@
-"""Connect any user interface to a pending LangGraph plan review.
+"""Read and submit human decisions for research paused at plan review.
 
-The terminal calls get_plan_review() to display questions and submit_plan_review()
-to send a decision. A future authenticated HTTP handler can call those same
-functions with the same JSON contracts. Nothing here calls input(), prints a
-screen, or depends on a browser. Submitting runs the remaining graph synchronously;
-a web server will need a worker adapter, not a long-running HTTP request.
+A plan may need clarification before source reading can continue. Terminal and
+dashboard interfaces use get_plan_review to obtain the saved questions and
+submit_plan_review to apply answers, a replacement plan or rejection. The service
+validates the run/review IDs against LangGraph's actual saved interruption, so an
+old form or edited display file cannot approve a different plan.
 
-The checkpoint is authoritative. Editable display files are not approval tokens.
-Responses must match the pending run/review IDs, and one process holds the worker
-lock throughout submission. Old, repeated, or concurrent decisions cannot start
-another fetch. A crash during execution is not automatically replayed: safe
-arbitrary-task recovery and distributed locks are later work.
+Submission holds the worker lock and runs the remaining workflow synchronously.
+A browser-facing caller must arrange worker execution rather than hold an HTTP
+request open for the entire research run. These functions do not display prompts
+or read keyboard input. This is local checkpoint-based plan review, not a general
+replay mechanism for arbitrary interrupted tasks or a distributed lock service.
 """
 
 import hashlib
@@ -59,7 +59,8 @@ def validate_review_decision(review: PlanReviewRequest, decision: PlanReviewDeci
 
     Returns:
         None when the decision belongs to this pending review and respects its constraints;
-        otherwise raise a validation error.
+        otherwise raise a validation error. Designed-run revisions must retain the
+        accepted report, completion checks and valid goal-to-requirement mappings.
     """
     if decision.run_id != review.run_id or decision.review_id != review.review_id:
         raise ResearchError("This decision does not match the pending review. Read the current review again.")
@@ -67,6 +68,17 @@ def validate_review_decision(review: PlanReviewRequest, decision: PlanReviewDeci
         if {answer.question_id for answer in decision.answers} != {q.question_id for q in review.questions}:
             raise ResearchError("Answer every listed question exactly once, using its Q identifier.")
     if decision.revised_plan is not None:
+        if session.answer_schema:
+            proposed = decision.revised_plan.model_copy(deep=True)
+            from projectclarity.answer_schema.binding import bind_report
+            from projectclarity.nodes.schedule_work.answer_controller import enabled
+            try:
+                bind_report(proposed, session.answer_schema,
+                    require_mappings=enabled(session))
+            except ValueError:
+                raise ResearchError('A revised plan must retain the designed report sections and valid requirement mappings.') from None
+            if proposed != decision.revised_plan:
+                raise ResearchError('This revision changes the designed answer contract. Start a new run with the revised question.')
         known = {source.source_id for source in session.sources}
         if any(source_id not in known for step in decision.revised_plan.strategy for source_id in step.source_ids):
             raise ResearchError("A revised plan may reference only the originally supplied source IDs.")
@@ -167,7 +179,9 @@ def submit_plan_review(output_root, decision: PlanReviewDecision, *, on_event=No
 
     Returns:
         The ResearchSession after applying the decision and resuming or cancelling the same
-        saved run.
+        saved run. The native review interrupt remains durable across processes.
+        Continuation saves its next graph checkpoint on exit or another pause,
+        rather than copying the research session after every processing step.
     """
     from projectclarity.agentic_workflow import build_graph, finish_graph_invocation
 
@@ -186,7 +200,8 @@ def submit_plan_review(output_root, decision: PlanReviewDecision, *, on_event=No
             with monitor.termination_handler(), tracing_context(enabled=False):
                 started = True
                 monitor.resume()
-                result = graph.invoke(Command(resume=decision.model_dump(mode="json")), thread_config(decision.run_id))
+                result = graph.invoke(Command(resume=decision.model_dump(mode="json")),
+                    thread_config(decision.run_id), durability="exit")
                 return finish_graph_invocation(result, output_root, monitor, graph)
     except BlockingIOError:
         raise ResearchError("This run already has an active worker. No review was submitted.") from None

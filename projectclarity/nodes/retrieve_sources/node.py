@@ -1,4 +1,11 @@
-"""Acquire scheduled sources and preserve attempt receipts for later analysis."""
+"""Read the sources chosen by the scheduler and save their acquisition outcomes.
+
+A source is a registered web URL or local document path. This workflow step obtains
+the shared retrieval limits and calls the source reader to save original bytes,
+parsed text and metadata. It records failures as well as successful reads so later
+steps can distinguish an unread document from a document containing no findings.
+It does not choose new sources or ask a model to extract claims.
+"""
 from pathlib import Path
 from projectclarity.workflow_state import ResearchState
 from projectclarity.retrieval.runtime import retrieval_runtime
@@ -10,7 +17,7 @@ from projectclarity.plan_renderer import render_plan
 from projectclarity.session_storage import save_session, write_text
 
 
-def retrieve_sources(state: ResearchState, output_root: Path, monitor=None, runtime=None) -> dict:
+def retrieve_sources(state: ResearchState, output_root: Path, monitor=None, runtime=None, *, only_source_ids=None, record_visit=True) -> dict:
     """Retrieve registered sources that do not yet have receipts, preserving each outcome for
     later extraction.
 
@@ -35,6 +42,10 @@ def retrieve_sources(state: ResearchState, output_root: Path, monitor=None, runt
             disables those hooks.
         runtime: Mutable invocation-local dictionary holding the shared PublicWebReader;
             reused across retrieval rounds but never serialized into graph state.
+        only_source_ids: Optional bounded source-ID collection for an early coverage probe;
+            None retains normal scheduled/batch retrieval. Already acquired pages are reused.
+        record_visit: False for internal executor reuse by the early-study graph node;
+            no separate graph-node visit is then recorded.
 
     Returns:
         A dictionary with one session entry containing the updated ResearchSession.
@@ -42,7 +53,8 @@ def retrieve_sources(state: ResearchState, output_root: Path, monitor=None, runt
         knowledge.
     """
     session = state["session"]
-    session.visited_nodes.append("retrieve_sources")
+    if record_visit:
+        session.visited_nodes.append("retrieve_sources")
     session.status = "retrieving"
     directory = output_root / session.session_id
     runtime = runtime if runtime is not None else {}
@@ -56,6 +68,8 @@ def retrieve_sources(state: ResearchState, output_root: Path, monitor=None, runt
         if monitor:
             monitor.observe("retrieval_started", stage="retrieving", run_status="retrieving")
         for source in session.sources:
+            if only_source_ids is not None and source.source_id not in only_source_ids:
+                continue
             if scheduled_source:
                 if source.source_id != scheduled_source:
                     continue
@@ -112,5 +126,4 @@ def retrieve_sources(state: ResearchState, output_root: Path, monitor=None, runt
     save_session(session, output_root)
     write_text(directory / "plan.md", render_plan(session))
     return {"session": session}
-
 

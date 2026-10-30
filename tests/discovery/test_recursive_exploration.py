@@ -1,7 +1,13 @@
-"""Exercise recursive links, intersections and domain policy through the production CLI."""
+"""Check repeated link-following, shared destinations and domain restrictions.
+
+The public research command processes synthetic linked pages through the actual
+graph, URL policy, parser and saved source records. Tests inspect successive hops,
+intersecting paths, restrictions and allowance handling; controlled external
+responses make the scenarios repeatable. These checks establish traversal
+mechanics, not whether a live model selects every useful link.
+"""
 import json
 import unittest
-from unittest.mock import patch
 
 from tests.claim_review import test_review_and_discovery_integration as review_tests
 from tests.retrieval.retrieval_test_fixtures import public_dns
@@ -17,7 +23,7 @@ class RecursiveExplorationTests(unittest.TestCase):
         """Supply held-out cross-site branches and model HTTP without replacing orchestration.
 
         Args:
-            self: Test owner of an isolated CLI, source transport and provider fixture.
+            self: Test owner of an isolated terminal interface, source transport and provider fixture.
 
         Returns:
             None. Prepare root → two branches → shared destination → leaf → root loop.
@@ -58,7 +64,7 @@ class RecursiveExplorationTests(unittest.TestCase):
         return self.base.cli.response(text=json.dumps(answer))
 
     def run_pipeline(self, *flags):
-        """Invoke default recursive/open-site behavior using the real CLI and graph.
+        """Invoke default recursive/open-site behavior using the real terminal entry point and graph.
 
         Args:
             self: Fixture with production-compatible source/model transports.

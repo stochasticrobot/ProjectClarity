@@ -1,6 +1,6 @@
 """Check malformed UI responses before they reach a resumable workflow.
 
-A web form and a CLI file are both untrusted input. These small tests exercise
+A web form and a terminal interface file are both untrusted input. These small tests exercise
 the shared response contract and bounded JSON reader, without a model, graph,
 or database. They complement the cross-process tests rather than replace them.
 """
@@ -43,7 +43,7 @@ class ReviewResponseValidationTests(unittest.TestCase):
                 PlanReviewDecision.model_validate(payload)
 
     def test_response_files_have_encoding_and_size_limits(self):
-        """The CLI fails oversized or malformed files before constructing a decision.
+        """The terminal interface fails oversized or malformed files before constructing a decision.
 
         Args:
             self: This unittest case instance, holding its isolated fixtures and assertion

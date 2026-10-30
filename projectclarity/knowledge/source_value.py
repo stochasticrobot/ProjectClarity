@@ -1,8 +1,11 @@
-"""Record inspectable source-potential signals without mistaking volume for truth.
+"""Record document features and observed capture yield for later source prioritization.
 
-These are heuristic richness signals, not an authority score or a learned ranking.
-No document is reordered or dropped here. Even a very short page can supply the
-one decisive fact; realized capture yield is recorded separately by the graph node.
+Features such as text length and link structure describe what a source might offer;
+capture yield records what the optional knowledge task actually extracted. These
+helpers save those signals so scheduling or inspection can use explicit data.
+They do not reorder or discard documents themselves. A long, richly linked page
+is not necessarily authoritative or useful, and a short page may supply the one
+fact needed for an answer.
 """
 from projectclarity.extraction.saved_source_passages import read_verified_text, EvidenceInputError
 from projectclarity.session_storage import save_session, write_text

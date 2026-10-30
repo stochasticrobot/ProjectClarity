@@ -158,7 +158,7 @@ def run_smoke(api_key: str, model_id: str = DEFAULT_MODEL) -> dict:
 
 
 def main() -> int:
-    """Provide the interactive CLI and return a shell-friendly success/failure code.
+    """Provide the interactive terminal interface and return a shell-friendly success/failure code.
 
     Args:
         None.

@@ -1,0 +1,55 @@
+{
+  "purpose": "Frozen full HTML inputs for benchmarking exhaustive current MP-to-riding extraction from the 45th Canadian Parliament. Not model-generated answers.",
+  "expected_answers_status": "Two independent source-local references prepared. Each has 337 distinct current-as-presented MP-riding pairs. Wikipedia historical exclusions, literal labels and the member disagreement are preserved; neither reference imports corrections from the other page.",
+  "sources": [
+    {
+      "file": "wikipedia.html",
+      "requested_url": "https://en.wikipedia.org/wiki/List_of_House_members_of_the_45th_Parliament_of_Canada",
+      "final_url": "https://en.wikipedia.org/wiki/List_of_House_members_of_the_45th_Parliament_of_Canada",
+      "retrieved_at_utc": "2026-10-26T04:05:16.778481+00:00",
+      "http_status": 200,
+      "content_type": "text/html; charset=UTF-8",
+      "bytes": 689195,
+      "sha256": "9d92cebda2fe813d8e30c0a61782d96ff5395e818d81b55df713ea343ee21f95",
+      "acquisition": "urllib3 using the application User-Agent",
+      "title": "List of House members of the 45th Parliament of Canada - Wikipedia",
+      "revision_id": "1379559880",
+      "permanent_url": "https://en.wikipedia.org/w/index.php?title=List_of_House_members_of_the_45th_Parliament_of_Canada&oldid=1379559880",
+      "attribution_url": "https://en.wikipedia.org/w/index.php?title=List_of_House_members_of_the_45th_Parliament_of_Canada&action=history",
+      "license_notice": "Text is available under the Creative Commons Attribution-ShareAlike 4.0 License ;\nadditional terms may apply. By using this site, you agree to the Terms of Use and Privacy Policy . Wikipedia® is a registered trademark of the Wikimedia Foundation, Inc. , a non-profit organization.",
+      "structure": {
+        "membership_tables": 11,
+        "member_history_rows": 356,
+        "distinct_electoral_districts": 343,
+        "missing_name_or_district_rows": 0,
+        "check_scope": "Structural row/rowspan inspection only, not validation that every last entry is a current member."
+      },
+      "benchmark": {
+        "reference_file": "wikipedia.expected.json",
+        "pairs_file": "wikipedia.expected.csv",
+        "expected_pair_count": 337
+      }
+    },
+    {
+      "file": "house_of_commons.html",
+      "requested_url": "https://www.ourcommons.ca/Members/en/search",
+      "final_url": "https://www.ourcommons.ca/Members/en/search",
+      "retrieved_at_utc": "2026-10-26T04:04:43.222242+00:00",
+      "http_status": 200,
+      "content_type": "text/html; charset=utf-8",
+      "bytes": 795102,
+      "sha256": "a338ebfd485ef76c27afc654321352527e05f848a8129c9c0d00e501405e5261",
+      "title": "Current Members of Parliament - Members of Parliament - House of Commons of Canada",
+      "structure": {
+        "member_records": 337,
+        "complete_name_party_riding_province_records": 337,
+        "unique_member_ids": 337
+      },
+      "benchmark": {
+        "reference_file": "house_of_commons.expected.json",
+        "pairs_file": "house_of_commons.expected.csv",
+        "expected_pair_count": 337
+      }
+    }
+  ]
+}

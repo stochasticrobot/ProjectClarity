@@ -1,0 +1,7486 @@
+{
+  "benchmark_id": "wikipedia",
+  "schema_version": 1,
+  "question": "According to this saved page, list all current Members of Parliament and their ridings as of 2026-10-26. Exclude former members.",
+  "as_of": "2026-10-26",
+  "source_file": "wikipedia.html",
+  "source_url": "https://en.wikipedia.org/wiki/List_of_House_members_of_the_45th_Parliament_of_Canada",
+  "source_sha256": "9d92cebda2fe813d8e30c0a61782d96ff5395e818d81b55df713ea343ee21f95",
+  "retrieved_at_utc": "2026-10-26T04:05:16.778481+00:00",
+  "reference_basis": "Source-local structured HTML inspection, not a model answer or independent verification of every real-world fact.",
+  "scoring": {
+    "unit": "distinct (mp, riding) pair",
+    "normalization": "Unicode NFC, casefold, collapse whitespace only; no fuzzy matching or cross-page aliases.",
+    "duplicates": "Count each identical pair once.",
+    "metrics": [
+      "precision",
+      "recall",
+      "f1"
+    ],
+    "warning": "Score this page independently. A matching name with the wrong riding is an incorrect pair. Source fidelity does not prove real-world currency."
+  },
+  "expected_pair_count": 337,
+  "expected_pairs": [
+    {
+      "mp": "Aaron Gunn",
+      "riding": "North Island—Powell River",
+      "provenance": [
+        {
+          "table_index": 3,
+          "row_index": 21,
+          "name_cell": {
+            "table_index": 3,
+            "row_index": 21,
+            "cell_index": 1
+          },
+          "riding_cell": {
+            "table_index": 3,
+            "row_index": 21,
+            "cell_index": 3
+          },
+          "name_annotation": "Aaron Gunn"
+        }
+      ]
+    },
+    {
+      "mp": "Abdelhaq Sari",
+      "riding": "Bourassa",
+      "provenance": [
+        {
+          "table_index": 10,
+          "row_index": 13,
+          "name_cell": {
+            "table_index": 10,
+            "row_index": 13,
+            "cell_index": 1
+          },
+          "riding_cell": {
+            "table_index": 10,
+            "row_index": 13,
+            "cell_index": 3
+          },
+          "name_annotation": "Abdelhaq Sari"
+        }
+      ]
+    },
+    {
+      "mp": "Adam Chambers",
+      "riding": "Simcoe North",
+      "provenance": [
+        {
+          "table_index": 8,
+          "row_index": 102,
+          "name_cell": {
+            "table_index": 8,
+            "row_index": 102,
+            "cell_index": 1
+          },
+          "riding_cell": {
+            "table_index": 8,
+            "row_index": 102,
+            "cell_index": 3
+          },
+          "name_annotation": "Adam Chambers"
+        }
+      ]
+    },
+    {
+      "mp": "Adam van Koeverden",
+      "riding": "Burlington North—Milton West",
+      "provenance": [
+        {
+          "table_index": 8,
+          "row_index": 19,
+          "name_cell": {
+            "table_index": 8,
+            "row_index": 19,
+            "cell_index": 1
+          },
+          "riding_cell": {
+            "table_index": 8,
+            "row_index": 19,
+            "cell_index": 3
+          },
+          "name_annotation": "Adam van Koeverden"
+        }
+      ]
+    },
+    {
+      "mp": "Ahmed Hussen",
+      "riding": "York South—Weston—Etobicoke",
+      "provenance": [
+        {
+          "table_index": 8,
+          "row_index": 127,
+          "name_cell": {
+            "table_index": 8,
+            "row_index": 127,
+            "cell_index": 1
+          },
+          "riding_cell": {
+            "table_index": 8,
+            "row_index": 127,
+            "cell_index": 3
+          },
+          "name_annotation": "Ahmed Hussen"
+        }
+      ]
+    },
+    {
+      "mp": "Alana Hirtle",
+      "riding": "Cumberland—Colchester",
+      "provenance": [
+        {
+          "table_index": 7,
+          "row_index": 5,
+          "name_cell": {
+            "table_index": 7,
+            "row_index": 5,
+            "cell_index": 1
+          },
+          "riding_cell": {
+            "table_index": 7,
+            "row_index": 5,
+            "cell_index": 3
+          },
+          "name_annotation": "Alana Hirtle"
+        }
+      ]
+    },
+    {
+      "mp": "Alex Ruff",
+      "riding": "Bruce—Grey—Owen Sound",
+      "provenance": [
+        {
+          "table_index": 8,
+          "row_index": 17,
+          "name_cell": {
+            "table_index": 8,
+            "row_index": 17,
+            "cell_index": 1
+          },
+          "riding_cell": {
+            "table_index": 8,
+            "row_index": 17,
+            "cell_index": 3
+          },
+          "name_annotation": "Alex Ruff"
+        }
+      ]
+    },
+    {
+      "mp": "Alexandra Mendès",
+      "riding": "Brossard—Saint-Lambert",
+      "provenance": [
+        {
+          "table_index": 10,
+          "row_index": 15,
+          "name_cell": {
+            "table_index": 10,
+            "row_index": 15,
+            "cell_index": 1
+          },
+          "riding_cell": {
+            "table_index": 10,
+            "row_index": 15,
+            "cell_index": 3
+          },
+          "name_annotation": "Alexandra Mendès"
+        }
+      ]
+    },
+    {
+      "mp": "Alexis Brunelle-Duceppe",
+      "riding": "Lac-Saint-Jean",
+      "provenance": [
+        {
+          "table_index": 10,
+          "row_index": 34,
+          "name_cell": {
+            "table_index": 10,
+            "row_index": 34,
+            "cell_index": 1
+          },
+          "riding_cell": {
+            "table_index": 10,
+            "row_index": 34,
+            "cell_index": 3
+          },
+          "name_annotation": "Alexis Brunelle-Duceppe"
+        }
+      ]
+    },
+    {
+      "mp": "Alexis Deschênes",
+      "riding": "Gaspésie—Les Îles-de-la-Madeleine—Listuguj",
+      "provenance": [
+        {
+          "table_index": 10,
+          "row_index": 25,
+          "name_cell": {
+            "table_index": 10,
+            "row_index": 25,
+            "cell_index": 1
+          },
+          "riding_cell": {
+            "table_index": 10,
+            "row_index": 25,
+            "cell_index": 3
+          },
+          "name_annotation": "Alexis Deschênes"
+        }
+      ]
+    },
+    {
+      "mp": "Ali Ehsassi",
+      "riding": "Willowdale",
+      "provenance": [
+        {
+          "table_index": 8,
+          "row_index": 122,
+          "name_cell": {
+            "table_index": 8,
+            "row_index": 122,
+            "cell_index": 1
+          },
+          "riding_cell": {
+            "table_index": 8,
+            "row_index": 122,
+            "cell_index": 3
+          },
+          "name_annotation": "Ali Ehsassi ‡"
+        }
+      ]
+    },
+    {
+      "mp": "Amandeep Sodhi",
+      "riding": "Brampton Centre",
+      "provenance": [
+        {
+          "table_index": 8,
+          "row_index": 10,
+          "name_cell": {
+            "table_index": 8,
+            "row_index": 10,
+            "cell_index": 1
+          },
+          "riding_cell": {
+            "table_index": 8,
+            "row_index": 10,
+            "cell_index": 3
+          },
+          "name_annotation": "Amandeep Sodhi"
+        }
+      ]
+    },
+    {
+      "mp": "Amanpreet Gill",
+      "riding": "Calgary Skyview",
+      "provenance": [
+        {
+          "table_index": 2,
+          "row_index": 15,
+          "name_cell": {
+            "table_index": 2,
+            "row_index": 15,
+            "cell_index": 1
+          },
+          "riding_cell": {
+            "table_index": 2,
+            "row_index": 15,
+            "cell_index": 3
+          },
+          "name_annotation": "Amanpreet Gill"
+        }
+      ]
+    },
+    {
+      "mp": "Amarjeet Gill",
+      "riding": "Brampton West",
+      "provenance": [
+        {
+          "table_index": 8,
+          "row_index": 14,
+          "name_cell": {
+            "table_index": 8,
+            "row_index": 14,
+            "cell_index": 1
+          },
+          "riding_cell": {
+            "table_index": 8,
+            "row_index": 14,
+            "cell_index": 3
+          },
+          "name_annotation": "Amarjeet Gill"
+        }
+      ]
+    },
+    {
+      "mp": "Andrew Lawton",
+      "riding": "Elgin—St. Thomas—London South",
+      "provenance": [
+        {
+          "table_index": 8,
+          "row_index": 28,
+          "name_cell": {
+            "table_index": 8,
+            "row_index": 28,
+            "cell_index": 1
+          },
+          "riding_cell": {
+            "table_index": 8,
+            "row_index": 28,
+            "cell_index": 3
+          },
+          "name_annotation": "Andrew Lawton"
+        }
+      ]
+    },
+    {
+      "mp": "Andrew Scheer",
+      "riding": "Regina—Qu'Appelle",
+      "provenance": [
+        {
+          "table_index": 11,
+          "row_index": 7,
+          "name_cell": {
+            "table_index": 11,
+            "row_index": 7,
+            "cell_index": 1
+          },
+          "riding_cell": {
+            "table_index": 11,
+            "row_index": 7,
+            "cell_index": 3
+          },
+          "name_annotation": "Andrew Scheer [ n ]"
+        }
+      ]
+    },
+    {
+      "mp": "Andréanne Larouche",
+      "riding": "Shefford",
+      "provenance": [
+        {
+          "table_index": 10,
+          "row_index": 74,
+          "name_cell": {
+            "table_index": 10,
+            "row_index": 74,
+            "cell_index": 1
+          },
+          "riding_cell": {
+            "table_index": 10,
+            "row_index": 74,
+            "cell_index": 3
+          },
+          "name_annotation": "Andréanne Larouche"
+        }
+      ]
+    },
+    {
+      "mp": "Angelo Iacono",
+      "riding": "Alfred-Pellan",
+      "provenance": [
+        {
+          "table_index": 10,
+          "row_index": 4,
+          "name_cell": {
+            "table_index": 10,
+            "row_index": 4,
+            "cell_index": 1
+          },
+          "riding_cell": {
+            "table_index": 10,
+            "row_index": 4,
+            "cell_index": 3
+          },
+          "name_annotation": "Angelo Iacono"
+        }
+      ]
+    },
+    {
+      "mp": "Anita Anand",
+      "riding": "Oakville East",
+      "provenance": [
+        {
+          "table_index": 8,
+          "row_index": 77,
+          "name_cell": {
+            "table_index": 8,
+            "row_index": 77,
+            "cell_index": 1
+          },
+          "riding_cell": {
+            "table_index": 8,
+            "row_index": 77,
+            "cell_index": 3
+          },
+          "name_annotation": "Anita Anand"
+        }
+      ]
+    },
+    {
+      "mp": "Anita Vandenbeld",
+      "riding": "Ottawa West—Nepean",
+      "provenance": [
+        {
+          "table_index": 8,
+          "row_index": 83,
+          "name_cell": {
+            "table_index": 8,
+            "row_index": 83,
+            "cell_index": 1
+          },
+          "riding_cell": {
+            "table_index": 8,
+            "row_index": 83,
+            "cell_index": 3
+          },
+          "name_annotation": "Anita Vandenbeld"
+        }
+      ]
+    },
+    {
+      "mp": "Anju Dhillon",
+      "riding": "Dorval—Lachine—LaSalle",
+      "provenance": [
+        {
+          "table_index": 10,
+          "row_index": 23,
+          "name_cell": {
+            "table_index": 10,
+            "row_index": 23,
+            "cell_index": 1
+          },
+          "riding_cell": {
+            "table_index": 10,
+            "row_index": 23,
+            "cell_index": 3
+          },
+          "name_annotation": "Anju Dhillon"
+        }
+      ]
+    },
+    {
+      "mp": "Anna Gainey",
+      "riding": "Notre-Dame-de-Grâce—Westmount",
+      "provenance": [
+        {
+          "table_index": 10,
+          "row_index": 53,
+          "name_cell": {
+            "table_index": 10,
+            "row_index": 53,
+            "cell_index": 1
+          },
+          "riding_cell": {
+            "table_index": 10,
+            "row_index": 53,
+            "cell_index": 3
+          },
+          "name_annotation": "Anna Gainey"
+        }
+      ]
+    },
+    {
+      "mp": "Anna Roberts",
+      "riding": "King—Vaughan",
+      "provenance": [
+        {
+          "table_index": 8,
+          "row_index": 47,
+          "name_cell": {
+            "table_index": 8,
+            "row_index": 47,
+            "cell_index": 1
+          },
+          "riding_cell": {
+            "table_index": 8,
+            "row_index": 47,
+            "cell_index": 3
+          },
+          "name_annotation": "Anna Roberts"
+        }
+      ]
+    },
+    {
+      "mp": "Annie Koutrakis",
+      "riding": "Vimy",
+      "provenance": [
+        {
+          "table_index": 10,
+          "row_index": 81,
+          "name_cell": {
+            "table_index": 10,
+            "row_index": 81,
+            "cell_index": 1
+          },
+          "riding_cell": {
+            "table_index": 10,
+            "row_index": 81,
+            "cell_index": 3
+          },
+          "name_annotation": "Annie Koutrakis ‡"
+        }
+      ]
+    },
+    {
+      "mp": "Anthony Housefather",
+      "riding": "Mount Royal",
+      "provenance": [
+        {
+          "table_index": 10,
+          "row_index": 52,
+          "name_cell": {
+            "table_index": 10,
+            "row_index": 52,
+            "cell_index": 1
+          },
+          "riding_cell": {
+            "table_index": 10,
+            "row_index": 52,
+            "cell_index": 3
+          },
+          "name_annotation": "Anthony Housefather ‡"
+        }
+      ]
+    },
+    {
+      "mp": "Arielle Kayabaga",
+      "riding": "London West",
+      "provenance": [
+        {
+          "table_index": 8,
+          "row_index": 56,
+          "name_cell": {
+            "table_index": 8,
+            "row_index": 56,
+            "cell_index": 1
+          },
+          "riding_cell": {
+            "table_index": 8,
+            "row_index": 56,
+            "cell_index": 3
+          },
+          "name_annotation": "Arielle Kayabaga"
+        }
+      ]
+    },
+    {
+      "mp": "Arnold Viersen",
+      "riding": "Peace River—Westlock",
+      "provenance": [
+        {
+          "table_index": 2,
+          "row_index": 34,
+          "name_cell": {
+            "table_index": 2,
+            "row_index": 34,
+            "cell_index": 1
+          },
+          "riding_cell": {
+            "table_index": 2,
+            "row_index": 34,
+            "cell_index": 3
+          },
+          "name_annotation": "Arnold Viersen"
+        }
+      ]
+    },
+    {
+      "mp": "Arpan Khanna",
+      "riding": "Oxford",
+      "provenance": [
+        {
+          "table_index": 8,
+          "row_index": 85,
+          "name_cell": {
+            "table_index": 8,
+            "row_index": 85,
+            "cell_index": 1
+          },
+          "riding_cell": {
+            "table_index": 8,
+            "row_index": 85,
+            "cell_index": 3
+          },
+          "name_annotation": "Arpan Khanna"
+        }
+      ]
+    },
+    {
+      "mp": "Aslam Rana",
+      "riding": "Hamilton Centre",
+      "provenance": [
+        {
+          "table_index": 8,
+          "row_index": 37,
+          "name_cell": {
+            "table_index": 8,
+            "row_index": 37,
+            "cell_index": 1
+          },
+          "riding_cell": {
+            "table_index": 8,
+            "row_index": 37,
+            "cell_index": 3
+          },
+          "name_annotation": "Aslam Rana"
+        }
+      ]
+    },
+    {
+      "mp": "Bardish Chagger",
+      "riding": "Waterloo",
+      "provenance": [
+        {
+          "table_index": 8,
+          "row_index": 119,
+          "name_cell": {
+            "table_index": 8,
+            "row_index": 119,
+            "cell_index": 1
+          },
+          "riding_cell": {
+            "table_index": 8,
+            "row_index": 119,
+            "cell_index": 3
+          },
+          "name_annotation": "Bardish Chagger"
+        }
+      ]
+    },
+    {
+      "mp": "Ben Carr",
+      "riding": "Winnipeg South Centre",
+      "provenance": [
+        {
+          "table_index": 4,
+          "row_index": 13,
+          "name_cell": {
+            "table_index": 4,
+            "row_index": 13,
+            "cell_index": 1
+          },
+          "riding_cell": {
+            "table_index": 4,
+            "row_index": 13,
+            "cell_index": 3
+          },
+          "name_annotation": "Ben Carr"
+        }
+      ]
+    },
+    {
+      "mp": "Ben Lobb",
+      "riding": "Huron—Bruce",
+      "provenance": [
+        {
+          "table_index": 8,
+          "row_index": 43,
+          "name_cell": {
+            "table_index": 8,
+            "row_index": 43,
+            "cell_index": 1
+          },
+          "riding_cell": {
+            "table_index": 8,
+            "row_index": 43,
+            "cell_index": 3
+          },
+          "name_annotation": "Ben Lobb"
+        }
+      ]
+    },
+    {
+      "mp": "Bernard Généreux",
+      "riding": "Côte-du-Sud—Rivière-du-Loup—Kataskomiq—Témiscouata",
+      "provenance": [
+        {
+          "table_index": 10,
+          "row_index": 21,
+          "name_cell": {
+            "table_index": 10,
+            "row_index": 21,
+            "cell_index": 1
+          },
+          "riding_cell": {
+            "table_index": 10,
+            "row_index": 21,
+            "cell_index": 3
+          },
+          "name_annotation": "Bernard Généreux"
+        }
+      ]
+    },
+    {
+      "mp": "Bienvenu-Olivier Ntumba",
+      "riding": "Mont-Saint-Bruno—L'Acadie",
+      "provenance": [
+        {
+          "table_index": 10,
+          "row_index": 49,
+          "name_cell": {
+            "table_index": 10,
+            "row_index": 49,
+            "cell_index": 1
+          },
+          "riding_cell": {
+            "table_index": 10,
+            "row_index": 49,
+            "cell_index": 3
+          },
+          "name_annotation": "Bienvenu-Olivier Ntumba"
+        }
+      ]
+    },
+    {
+      "mp": "Billy Morin",
+      "riding": "Edmonton Northwest",
+      "provenance": [
+        {
+          "table_index": 2,
+          "row_index": 20,
+          "name_cell": {
+            "table_index": 2,
+            "row_index": 20,
+            "cell_index": 1
+          },
+          "riding_cell": {
+            "table_index": 2,
+            "row_index": 20,
+            "cell_index": 3
+          },
+          "name_annotation": "Billy Morin"
+        }
+      ]
+    },
+    {
+      "mp": "Blaine Calkins",
+      "riding": "Ponoka—Didsbury",
+      "provenance": [
+        {
+          "table_index": 2,
+          "row_index": 35,
+          "name_cell": {
+            "table_index": 2,
+            "row_index": 35,
+            "cell_index": 1
+          },
+          "riding_cell": {
+            "table_index": 2,
+            "row_index": 35,
+            "cell_index": 3
+          },
+          "name_annotation": "Blaine Calkins"
+        }
+      ]
+    },
+    {
+      "mp": "Blake Richards",
+      "riding": "Airdrie—Cochrane",
+      "provenance": [
+        {
+          "table_index": 2,
+          "row_index": 1,
+          "name_cell": {
+            "table_index": 2,
+            "row_index": 1,
+            "cell_index": 1
+          },
+          "riding_cell": {
+            "table_index": 2,
+            "row_index": 1,
+            "cell_index": 3
+          },
+          "name_annotation": "Blake Richards"
+        }
+      ]
+    },
+    {
+      "mp": "Bob Zimmer",
+      "riding": "Prince George—Peace River—Northern Rockies",
+      "provenance": [
+        {
+          "table_index": 3,
+          "row_index": 27,
+          "name_cell": {
+            "table_index": 3,
+            "row_index": 27,
+            "cell_index": 1
+          },
+          "riding_cell": {
+            "table_index": 3,
+            "row_index": 27,
+            "cell_index": 3
+          },
+          "name_annotation": "Bob Zimmer"
+        }
+      ]
+    },
+    {
+      "mp": "Bobby Morrissey",
+      "riding": "Egmont",
+      "provenance": [
+        {
+          "table_index": 9,
+          "row_index": 3,
+          "name_cell": {
+            "table_index": 9,
+            "row_index": 3,
+            "cell_index": 1
+          },
+          "riding_cell": {
+            "table_index": 9,
+            "row_index": 3,
+            "cell_index": 3
+          },
+          "name_annotation": "Bobby Morrissey"
+        }
+      ]
+    },
+    {
+      "mp": "Brad Redekopp",
+      "riding": "Saskatoon West",
+      "provenance": [
+        {
+          "table_index": 11,
+          "row_index": 10,
+          "name_cell": {
+            "table_index": 11,
+            "row_index": 10,
+            "cell_index": 1
+          },
+          "riding_cell": {
+            "table_index": 11,
+            "row_index": 10,
+            "cell_index": 3
+          },
+          "name_annotation": "Brad Redekopp"
+        }
+      ]
+    },
+    {
+      "mp": "Brad Vis",
+      "riding": "Mission—Matsqui—Abbotsford",
+      "provenance": [
+        {
+          "table_index": 3,
+          "row_index": 18,
+          "name_cell": {
+            "table_index": 3,
+            "row_index": 18,
+            "cell_index": 1
+          },
+          "riding_cell": {
+            "table_index": 3,
+            "row_index": 18,
+            "cell_index": 3
+          },
+          "name_annotation": "Brad Vis"
+        }
+      ]
+    },
+    {
+      "mp": "Braeden Caley",
+      "riding": "North Vancouver—Capilano",
+      "provenance": [
+        {
+          "table_index": 3,
+          "row_index": 23,
+          "name_cell": {
+            "table_index": 3,
+            "row_index": 23,
+            "cell_index": 1
+          },
+          "riding_cell": {
+            "table_index": 3,
+            "row_index": 22,
+            "cell_index": 3
+          },
+          "name_annotation": "Braeden Caley (From August 31, 2026)"
+        }
+      ]
+    },
+    {
+      "mp": "Braedon Clark",
+      "riding": "Sackville—Bedford—Preston",
+      "provenance": [
+        {
+          "table_index": 7,
+          "row_index": 10,
+          "name_cell": {
+            "table_index": 7,
+            "row_index": 10,
+            "cell_index": 1
+          },
+          "riding_cell": {
+            "table_index": 7,
+            "row_index": 10,
+            "cell_index": 3
+          },
+          "name_annotation": "Braedon Clark"
+        }
+      ]
+    },
+    {
+      "mp": "Branden Leslie",
+      "riding": "Portage—Lisgar",
+      "provenance": [
+        {
+          "table_index": 4,
+          "row_index": 5,
+          "name_cell": {
+            "table_index": 4,
+            "row_index": 5,
+            "cell_index": 1
+          },
+          "riding_cell": {
+            "table_index": 4,
+            "row_index": 5,
+            "cell_index": 3
+          },
+          "name_annotation": "Branden Leslie"
+        }
+      ]
+    },
+    {
+      "mp": "Brendan Hanley",
+      "riding": "Yukon",
+      "provenance": [
+        {
+          "table_index": 12,
+          "row_index": 4,
+          "name_cell": {
+            "table_index": 12,
+            "row_index": 4,
+            "cell_index": 1
+          },
+          "riding_cell": {
+            "table_index": 12,
+            "row_index": 4,
+            "cell_index": 3
+          },
+          "name_annotation": "Brendan Hanley ‡"
+        }
+      ]
+    },
+    {
+      "mp": "Bruce Fanjoy",
+      "riding": "Carleton",
+      "provenance": [
+        {
+          "table_index": 8,
+          "row_index": 21,
+          "name_cell": {
+            "table_index": 8,
+            "row_index": 21,
+            "cell_index": 1
+          },
+          "riding_cell": {
+            "table_index": 8,
+            "row_index": 21,
+            "cell_index": 3
+          },
+          "name_annotation": "Bruce Fanjoy"
+        }
+      ]
+    },
+    {
+      "mp": "Buckley Belanger",
+      "riding": "Desnethé—Missinippi—Churchill River",
+      "provenance": [
+        {
+          "table_index": 11,
+          "row_index": 3,
+          "name_cell": {
+            "table_index": 11,
+            "row_index": 3,
+            "cell_index": 1
+          },
+          "riding_cell": {
+            "table_index": 11,
+            "row_index": 3,
+            "cell_index": 3
+          },
+          "name_annotation": "Buckley Belanger"
+        }
+      ]
+    },
+    {
+      "mp": "Burton Bailey",
+      "riding": "Red Deer",
+      "provenance": [
+        {
+          "table_index": 2,
+          "row_index": 36,
+          "name_cell": {
+            "table_index": 2,
+            "row_index": 36,
+            "cell_index": 1
+          },
+          "riding_cell": {
+            "table_index": 2,
+            "row_index": 36,
+            "cell_index": 3
+          },
+          "name_annotation": "Burton Bailey"
+        }
+      ]
+    },
+    {
+      "mp": "Carlos Leitão",
+      "riding": "Marc-Aurèle-Fortin",
+      "provenance": [
+        {
+          "table_index": 10,
+          "row_index": 46,
+          "name_cell": {
+            "table_index": 10,
+            "row_index": 46,
+            "cell_index": 1
+          },
+          "riding_cell": {
+            "table_index": 10,
+            "row_index": 46,
+            "cell_index": 3
+          },
+          "name_annotation": "Carlos Leitão ‡"
+        }
+      ]
+    },
+    {
+      "mp": "Carol Anstey",
+      "riding": "Long Range Mountains",
+      "provenance": [
+        {
+          "table_index": 6,
+          "row_index": 5,
+          "name_cell": {
+            "table_index": 6,
+            "row_index": 5,
+            "cell_index": 1
+          },
+          "riding_cell": {
+            "table_index": 6,
+            "row_index": 5,
+            "cell_index": 3
+          },
+          "name_annotation": "Carol Anstey"
+        }
+      ]
+    },
+    {
+      "mp": "Caroline Desrochers",
+      "riding": "Trois-Rivières",
+      "provenance": [
+        {
+          "table_index": 10,
+          "row_index": 78,
+          "name_cell": {
+            "table_index": 10,
+            "row_index": 78,
+            "cell_index": 1
+          },
+          "riding_cell": {
+            "table_index": 10,
+            "row_index": 78,
+            "cell_index": 3
+          },
+          "name_annotation": "Caroline Desrochers ‡"
+        }
+      ]
+    },
+    {
+      "mp": "Chak Au",
+      "riding": "Richmond Centre—Marpole",
+      "provenance": [
+        {
+          "table_index": 3,
+          "row_index": 28,
+          "name_cell": {
+            "table_index": 3,
+            "row_index": 28,
+            "cell_index": 1
+          },
+          "riding_cell": {
+            "table_index": 3,
+            "row_index": 28,
+            "cell_index": 3
+          },
+          "name_annotation": "Chak Au"
+        }
+      ]
+    },
+    {
+      "mp": "Charles Sousa",
+      "riding": "Mississauga—Lakeshore",
+      "provenance": [
+        {
+          "table_index": 8,
+          "row_index": 66,
+          "name_cell": {
+            "table_index": 8,
+            "row_index": 66,
+            "cell_index": 1
+          },
+          "riding_cell": {
+            "table_index": 8,
+            "row_index": 66,
+            "cell_index": 3
+          },
+          "name_annotation": "Charles Sousa"
+        }
+      ]
+    },
+    {
+      "mp": "Cheryl Gallant",
+      "riding": "Algonquin—Renfrew—Pembroke",
+      "provenance": [
+        {
+          "table_index": 8,
+          "row_index": 2,
+          "name_cell": {
+            "table_index": 8,
+            "row_index": 2,
+            "cell_index": 1
+          },
+          "riding_cell": {
+            "table_index": 8,
+            "row_index": 2,
+            "cell_index": 3
+          },
+          "name_annotation": "Cheryl Gallant"
+        }
+      ]
+    },
+    {
+      "mp": "Chi Nguyen",
+      "riding": "Spadina—Harbourfront",
+      "provenance": [
+        {
+          "table_index": 8,
+          "row_index": 104,
+          "name_cell": {
+            "table_index": 8,
+            "row_index": 104,
+            "cell_index": 1
+          },
+          "riding_cell": {
+            "table_index": 8,
+            "row_index": 104,
+            "cell_index": 3
+          },
+          "name_annotation": "Chi Nguyen"
+        }
+      ]
+    },
+    {
+      "mp": "Chris Bittle",
+      "riding": "St. Catharines",
+      "provenance": [
+        {
+          "table_index": 8,
+          "row_index": 105,
+          "name_cell": {
+            "table_index": 8,
+            "row_index": 105,
+            "cell_index": 1
+          },
+          "riding_cell": {
+            "table_index": 8,
+            "row_index": 105,
+            "cell_index": 3
+          },
+          "name_annotation": "Chris Bittle"
+        }
+      ]
+    },
+    {
+      "mp": "Chris d'Entremont",
+      "riding": "Acadie—Annapolis",
+      "provenance": [
+        {
+          "table_index": 7,
+          "row_index": 1,
+          "name_cell": {
+            "table_index": 7,
+            "row_index": 1,
+            "cell_index": 1
+          },
+          "riding_cell": {
+            "table_index": 7,
+            "row_index": 1,
+            "cell_index": 3
+          },
+          "name_annotation": "Chris d'Entremont"
+        },
+        {
+          "table_index": 7,
+          "row_index": 2,
+          "name_cell": {
+            "table_index": 7,
+            "row_index": 1,
+            "cell_index": 1
+          },
+          "riding_cell": {
+            "table_index": 7,
+            "row_index": 1,
+            "cell_index": 3
+          },
+          "name_annotation": "Chris d'Entremont"
+        }
+      ]
+    },
+    {
+      "mp": "Chris Lewis",
+      "riding": "Essex",
+      "provenance": [
+        {
+          "table_index": 8,
+          "row_index": 29,
+          "name_cell": {
+            "table_index": 8,
+            "row_index": 29,
+            "cell_index": 1
+          },
+          "riding_cell": {
+            "table_index": 8,
+            "row_index": 29,
+            "cell_index": 3
+          },
+          "name_annotation": "Chris Lewis"
+        }
+      ]
+    },
+    {
+      "mp": "Chris Malette",
+      "riding": "Bay of Quinte",
+      "provenance": [
+        {
+          "table_index": 8,
+          "row_index": 6,
+          "name_cell": {
+            "table_index": 8,
+            "row_index": 6,
+            "cell_index": 1
+          },
+          "riding_cell": {
+            "table_index": 8,
+            "row_index": 6,
+            "cell_index": 3
+          },
+          "name_annotation": "Chris Malette"
+        }
+      ]
+    },
+    {
+      "mp": "Chris Warkentin",
+      "riding": "Grande Prairie",
+      "provenance": [
+        {
+          "table_index": 2,
+          "row_index": 28,
+          "name_cell": {
+            "table_index": 2,
+            "row_index": 28,
+            "cell_index": 1
+          },
+          "riding_cell": {
+            "table_index": 2,
+            "row_index": 28,
+            "cell_index": 3
+          },
+          "name_annotation": "Chris Warkentin"
+        }
+      ]
+    },
+    {
+      "mp": "Christine Normandin",
+      "riding": "Saint-Jean",
+      "provenance": [
+        {
+          "table_index": 10,
+          "row_index": 70,
+          "name_cell": {
+            "table_index": 10,
+            "row_index": 70,
+            "cell_index": 1
+          },
+          "riding_cell": {
+            "table_index": 10,
+            "row_index": 70,
+            "cell_index": 3
+          },
+          "name_annotation": "Christine Normandin"
+        }
+      ]
+    },
+    {
+      "mp": "Claude DeBellefeuille",
+      "riding": "Beauharnois—Salaberry—Soulanges—Huntingdon",
+      "provenance": [
+        {
+          "table_index": 10,
+          "row_index": 7,
+          "name_cell": {
+            "table_index": 10,
+            "row_index": 7,
+            "cell_index": 1
+          },
+          "riding_cell": {
+            "table_index": 10,
+            "row_index": 7,
+            "cell_index": 3
+          },
+          "name_annotation": "Claude DeBellefeuille"
+        }
+      ]
+    },
+    {
+      "mp": "Claude Guay",
+      "riding": "LaSalle—Émard—Verdun",
+      "provenance": [
+        {
+          "table_index": 10,
+          "row_index": 36,
+          "name_cell": {
+            "table_index": 10,
+            "row_index": 36,
+            "cell_index": 1
+          },
+          "riding_cell": {
+            "table_index": 10,
+            "row_index": 36,
+            "cell_index": 3
+          },
+          "name_annotation": "Claude Guay ‡"
+        }
+      ]
+    },
+    {
+      "mp": "Clifford Small",
+      "riding": "Central Newfoundland",
+      "provenance": [
+        {
+          "table_index": 6,
+          "row_index": 3,
+          "name_cell": {
+            "table_index": 6,
+            "row_index": 3,
+            "cell_index": 1
+          },
+          "riding_cell": {
+            "table_index": 6,
+            "row_index": 3,
+            "cell_index": 3
+          },
+          "name_annotation": "Clifford Small"
+        }
+      ]
+    },
+    {
+      "mp": "Colin Reynolds",
+      "riding": "Elmwood—Transcona",
+      "provenance": [
+        {
+          "table_index": 4,
+          "row_index": 3,
+          "name_cell": {
+            "table_index": 4,
+            "row_index": 3,
+            "cell_index": 1
+          },
+          "riding_cell": {
+            "table_index": 4,
+            "row_index": 3,
+            "cell_index": 3
+          },
+          "name_annotation": "Colin Reynolds"
+        }
+      ]
+    },
+    {
+      "mp": "Connie Cody",
+      "riding": "Cambridge",
+      "provenance": [
+        {
+          "table_index": 8,
+          "row_index": 20,
+          "name_cell": {
+            "table_index": 8,
+            "row_index": 20,
+            "cell_index": 1
+          },
+          "riding_cell": {
+            "table_index": 8,
+            "row_index": 20,
+            "cell_index": 3
+          },
+          "name_annotation": "Connie Cody"
+        }
+      ]
+    },
+    {
+      "mp": "Corey Hogan",
+      "riding": "Calgary Confederation",
+      "provenance": [
+        {
+          "table_index": 2,
+          "row_index": 6,
+          "name_cell": {
+            "table_index": 2,
+            "row_index": 6,
+            "cell_index": 1
+          },
+          "riding_cell": {
+            "table_index": 2,
+            "row_index": 6,
+            "cell_index": 3
+          },
+          "name_annotation": "Corey Hogan ‡"
+        }
+      ]
+    },
+    {
+      "mp": "Corey Tochor",
+      "riding": "Saskatoon—University",
+      "provenance": [
+        {
+          "table_index": 11,
+          "row_index": 11,
+          "name_cell": {
+            "table_index": 11,
+            "row_index": 11,
+            "cell_index": 1
+          },
+          "riding_cell": {
+            "table_index": 11,
+            "row_index": 11,
+            "cell_index": 3
+          },
+          "name_annotation": "Corey Tochor"
+        }
+      ]
+    },
+    {
+      "mp": "Costas Menegakis",
+      "riding": "Aurora—Oak Ridges—Richmond Hill",
+      "provenance": [
+        {
+          "table_index": 8,
+          "row_index": 3,
+          "name_cell": {
+            "table_index": 8,
+            "row_index": 3,
+            "cell_index": 1
+          },
+          "riding_cell": {
+            "table_index": 8,
+            "row_index": 3,
+            "cell_index": 3
+          },
+          "name_annotation": "Costas Menegakis"
+        }
+      ]
+    },
+    {
+      "mp": "Dalwinder Gill",
+      "riding": "Calgary McKnight",
+      "provenance": [
+        {
+          "table_index": 2,
+          "row_index": 10,
+          "name_cell": {
+            "table_index": 2,
+            "row_index": 10,
+            "cell_index": 1
+          },
+          "riding_cell": {
+            "table_index": 2,
+            "row_index": 10,
+            "cell_index": 3
+          },
+          "name_annotation": "Dalwinder Gill"
+        }
+      ]
+    },
+    {
+      "mp": "Dan Albas",
+      "riding": "Okanagan Lake West—South Kelowna",
+      "provenance": [
+        {
+          "table_index": 3,
+          "row_index": 24,
+          "name_cell": {
+            "table_index": 3,
+            "row_index": 24,
+            "cell_index": 1
+          },
+          "riding_cell": {
+            "table_index": 3,
+            "row_index": 24,
+            "cell_index": 3
+          },
+          "name_annotation": "Dan Albas"
+        }
+      ]
+    },
+    {
+      "mp": "Dan Mazier",
+      "riding": "Riding Mountain",
+      "provenance": [
+        {
+          "table_index": 4,
+          "row_index": 7,
+          "name_cell": {
+            "table_index": 4,
+            "row_index": 7,
+            "cell_index": 1
+          },
+          "riding_cell": {
+            "table_index": 4,
+            "row_index": 7,
+            "cell_index": 3
+          },
+          "name_annotation": "Dan Mazier"
+        }
+      ]
+    },
+    {
+      "mp": "Dan Muys",
+      "riding": "Flamborough—Glanbrook—Brant North",
+      "provenance": [
+        {
+          "table_index": 8,
+          "row_index": 33,
+          "name_cell": {
+            "table_index": 8,
+            "row_index": 33,
+            "cell_index": 1
+          },
+          "riding_cell": {
+            "table_index": 8,
+            "row_index": 33,
+            "cell_index": 3
+          },
+          "name_annotation": "Dan Muys"
+        }
+      ]
+    },
+    {
+      "mp": "Dane Lloyd",
+      "riding": "Parkland",
+      "provenance": [
+        {
+          "table_index": 2,
+          "row_index": 33,
+          "name_cell": {
+            "table_index": 2,
+            "row_index": 33,
+            "cell_index": 1
+          },
+          "riding_cell": {
+            "table_index": 2,
+            "row_index": 33,
+            "cell_index": 3
+          },
+          "name_annotation": "Dane Lloyd"
+        }
+      ]
+    },
+    {
+      "mp": "Daniel Gobeil",
+      "riding": "Chicoutimi—Le Fjord",
+      "provenance": [
+        {
+          "table_index": 10,
+          "row_index": 19,
+          "name_cell": {
+            "table_index": 10,
+            "row_index": 19,
+            "cell_index": 1
+          },
+          "riding_cell": {
+            "table_index": 10,
+            "row_index": 18,
+            "cell_index": 3
+          },
+          "name_annotation": "Daniel Gobeil ‡ (From August 31, 2026)"
+        }
+      ]
+    },
+    {
+      "mp": "Danielle Martin",
+      "riding": "University—Rosedale",
+      "provenance": [
+        {
+          "table_index": 8,
+          "row_index": 117,
+          "name_cell": {
+            "table_index": 8,
+            "row_index": 117,
+            "cell_index": 1
+          },
+          "riding_cell": {
+            "table_index": 8,
+            "row_index": 116,
+            "cell_index": 3
+          },
+          "name_annotation": "Danielle Martin (Since April 13, 2026)"
+        }
+      ]
+    },
+    {
+      "mp": "Darren Fisher",
+      "riding": "Dartmouth—Cole Harbour",
+      "provenance": [
+        {
+          "table_index": 7,
+          "row_index": 6,
+          "name_cell": {
+            "table_index": 7,
+            "row_index": 6,
+            "cell_index": 1
+          },
+          "riding_cell": {
+            "table_index": 7,
+            "row_index": 6,
+            "cell_index": 3
+          },
+          "name_annotation": "Darren Fisher"
+        }
+      ]
+    },
+    {
+      "mp": "Dave Epp",
+      "riding": "Chatham-Kent—Leamington",
+      "provenance": [
+        {
+          "table_index": 8,
+          "row_index": 22,
+          "name_cell": {
+            "table_index": 8,
+            "row_index": 22,
+            "cell_index": 1
+          },
+          "riding_cell": {
+            "table_index": 8,
+            "row_index": 22,
+            "cell_index": 3
+          },
+          "name_annotation": "Dave Epp"
+        }
+      ]
+    },
+    {
+      "mp": "Dave McKenzie",
+      "riding": "Calgary Signal Hill",
+      "provenance": [
+        {
+          "table_index": 2,
+          "row_index": 14,
+          "name_cell": {
+            "table_index": 2,
+            "row_index": 14,
+            "cell_index": 1
+          },
+          "riding_cell": {
+            "table_index": 2,
+            "row_index": 14,
+            "cell_index": 3
+          },
+          "name_annotation": "Dave McKenzie"
+        }
+      ]
+    },
+    {
+      "mp": "David Bexte",
+      "riding": "Bow River",
+      "provenance": [
+        {
+          "table_index": 2,
+          "row_index": 4,
+          "name_cell": {
+            "table_index": 2,
+            "row_index": 4,
+            "cell_index": 1
+          },
+          "riding_cell": {
+            "table_index": 2,
+            "row_index": 4,
+            "cell_index": 3
+          },
+          "name_annotation": "David Bexte"
+        }
+      ]
+    },
+    {
+      "mp": "David McGuinty",
+      "riding": "Ottawa South",
+      "provenance": [
+        {
+          "table_index": 8,
+          "row_index": 82,
+          "name_cell": {
+            "table_index": 8,
+            "row_index": 82,
+            "cell_index": 1
+          },
+          "riding_cell": {
+            "table_index": 8,
+            "row_index": 82,
+            "cell_index": 3
+          },
+          "name_annotation": "David McGuinty"
+        }
+      ]
+    },
+    {
+      "mp": "David Myles",
+      "riding": "Fredericton—Oromocto",
+      "provenance": [
+        {
+          "table_index": 5,
+          "row_index": 3,
+          "name_cell": {
+            "table_index": 5,
+            "row_index": 3,
+            "cell_index": 1
+          },
+          "riding_cell": {
+            "table_index": 5,
+            "row_index": 3,
+            "cell_index": 3
+          },
+          "name_annotation": "David Myles ‡"
+        }
+      ]
+    },
+    {
+      "mp": "Dean Allison",
+      "riding": "Niagara West",
+      "provenance": [
+        {
+          "table_index": 8,
+          "row_index": 74,
+          "name_cell": {
+            "table_index": 8,
+            "row_index": 74,
+            "cell_index": 1
+          },
+          "riding_cell": {
+            "table_index": 8,
+            "row_index": 74,
+            "cell_index": 3
+          },
+          "name_annotation": "Dean Allison"
+        }
+      ]
+    },
+    {
+      "mp": "Doly Begum",
+      "riding": "Scarborough Southwest",
+      "provenance": [
+        {
+          "table_index": 8,
+          "row_index": 98,
+          "name_cell": {
+            "table_index": 8,
+            "row_index": 98,
+            "cell_index": 1
+          },
+          "riding_cell": {
+            "table_index": 8,
+            "row_index": 97,
+            "cell_index": 3
+          },
+          "name_annotation": "Doly Begum (Since April 13, 2026)"
+        }
+      ]
+    },
+    {
+      "mp": "Dominic LeBlanc",
+      "riding": "Beauséjour",
+      "provenance": [
+        {
+          "table_index": 5,
+          "row_index": 2,
+          "name_cell": {
+            "table_index": 5,
+            "row_index": 2,
+            "cell_index": 1
+          },
+          "riding_cell": {
+            "table_index": 5,
+            "row_index": 2,
+            "cell_index": 3
+          },
+          "name_annotation": "Dominic LeBlanc"
+        }
+      ]
+    },
+    {
+      "mp": "Dominique O'Rourke",
+      "riding": "Guelph",
+      "provenance": [
+        {
+          "table_index": 8,
+          "row_index": 34,
+          "name_cell": {
+            "table_index": 8,
+            "row_index": 34,
+            "cell_index": 1
+          },
+          "riding_cell": {
+            "table_index": 8,
+            "row_index": 34,
+            "cell_index": 3
+          },
+          "name_annotation": "Dominique O'Rourke"
+        }
+      ]
+    },
+    {
+      "mp": "Dominique Vien",
+      "riding": "Bellechasse—Les Etchemins—Lévis",
+      "provenance": [
+        {
+          "table_index": 10,
+          "row_index": 10,
+          "name_cell": {
+            "table_index": 10,
+            "row_index": 10,
+            "cell_index": 1
+          },
+          "riding_cell": {
+            "table_index": 10,
+            "row_index": 10,
+            "cell_index": 3
+          },
+          "name_annotation": "Dominique Vien"
+        }
+      ]
+    },
+    {
+      "mp": "Don Davies",
+      "riding": "Vancouver Kingsway",
+      "provenance": [
+        {
+          "table_index": 3,
+          "row_index": 40,
+          "name_cell": {
+            "table_index": 3,
+            "row_index": 40,
+            "cell_index": 1
+          },
+          "riding_cell": {
+            "table_index": 3,
+            "row_index": 40,
+            "cell_index": 3
+          },
+          "name_annotation": "Don Davies [ d ] [ e ]"
+        }
+      ]
+    },
+    {
+      "mp": "Doug Eyolfson",
+      "riding": "Winnipeg West",
+      "provenance": [
+        {
+          "table_index": 4,
+          "row_index": 14,
+          "name_cell": {
+            "table_index": 4,
+            "row_index": 14,
+            "cell_index": 1
+          },
+          "riding_cell": {
+            "table_index": 4,
+            "row_index": 14,
+            "cell_index": 3
+          },
+          "name_annotation": "Doug Eyolfson"
+        }
+      ]
+    },
+    {
+      "mp": "Doug Shipley",
+      "riding": "Barrie—Springwater—Oro-Medonte",
+      "provenance": [
+        {
+          "table_index": 8,
+          "row_index": 5,
+          "name_cell": {
+            "table_index": 8,
+            "row_index": 5,
+            "cell_index": 1
+          },
+          "riding_cell": {
+            "table_index": 8,
+            "row_index": 5,
+            "cell_index": 3
+          },
+          "name_annotation": "Doug Shipley"
+        }
+      ]
+    },
+    {
+      "mp": "Eleanor Olszewski",
+      "riding": "Edmonton Centre",
+      "provenance": [
+        {
+          "table_index": 2,
+          "row_index": 16,
+          "name_cell": {
+            "table_index": 2,
+            "row_index": 16,
+            "cell_index": 1
+          },
+          "riding_cell": {
+            "table_index": 2,
+            "row_index": 16,
+            "cell_index": 3
+          },
+          "name_annotation": "Eleanor Olszewski"
+        }
+      ]
+    },
+    {
+      "mp": "Elizabeth May",
+      "riding": "Saanich—Gulf Islands",
+      "provenance": [
+        {
+          "table_index": 3,
+          "row_index": 30,
+          "name_cell": {
+            "table_index": 3,
+            "row_index": 30,
+            "cell_index": 1
+          },
+          "riding_cell": {
+            "table_index": 3,
+            "row_index": 30,
+            "cell_index": 3
+          },
+          "name_annotation": "Elizabeth May"
+        }
+      ]
+    },
+    {
+      "mp": "Ellis Ross",
+      "riding": "Skeena—Bulkley Valley",
+      "provenance": [
+        {
+          "table_index": 3,
+          "row_index": 32,
+          "name_cell": {
+            "table_index": 3,
+            "row_index": 32,
+            "cell_index": 1
+          },
+          "riding_cell": {
+            "table_index": 3,
+            "row_index": 32,
+            "cell_index": 3
+          },
+          "name_annotation": "Ellis Ross"
+        }
+      ]
+    },
+    {
+      "mp": "Emma Harrison",
+      "riding": "Peterborough",
+      "provenance": [
+        {
+          "table_index": 8,
+          "row_index": 88,
+          "name_cell": {
+            "table_index": 8,
+            "row_index": 88,
+            "cell_index": 1
+          },
+          "riding_cell": {
+            "table_index": 8,
+            "row_index": 88,
+            "cell_index": 3
+          },
+          "name_annotation": "Emma Harrison"
+        }
+      ]
+    },
+    {
+      "mp": "Emmanuella Lambropoulos",
+      "riding": "Saint-Laurent",
+      "provenance": [
+        {
+          "table_index": 10,
+          "row_index": 71,
+          "name_cell": {
+            "table_index": 10,
+            "row_index": 71,
+            "cell_index": 1
+          },
+          "riding_cell": {
+            "table_index": 10,
+            "row_index": 71,
+            "cell_index": 3
+          },
+          "name_annotation": "Emmanuella Lambropoulos"
+        }
+      ]
+    },
+    {
+      "mp": "Eric Duncan",
+      "riding": "Stormont—Dundas—Glengarry",
+      "provenance": [
+        {
+          "table_index": 8,
+          "row_index": 106,
+          "name_cell": {
+            "table_index": 8,
+            "row_index": 106,
+            "cell_index": 1
+          },
+          "riding_cell": {
+            "table_index": 8,
+            "row_index": 106,
+            "cell_index": 3
+          },
+          "name_annotation": "Eric Duncan"
+        }
+      ]
+    },
+    {
+      "mp": "Eric Melillo",
+      "riding": "Kenora—Kiiwetinoong",
+      "provenance": [
+        {
+          "table_index": 8,
+          "row_index": 46,
+          "name_cell": {
+            "table_index": 8,
+            "row_index": 46,
+            "cell_index": 1
+          },
+          "riding_cell": {
+            "table_index": 8,
+            "row_index": 46,
+            "cell_index": 3
+          },
+          "name_annotation": "Eric Melillo"
+        }
+      ]
+    },
+    {
+      "mp": "Ernie Klassen",
+      "riding": "South Surrey—White Rock",
+      "provenance": [
+        {
+          "table_index": 3,
+          "row_index": 33,
+          "name_cell": {
+            "table_index": 3,
+            "row_index": 33,
+            "cell_index": 1
+          },
+          "riding_cell": {
+            "table_index": 3,
+            "row_index": 33,
+            "cell_index": 3
+          },
+          "name_annotation": "Ernie Klassen ‡"
+        }
+      ]
+    },
+    {
+      "mp": "Evan Solomon",
+      "riding": "Toronto Centre",
+      "provenance": [
+        {
+          "table_index": 8,
+          "row_index": 113,
+          "name_cell": {
+            "table_index": 8,
+            "row_index": 113,
+            "cell_index": 1
+          },
+          "riding_cell": {
+            "table_index": 8,
+            "row_index": 113,
+            "cell_index": 3
+          },
+          "name_annotation": "Evan Solomon"
+        }
+      ]
+    },
+    {
+      "mp": "Fares Al Soud",
+      "riding": "Mississauga Centre",
+      "provenance": [
+        {
+          "table_index": 8,
+          "row_index": 63,
+          "name_cell": {
+            "table_index": 8,
+            "row_index": 63,
+            "cell_index": 1
+          },
+          "riding_cell": {
+            "table_index": 8,
+            "row_index": 63,
+            "cell_index": 3
+          },
+          "name_annotation": "Fares Al Soud"
+        }
+      ]
+    },
+    {
+      "mp": "Fayçal El-Khoury",
+      "riding": "Laval—Les Îles",
+      "provenance": [
+        {
+          "table_index": 10,
+          "row_index": 39,
+          "name_cell": {
+            "table_index": 10,
+            "row_index": 39,
+            "cell_index": 1
+          },
+          "riding_cell": {
+            "table_index": 10,
+            "row_index": 39,
+            "cell_index": 3
+          },
+          "name_annotation": "Fayçal El-Khoury"
+        }
+      ]
+    },
+    {
+      "mp": "Francis Scarpaleggia",
+      "riding": "Lac-Saint-Louis",
+      "provenance": [
+        {
+          "table_index": 10,
+          "row_index": 35,
+          "name_cell": {
+            "table_index": 10,
+            "row_index": 35,
+            "cell_index": 1
+          },
+          "riding_cell": {
+            "table_index": 10,
+            "row_index": 35,
+            "cell_index": 3
+          },
+          "name_annotation": "Francis Scarpaleggia †"
+        }
+      ]
+    },
+    {
+      "mp": "Frank Caputo",
+      "riding": "Kamloops—Thompson—Nicola",
+      "provenance": [
+        {
+          "table_index": 3,
+          "row_index": 15,
+          "name_cell": {
+            "table_index": 3,
+            "row_index": 15,
+            "cell_index": 1
+          },
+          "riding_cell": {
+            "table_index": 3,
+            "row_index": 15,
+            "cell_index": 3
+          },
+          "name_annotation": "Frank Caputo"
+        }
+      ]
+    },
+    {
+      "mp": "François-Philippe Champagne",
+      "riding": "Saint-Maurice—Champlain",
+      "provenance": [
+        {
+          "table_index": 10,
+          "row_index": 73,
+          "name_cell": {
+            "table_index": 10,
+            "row_index": 73,
+            "cell_index": 1
+          },
+          "riding_cell": {
+            "table_index": 10,
+            "row_index": 73,
+            "cell_index": 3
+          },
+          "name_annotation": "François-Philippe Champagne"
+        }
+      ]
+    },
+    {
+      "mp": "Fraser Tolmie",
+      "riding": "Moose Jaw—Lake Centre—Lanigan",
+      "provenance": [
+        {
+          "table_index": 11,
+          "row_index": 4,
+          "name_cell": {
+            "table_index": 11,
+            "row_index": 4,
+            "cell_index": 1
+          },
+          "riding_cell": {
+            "table_index": 11,
+            "row_index": 4,
+            "cell_index": 3
+          },
+          "name_annotation": "Fraser Tolmie"
+        }
+      ]
+    },
+    {
+      "mp": "Fred Davies",
+      "riding": "Niagara South",
+      "provenance": [
+        {
+          "table_index": 8,
+          "row_index": 73,
+          "name_cell": {
+            "table_index": 8,
+            "row_index": 73,
+            "cell_index": 1
+          },
+          "riding_cell": {
+            "table_index": 8,
+            "row_index": 73,
+            "cell_index": 3
+          },
+          "name_annotation": "Fred Davies"
+        }
+      ]
+    },
+    {
+      "mp": "Gabriel Hardy",
+      "riding": "Montmorency—Charlevoix",
+      "provenance": [
+        {
+          "table_index": 10,
+          "row_index": 51,
+          "name_cell": {
+            "table_index": 10,
+            "row_index": 51,
+            "cell_index": 1
+          },
+          "riding_cell": {
+            "table_index": 10,
+            "row_index": 51,
+            "cell_index": 3
+          },
+          "name_annotation": "Gabriel Hardy"
+        }
+      ]
+    },
+    {
+      "mp": "Gabriel Ste-Marie",
+      "riding": "Joliette—Manawan",
+      "provenance": [
+        {
+          "table_index": 10,
+          "row_index": 30,
+          "name_cell": {
+            "table_index": 10,
+            "row_index": 30,
+            "cell_index": 1
+          },
+          "riding_cell": {
+            "table_index": 10,
+            "row_index": 30,
+            "cell_index": 3
+          },
+          "name_annotation": "Gabriel Ste-Marie"
+        }
+      ]
+    },
+    {
+      "mp": "Garnett Genuis",
+      "riding": "Sherwood Park—Fort Saskatchewan",
+      "provenance": [
+        {
+          "table_index": 2,
+          "row_index": 37,
+          "name_cell": {
+            "table_index": 2,
+            "row_index": 37,
+            "cell_index": 1
+          },
+          "riding_cell": {
+            "table_index": 2,
+            "row_index": 37,
+            "cell_index": 3
+          },
+          "name_annotation": "Garnett Genuis"
+        }
+      ]
+    },
+    {
+      "mp": "Gary Anandasangaree",
+      "riding": "Scarborough—Guildwood—Rouge Park",
+      "provenance": [
+        {
+          "table_index": 8,
+          "row_index": 100,
+          "name_cell": {
+            "table_index": 8,
+            "row_index": 100,
+            "cell_index": 1
+          },
+          "riding_cell": {
+            "table_index": 8,
+            "row_index": 100,
+            "cell_index": 3
+          },
+          "name_annotation": "Gary Anandasangaree"
+        }
+      ]
+    },
+    {
+      "mp": "Gaétan Malette",
+      "riding": "Kapuskasing—Timmins—Mushkegowuk",
+      "provenance": [
+        {
+          "table_index": 8,
+          "row_index": 45,
+          "name_cell": {
+            "table_index": 8,
+            "row_index": 45,
+            "cell_index": 1
+          },
+          "riding_cell": {
+            "table_index": 8,
+            "row_index": 45,
+            "cell_index": 3
+          },
+          "name_annotation": "Gaétan Malette"
+        }
+      ]
+    },
+    {
+      "mp": "Ginette Lavack",
+      "riding": "St. Boniface—St. Vital",
+      "provenance": [
+        {
+          "table_index": 4,
+          "row_index": 9,
+          "name_cell": {
+            "table_index": 4,
+            "row_index": 9,
+            "cell_index": 1
+          },
+          "riding_cell": {
+            "table_index": 4,
+            "row_index": 9,
+            "cell_index": 3
+          },
+          "name_annotation": "Ginette Lavack ‡"
+        }
+      ]
+    },
+    {
+      "mp": "Ginette Petitpas Taylor",
+      "riding": "Moncton—Dieppe",
+      "provenance": [
+        {
+          "table_index": 5,
+          "row_index": 7,
+          "name_cell": {
+            "table_index": 5,
+            "row_index": 7,
+            "cell_index": 1
+          },
+          "riding_cell": {
+            "table_index": 5,
+            "row_index": 7,
+            "cell_index": 3
+          },
+          "name_annotation": "Ginette Petitpas Taylor"
+        }
+      ]
+    },
+    {
+      "mp": "Giovanna Mingarelli",
+      "riding": "Prescott—Russell—Cumberland",
+      "provenance": [
+        {
+          "table_index": 8,
+          "row_index": 90,
+          "name_cell": {
+            "table_index": 8,
+            "row_index": 90,
+            "cell_index": 1
+          },
+          "riding_cell": {
+            "table_index": 8,
+            "row_index": 90,
+            "cell_index": 3
+          },
+          "name_annotation": "Giovanna Mingarelli"
+        }
+      ]
+    },
+    {
+      "mp": "Glen Motz",
+      "riding": "Medicine Hat—Cardston—Warner",
+      "provenance": [
+        {
+          "table_index": 2,
+          "row_index": 32,
+          "name_cell": {
+            "table_index": 2,
+            "row_index": 32,
+            "cell_index": 1
+          },
+          "riding_cell": {
+            "table_index": 2,
+            "row_index": 32,
+            "cell_index": 3
+          },
+          "name_annotation": "Glen Motz"
+        }
+      ]
+    },
+    {
+      "mp": "Gord Johns",
+      "riding": "Courtenay—Alberni",
+      "provenance": [
+        {
+          "table_index": 3,
+          "row_index": 9,
+          "name_cell": {
+            "table_index": 3,
+            "row_index": 9,
+            "cell_index": 1
+          },
+          "riding_cell": {
+            "table_index": 3,
+            "row_index": 9,
+            "cell_index": 3
+          },
+          "name_annotation": "Gord Johns"
+        }
+      ]
+    },
+    {
+      "mp": "Grant Jackson",
+      "riding": "Brandon—Souris",
+      "provenance": [
+        {
+          "table_index": 4,
+          "row_index": 1,
+          "name_cell": {
+            "table_index": 4,
+            "row_index": 1,
+            "cell_index": 1
+          },
+          "riding_cell": {
+            "table_index": 4,
+            "row_index": 1,
+            "cell_index": 3
+          },
+          "name_annotation": "Grant Jackson"
+        }
+      ]
+    },
+    {
+      "mp": "Greg Fergus",
+      "riding": "Hull—Aylmer",
+      "provenance": [
+        {
+          "table_index": 10,
+          "row_index": 29,
+          "name_cell": {
+            "table_index": 10,
+            "row_index": 29,
+            "cell_index": 1
+          },
+          "riding_cell": {
+            "table_index": 10,
+            "row_index": 29,
+            "cell_index": 3
+          },
+          "name_annotation": "Greg Fergus"
+        }
+      ]
+    },
+    {
+      "mp": "Greg McLean",
+      "riding": "Calgary Centre",
+      "provenance": [
+        {
+          "table_index": 2,
+          "row_index": 5,
+          "name_cell": {
+            "table_index": 2,
+            "row_index": 5,
+            "cell_index": 1
+          },
+          "riding_cell": {
+            "table_index": 2,
+            "row_index": 5,
+            "cell_index": 3
+          },
+          "name_annotation": "Greg McLean"
+        }
+      ]
+    },
+    {
+      "mp": "Gregor Robertson",
+      "riding": "Vancouver Fraserview—South Burnaby",
+      "provenance": [
+        {
+          "table_index": 3,
+          "row_index": 38,
+          "name_cell": {
+            "table_index": 3,
+            "row_index": 38,
+            "cell_index": 1
+          },
+          "riding_cell": {
+            "table_index": 3,
+            "row_index": 38,
+            "cell_index": 3
+          },
+          "name_annotation": "Gregor Robertson"
+        }
+      ]
+    },
+    {
+      "mp": "Guillaume Deschênes-Thériault",
+      "riding": "Madawaska—Restigouche",
+      "provenance": [
+        {
+          "table_index": 5,
+          "row_index": 5,
+          "name_cell": {
+            "table_index": 5,
+            "row_index": 5,
+            "cell_index": 1
+          },
+          "riding_cell": {
+            "table_index": 5,
+            "row_index": 5,
+            "cell_index": 3
+          },
+          "name_annotation": "Guillaume Deschênes-Thériault"
+        }
+      ]
+    },
+    {
+      "mp": "Gurbux Saini",
+      "riding": "Fleetwood—Port Kells",
+      "provenance": [
+        {
+          "table_index": 3,
+          "row_index": 13,
+          "name_cell": {
+            "table_index": 3,
+            "row_index": 13,
+            "cell_index": 1
+          },
+          "riding_cell": {
+            "table_index": 3,
+            "row_index": 13,
+            "cell_index": 3
+          },
+          "name_annotation": "Gurbux Saini"
+        }
+      ]
+    },
+    {
+      "mp": "Gérard Deltell",
+      "riding": "Louis-Saint-Laurent—Akiawenhrahk",
+      "provenance": [
+        {
+          "table_index": 10,
+          "row_index": 45,
+          "name_cell": {
+            "table_index": 10,
+            "row_index": 45,
+            "cell_index": 1
+          },
+          "riding_cell": {
+            "table_index": 10,
+            "row_index": 45,
+            "cell_index": 3
+          },
+          "name_annotation": "Gérard Deltell"
+        }
+      ]
+    },
+    {
+      "mp": "Harb Gill",
+      "riding": "Windsor West",
+      "provenance": [
+        {
+          "table_index": 8,
+          "row_index": 124,
+          "name_cell": {
+            "table_index": 8,
+            "row_index": 124,
+            "cell_index": 1
+          },
+          "riding_cell": {
+            "table_index": 8,
+            "row_index": 124,
+            "cell_index": 3
+          },
+          "name_annotation": "Harb Gill"
+        }
+      ]
+    },
+    {
+      "mp": "Heath MacDonald",
+      "riding": "Malpeque",
+      "provenance": [
+        {
+          "table_index": 9,
+          "row_index": 4,
+          "name_cell": {
+            "table_index": 9,
+            "row_index": 4,
+            "cell_index": 1
+          },
+          "riding_cell": {
+            "table_index": 9,
+            "row_index": 4,
+            "cell_index": 3
+          },
+          "name_annotation": "Heath MacDonald"
+        }
+      ]
+    },
+    {
+      "mp": "Heather McPherson",
+      "riding": "Edmonton Strathcona",
+      "provenance": [
+        {
+          "table_index": 2,
+          "row_index": 24,
+          "name_cell": {
+            "table_index": 2,
+            "row_index": 24,
+            "cell_index": 1
+          },
+          "riding_cell": {
+            "table_index": 2,
+            "row_index": 24,
+            "cell_index": 3
+          },
+          "name_annotation": "Heather McPherson"
+        }
+      ]
+    },
+    {
+      "mp": "Hedy Fry",
+      "riding": "Vancouver Centre",
+      "provenance": [
+        {
+          "table_index": 3,
+          "row_index": 36,
+          "name_cell": {
+            "table_index": 3,
+            "row_index": 36,
+            "cell_index": 1
+          },
+          "riding_cell": {
+            "table_index": 3,
+            "row_index": 36,
+            "cell_index": 3
+          },
+          "name_annotation": "Hedy Fry"
+        }
+      ]
+    },
+    {
+      "mp": "Helena Jaczek",
+      "riding": "Markham—Stouffville",
+      "provenance": [
+        {
+          "table_index": 8,
+          "row_index": 57,
+          "name_cell": {
+            "table_index": 8,
+            "row_index": 57,
+            "cell_index": 1
+          },
+          "riding_cell": {
+            "table_index": 8,
+            "row_index": 57,
+            "cell_index": 3
+          },
+          "name_annotation": "Helena Jaczek"
+        }
+      ]
+    },
+    {
+      "mp": "Helena Konanz",
+      "riding": "Similkameen—South Okanagan—West Kootenay",
+      "provenance": [
+        {
+          "table_index": 3,
+          "row_index": 31,
+          "name_cell": {
+            "table_index": 3,
+            "row_index": 31,
+            "cell_index": 1
+          },
+          "riding_cell": {
+            "table_index": 3,
+            "row_index": 31,
+            "cell_index": 3
+          },
+          "name_annotation": "Helena Konanz"
+        }
+      ]
+    },
+    {
+      "mp": "Iqra Khalid",
+      "riding": "Mississauga—Erin Mills",
+      "provenance": [
+        {
+          "table_index": 8,
+          "row_index": 65,
+          "name_cell": {
+            "table_index": 8,
+            "row_index": 65,
+            "cell_index": 1
+          },
+          "riding_cell": {
+            "table_index": 8,
+            "row_index": 65,
+            "cell_index": 3
+          },
+          "name_annotation": "Iqra Khalid"
+        }
+      ]
+    },
+    {
+      "mp": "Iqwinder Singh Gaheer",
+      "riding": "Mississauga—Malton",
+      "provenance": [
+        {
+          "table_index": 8,
+          "row_index": 67,
+          "name_cell": {
+            "table_index": 8,
+            "row_index": 67,
+            "cell_index": 1
+          },
+          "riding_cell": {
+            "table_index": 8,
+            "row_index": 67,
+            "cell_index": 3
+          },
+          "name_annotation": "Iqwinder Singh Gaheer"
+        }
+      ]
+    },
+    {
+      "mp": "Jacob Mantle",
+      "riding": "York—Durham",
+      "provenance": [
+        {
+          "table_index": 8,
+          "row_index": 126,
+          "name_cell": {
+            "table_index": 8,
+            "row_index": 126,
+            "cell_index": 1
+          },
+          "riding_cell": {
+            "table_index": 8,
+            "row_index": 126,
+            "cell_index": 3
+          },
+          "name_annotation": "Jacob Mantle"
+        }
+      ]
+    },
+    {
+      "mp": "Jacques Gourde",
+      "riding": "Lévis—Lotbinière",
+      "provenance": [
+        {
+          "table_index": 10,
+          "row_index": 41,
+          "name_cell": {
+            "table_index": 10,
+            "row_index": 41,
+            "cell_index": 1
+          },
+          "riding_cell": {
+            "table_index": 10,
+            "row_index": 41,
+            "cell_index": 3
+          },
+          "name_annotation": "Jacques Gourde"
+        }
+      ]
+    },
+    {
+      "mp": "Jacques Ramsay",
+      "riding": "La Prairie—Atateken",
+      "provenance": [
+        {
+          "table_index": 10,
+          "row_index": 33,
+          "name_cell": {
+            "table_index": 10,
+            "row_index": 33,
+            "cell_index": 1
+          },
+          "riding_cell": {
+            "table_index": 10,
+            "row_index": 33,
+            "cell_index": 3
+          },
+          "name_annotation": "Jacques Ramsay ‡"
+        }
+      ]
+    },
+    {
+      "mp": "Jagsharan Singh Mahal",
+      "riding": "Edmonton Southeast",
+      "provenance": [
+        {
+          "table_index": 2,
+          "row_index": 23,
+          "name_cell": {
+            "table_index": 2,
+            "row_index": 23,
+            "cell_index": 1
+          },
+          "riding_cell": {
+            "table_index": 2,
+            "row_index": 23,
+            "cell_index": 3
+          },
+          "name_annotation": "Jagsharan Singh Mahal"
+        }
+      ]
+    },
+    {
+      "mp": "Jaime Battiste",
+      "riding": "Cape Breton—Canso—Antigonish",
+      "provenance": [
+        {
+          "table_index": 7,
+          "row_index": 3,
+          "name_cell": {
+            "table_index": 7,
+            "row_index": 3,
+            "cell_index": 1
+          },
+          "riding_cell": {
+            "table_index": 7,
+            "row_index": 3,
+            "cell_index": 3
+          },
+          "name_annotation": "Jaime Battiste ‡"
+        }
+      ]
+    },
+    {
+      "mp": "Jake Sawatzky",
+      "riding": "New Westminster—Burnaby—Maillardville",
+      "provenance": [
+        {
+          "table_index": 3,
+          "row_index": 20,
+          "name_cell": {
+            "table_index": 3,
+            "row_index": 20,
+            "cell_index": 1
+          },
+          "riding_cell": {
+            "table_index": 3,
+            "row_index": 20,
+            "cell_index": 3
+          },
+          "name_annotation": "Jake Sawatzky"
+        }
+      ]
+    },
+    {
+      "mp": "James Bezan",
+      "riding": "Selkirk—Interlake—Eastman",
+      "provenance": [
+        {
+          "table_index": 4,
+          "row_index": 8,
+          "name_cell": {
+            "table_index": 4,
+            "row_index": 8,
+            "cell_index": 1
+          },
+          "riding_cell": {
+            "table_index": 4,
+            "row_index": 8,
+            "cell_index": 3
+          },
+          "name_annotation": "James Bezan"
+        }
+      ]
+    },
+    {
+      "mp": "James Maloney",
+      "riding": "Etobicoke—Lakeshore",
+      "provenance": [
+        {
+          "table_index": 8,
+          "row_index": 32,
+          "name_cell": {
+            "table_index": 8,
+            "row_index": 32,
+            "cell_index": 1
+          },
+          "riding_cell": {
+            "table_index": 8,
+            "row_index": 32,
+            "cell_index": 3
+          },
+          "name_annotation": "James Maloney"
+        }
+      ]
+    },
+    {
+      "mp": "Jamie Schmale",
+      "riding": "Haliburton—Kawartha Lakes",
+      "provenance": [
+        {
+          "table_index": 8,
+          "row_index": 36,
+          "name_cell": {
+            "table_index": 8,
+            "row_index": 36,
+            "cell_index": 1
+          },
+          "riding_cell": {
+            "table_index": 8,
+            "row_index": 36,
+            "cell_index": 3
+          },
+          "name_annotation": "Jamie Schmale"
+        }
+      ]
+    },
+    {
+      "mp": "Jamil Jivani",
+      "riding": "Bowmanville—Oshawa North",
+      "provenance": [
+        {
+          "table_index": 8,
+          "row_index": 9,
+          "name_cell": {
+            "table_index": 8,
+            "row_index": 9,
+            "cell_index": 1
+          },
+          "riding_cell": {
+            "table_index": 8,
+            "row_index": 9,
+            "cell_index": 3
+          },
+          "name_annotation": "Jamil Jivani"
+        }
+      ]
+    },
+    {
+      "mp": "Jason Groleau",
+      "riding": "Beauce",
+      "provenance": [
+        {
+          "table_index": 10,
+          "row_index": 6,
+          "name_cell": {
+            "table_index": 10,
+            "row_index": 6,
+            "cell_index": 1
+          },
+          "riding_cell": {
+            "table_index": 10,
+            "row_index": 6,
+            "cell_index": 3
+          },
+          "name_annotation": "Jason Groleau"
+        }
+      ]
+    },
+    {
+      "mp": "Jasraj Singh Hallan",
+      "riding": "Calgary East",
+      "provenance": [
+        {
+          "table_index": 2,
+          "row_index": 8,
+          "name_cell": {
+            "table_index": 2,
+            "row_index": 8,
+            "cell_index": 1
+          },
+          "riding_cell": {
+            "table_index": 2,
+            "row_index": 8,
+            "cell_index": 3
+          },
+          "name_annotation": "Jasraj Singh Hallan"
+        }
+      ]
+    },
+    {
+      "mp": "Jean Yip",
+      "riding": "Scarborough—Agincourt",
+      "provenance": [
+        {
+          "table_index": 8,
+          "row_index": 99,
+          "name_cell": {
+            "table_index": 8,
+            "row_index": 99,
+            "cell_index": 1
+          },
+          "riding_cell": {
+            "table_index": 8,
+            "row_index": 99,
+            "cell_index": 3
+          },
+          "name_annotation": "Jean Yip"
+        }
+      ]
+    },
+    {
+      "mp": "Jean-Denis Garon",
+      "riding": "Mirabel",
+      "provenance": [
+        {
+          "table_index": 10,
+          "row_index": 48,
+          "name_cell": {
+            "table_index": 10,
+            "row_index": 48,
+            "cell_index": 1
+          },
+          "riding_cell": {
+            "table_index": 10,
+            "row_index": 48,
+            "cell_index": 3
+          },
+          "name_annotation": "Jean-Denis Garon"
+        }
+      ]
+    },
+    {
+      "mp": "Jean-Yves Duclos",
+      "riding": "Québec Centre",
+      "provenance": [
+        {
+          "table_index": 10,
+          "row_index": 60,
+          "name_cell": {
+            "table_index": 10,
+            "row_index": 60,
+            "cell_index": 1
+          },
+          "riding_cell": {
+            "table_index": 10,
+            "row_index": 60,
+            "cell_index": 3
+          },
+          "name_annotation": "Jean-Yves Duclos"
+        }
+      ]
+    },
+    {
+      "mp": "Jeff Kibble",
+      "riding": "Cowichan—Malahat—Langford",
+      "provenance": [
+        {
+          "table_index": 3,
+          "row_index": 10,
+          "name_cell": {
+            "table_index": 3,
+            "row_index": 10,
+            "cell_index": 1
+          },
+          "riding_cell": {
+            "table_index": 3,
+            "row_index": 10,
+            "cell_index": 3
+          },
+          "name_annotation": "Jeff Kibble"
+        }
+      ]
+    },
+    {
+      "mp": "Jenna Sudds",
+      "riding": "Kanata",
+      "provenance": [
+        {
+          "table_index": 8,
+          "row_index": 44,
+          "name_cell": {
+            "table_index": 8,
+            "row_index": 44,
+            "cell_index": 1
+          },
+          "riding_cell": {
+            "table_index": 8,
+            "row_index": 44,
+            "cell_index": 3
+          },
+          "name_annotation": "Jenna Sudds ‡"
+        }
+      ]
+    },
+    {
+      "mp": "Jennifer McKelvie",
+      "riding": "Ajax",
+      "provenance": [
+        {
+          "table_index": 8,
+          "row_index": 1,
+          "name_cell": {
+            "table_index": 8,
+            "row_index": 1,
+            "cell_index": 1
+          },
+          "riding_cell": {
+            "table_index": 8,
+            "row_index": 1,
+            "cell_index": 3
+          },
+          "name_annotation": "Jennifer McKelvie ‡"
+        }
+      ]
+    },
+    {
+      "mp": "Jenny Kwan",
+      "riding": "Vancouver East",
+      "provenance": [
+        {
+          "table_index": 3,
+          "row_index": 37,
+          "name_cell": {
+            "table_index": 3,
+            "row_index": 37,
+            "cell_index": 1
+          },
+          "riding_cell": {
+            "table_index": 3,
+            "row_index": 37,
+            "cell_index": 3
+          },
+          "name_annotation": "Jenny Kwan"
+        }
+      ]
+    },
+    {
+      "mp": "Jeremy Patzer",
+      "riding": "Swift Current—Grasslands—Kindersley",
+      "provenance": [
+        {
+          "table_index": 11,
+          "row_index": 13,
+          "name_cell": {
+            "table_index": 11,
+            "row_index": 13,
+            "cell_index": 1
+          },
+          "riding_cell": {
+            "table_index": 11,
+            "row_index": 13,
+            "cell_index": 3
+          },
+          "name_annotation": "Jeremy Patzer"
+        }
+      ]
+    },
+    {
+      "mp": "Jessica Fancy-Landry",
+      "riding": "South Shore—St. Margaret's",
+      "provenance": [
+        {
+          "table_index": 7,
+          "row_index": 11,
+          "name_cell": {
+            "table_index": 7,
+            "row_index": 11,
+            "cell_index": 1
+          },
+          "riding_cell": {
+            "table_index": 7,
+            "row_index": 11,
+            "cell_index": 3
+          },
+          "name_annotation": "Jessica Fancy-Landry"
+        }
+      ]
+    },
+    {
+      "mp": "Jill McKnight",
+      "riding": "Delta",
+      "provenance": [
+        {
+          "table_index": 3,
+          "row_index": 11,
+          "name_cell": {
+            "table_index": 3,
+            "row_index": 11,
+            "cell_index": 1
+          },
+          "riding_cell": {
+            "table_index": 3,
+            "row_index": 11,
+            "cell_index": 3
+          },
+          "name_annotation": "Jill McKnight"
+        }
+      ]
+    },
+    {
+      "mp": "Joanne Thompson",
+      "riding": "St. John's East",
+      "provenance": [
+        {
+          "table_index": 6,
+          "row_index": 6,
+          "name_cell": {
+            "table_index": 6,
+            "row_index": 6,
+            "cell_index": 1
+          },
+          "riding_cell": {
+            "table_index": 6,
+            "row_index": 6,
+            "cell_index": 3
+          },
+          "name_annotation": "Joanne Thompson"
+        }
+      ]
+    },
+    {
+      "mp": "John Barlow",
+      "riding": "Foothills",
+      "provenance": [
+        {
+          "table_index": 2,
+          "row_index": 26,
+          "name_cell": {
+            "table_index": 2,
+            "row_index": 26,
+            "cell_index": 1
+          },
+          "riding_cell": {
+            "table_index": 2,
+            "row_index": 26,
+            "cell_index": 3
+          },
+          "name_annotation": "John Barlow"
+        }
+      ]
+    },
+    {
+      "mp": "John Brassard",
+      "riding": "Barrie South—Innisfil",
+      "provenance": [
+        {
+          "table_index": 8,
+          "row_index": 4,
+          "name_cell": {
+            "table_index": 8,
+            "row_index": 4,
+            "cell_index": 1
+          },
+          "riding_cell": {
+            "table_index": 8,
+            "row_index": 4,
+            "cell_index": 3
+          },
+          "name_annotation": "John Brassard"
+        }
+      ]
+    },
+    {
+      "mp": "John Nater",
+      "riding": "Perth—Wellington",
+      "provenance": [
+        {
+          "table_index": 8,
+          "row_index": 87,
+          "name_cell": {
+            "table_index": 8,
+            "row_index": 87,
+            "cell_index": 1
+          },
+          "riding_cell": {
+            "table_index": 8,
+            "row_index": 87,
+            "cell_index": 3
+          },
+          "name_annotation": "John Nater"
+        }
+      ]
+    },
+    {
+      "mp": "John Williamson",
+      "riding": "Saint John—St. Croix",
+      "provenance": [
+        {
+          "table_index": 5,
+          "row_index": 9,
+          "name_cell": {
+            "table_index": 5,
+            "row_index": 9,
+            "cell_index": 1
+          },
+          "riding_cell": {
+            "table_index": 5,
+            "row_index": 9,
+            "cell_index": 3
+          },
+          "name_annotation": "John Williamson"
+        }
+      ]
+    },
+    {
+      "mp": "John Zerucelli",
+      "riding": "Etobicoke North",
+      "provenance": [
+        {
+          "table_index": 8,
+          "row_index": 31,
+          "name_cell": {
+            "table_index": 8,
+            "row_index": 31,
+            "cell_index": 1
+          },
+          "riding_cell": {
+            "table_index": 8,
+            "row_index": 31,
+            "cell_index": 3
+          },
+          "name_annotation": "John Zerucelli"
+        }
+      ]
+    },
+    {
+      "mp": "John-Paul Danko",
+      "riding": "Hamilton West—Ancaster—Dundas",
+      "provenance": [
+        {
+          "table_index": 8,
+          "row_index": 40,
+          "name_cell": {
+            "table_index": 8,
+            "row_index": 40,
+            "cell_index": 1
+          },
+          "riding_cell": {
+            "table_index": 8,
+            "row_index": 40,
+            "cell_index": 3
+          },
+          "name_annotation": "John-Paul Danko"
+        }
+      ]
+    },
+    {
+      "mp": "Jonathan Rowe",
+      "riding": "Terra Nova—The Peninsulas",
+      "provenance": [
+        {
+          "table_index": 6,
+          "row_index": 7,
+          "name_cell": {
+            "table_index": 6,
+            "row_index": 7,
+            "cell_index": 1
+          },
+          "riding_cell": {
+            "table_index": 6,
+            "row_index": 7,
+            "cell_index": 3
+          },
+          "name_annotation": "Jonathan Rowe"
+        }
+      ]
+    },
+    {
+      "mp": "Joël Godin",
+      "riding": "Portneuf—Jacques-Cartier",
+      "provenance": [
+        {
+          "table_index": 10,
+          "row_index": 59,
+          "name_cell": {
+            "table_index": 10,
+            "row_index": 59,
+            "cell_index": 1
+          },
+          "riding_cell": {
+            "table_index": 10,
+            "row_index": 59,
+            "cell_index": 3
+          },
+          "name_annotation": "Joël Godin"
+        }
+      ]
+    },
+    {
+      "mp": "Joël Lightbound",
+      "riding": "Louis-Hébert",
+      "provenance": [
+        {
+          "table_index": 10,
+          "row_index": 44,
+          "name_cell": {
+            "table_index": 10,
+            "row_index": 44,
+            "cell_index": 1
+          },
+          "riding_cell": {
+            "table_index": 10,
+            "row_index": 44,
+            "cell_index": 3
+          },
+          "name_annotation": "Joël Lightbound"
+        }
+      ]
+    },
+    {
+      "mp": "Juanita Nathan",
+      "riding": "Pickering—Brooklin",
+      "provenance": [
+        {
+          "table_index": 8,
+          "row_index": 89,
+          "name_cell": {
+            "table_index": 8,
+            "row_index": 89,
+            "cell_index": 1
+          },
+          "riding_cell": {
+            "table_index": 8,
+            "row_index": 89,
+            "cell_index": 3
+          },
+          "name_annotation": "Juanita Nathan"
+        }
+      ]
+    },
+    {
+      "mp": "Judy Sgro",
+      "riding": "Humber River—Black Creek",
+      "provenance": [
+        {
+          "table_index": 8,
+          "row_index": 42,
+          "name_cell": {
+            "table_index": 8,
+            "row_index": 42,
+            "cell_index": 1
+          },
+          "riding_cell": {
+            "table_index": 8,
+            "row_index": 42,
+            "cell_index": 3
+          },
+          "name_annotation": "Judy Sgro"
+        }
+      ]
+    },
+    {
+      "mp": "Julie Dabrusin",
+      "riding": "Toronto—Danforth",
+      "provenance": [
+        {
+          "table_index": 8,
+          "row_index": 114,
+          "name_cell": {
+            "table_index": 8,
+            "row_index": 114,
+            "cell_index": 1
+          },
+          "riding_cell": {
+            "table_index": 8,
+            "row_index": 114,
+            "cell_index": 3
+          },
+          "name_annotation": "Julie Dabrusin"
+        }
+      ]
+    },
+    {
+      "mp": "Julie Dzerowicz",
+      "riding": "Davenport",
+      "provenance": [
+        {
+          "table_index": 8,
+          "row_index": 23,
+          "name_cell": {
+            "table_index": 8,
+            "row_index": 23,
+            "cell_index": 1
+          },
+          "riding_cell": {
+            "table_index": 8,
+            "row_index": 23,
+            "cell_index": 3
+          },
+          "name_annotation": "Julie Dzerowicz"
+        }
+      ]
+    },
+    {
+      "mp": "Karim Bardeesy",
+      "riding": "Taiaiako'n—Parkdale—High Park",
+      "provenance": [
+        {
+          "table_index": 8,
+          "row_index": 109,
+          "name_cell": {
+            "table_index": 8,
+            "row_index": 109,
+            "cell_index": 1
+          },
+          "riding_cell": {
+            "table_index": 8,
+            "row_index": 109,
+            "cell_index": 3
+          },
+          "name_annotation": "Karim Bardeesy ‡"
+        }
+      ]
+    },
+    {
+      "mp": "Karina Gould",
+      "riding": "Burlington",
+      "provenance": [
+        {
+          "table_index": 8,
+          "row_index": 18,
+          "name_cell": {
+            "table_index": 8,
+            "row_index": 18,
+            "cell_index": 1
+          },
+          "riding_cell": {
+            "table_index": 8,
+            "row_index": 18,
+            "cell_index": 3
+          },
+          "name_annotation": "Karina Gould"
+        }
+      ]
+    },
+    {
+      "mp": "Kathy Borrelli",
+      "riding": "Windsor—Tecumseh—Lakeshore",
+      "provenance": [
+        {
+          "table_index": 8,
+          "row_index": 123,
+          "name_cell": {
+            "table_index": 8,
+            "row_index": 123,
+            "cell_index": 1
+          },
+          "riding_cell": {
+            "table_index": 8,
+            "row_index": 123,
+            "cell_index": 3
+          },
+          "name_annotation": "Kathy Borrelli"
+        }
+      ]
+    },
+    {
+      "mp": "Kelly Block",
+      "riding": "Carlton Trail—Eagle Creek",
+      "provenance": [
+        {
+          "table_index": 11,
+          "row_index": 2,
+          "name_cell": {
+            "table_index": 11,
+            "row_index": 2,
+            "cell_index": 1
+          },
+          "riding_cell": {
+            "table_index": 11,
+            "row_index": 2,
+            "cell_index": 3
+          },
+          "name_annotation": "Kelly Block"
+        }
+      ]
+    },
+    {
+      "mp": "Kelly DeRidder",
+      "riding": "Kitchener Centre",
+      "provenance": [
+        {
+          "table_index": 8,
+          "row_index": 49,
+          "name_cell": {
+            "table_index": 8,
+            "row_index": 49,
+            "cell_index": 1
+          },
+          "riding_cell": {
+            "table_index": 8,
+            "row_index": 49,
+            "cell_index": 3
+          },
+          "name_annotation": "Kelly DeRidder"
+        }
+      ]
+    },
+    {
+      "mp": "Kelly McCauley",
+      "riding": "Edmonton West",
+      "provenance": [
+        {
+          "table_index": 2,
+          "row_index": 25,
+          "name_cell": {
+            "table_index": 2,
+            "row_index": 25,
+            "cell_index": 1
+          },
+          "riding_cell": {
+            "table_index": 2,
+            "row_index": 25,
+            "cell_index": 3
+          },
+          "name_annotation": "Kelly McCauley"
+        }
+      ]
+    },
+    {
+      "mp": "Kent MacDonald",
+      "riding": "Cardigan",
+      "provenance": [
+        {
+          "table_index": 9,
+          "row_index": 1,
+          "name_cell": {
+            "table_index": 9,
+            "row_index": 1,
+            "cell_index": 1
+          },
+          "riding_cell": {
+            "table_index": 9,
+            "row_index": 1,
+            "cell_index": 3
+          },
+          "name_annotation": "Kent MacDonald"
+        }
+      ]
+    },
+    {
+      "mp": "Kerry Diotte",
+      "riding": "Edmonton Griesbach",
+      "provenance": [
+        {
+          "table_index": 2,
+          "row_index": 18,
+          "name_cell": {
+            "table_index": 2,
+            "row_index": 18,
+            "cell_index": 1
+          },
+          "riding_cell": {
+            "table_index": 2,
+            "row_index": 18,
+            "cell_index": 3
+          },
+          "name_annotation": "Kerry Diotte"
+        }
+      ]
+    },
+    {
+      "mp": "Kevin Lamoureux",
+      "riding": "Winnipeg North",
+      "provenance": [
+        {
+          "table_index": 4,
+          "row_index": 11,
+          "name_cell": {
+            "table_index": 4,
+            "row_index": 11,
+            "cell_index": 1
+          },
+          "riding_cell": {
+            "table_index": 4,
+            "row_index": 11,
+            "cell_index": 3
+          },
+          "name_annotation": "Kevin Lamoureux ‡"
+        }
+      ]
+    },
+    {
+      "mp": "Kevin Waugh",
+      "riding": "Saskatoon South",
+      "provenance": [
+        {
+          "table_index": 11,
+          "row_index": 9,
+          "name_cell": {
+            "table_index": 11,
+            "row_index": 9,
+            "cell_index": 1
+          },
+          "riding_cell": {
+            "table_index": 11,
+            "row_index": 9,
+            "cell_index": 3
+          },
+          "name_annotation": "Kevin Waugh"
+        }
+      ]
+    },
+    {
+      "mp": "Kody Blois",
+      "riding": "Kings—Hants",
+      "provenance": [
+        {
+          "table_index": 7,
+          "row_index": 9,
+          "name_cell": {
+            "table_index": 7,
+            "row_index": 9,
+            "cell_index": 1
+          },
+          "riding_cell": {
+            "table_index": 7,
+            "row_index": 9,
+            "cell_index": 3
+          },
+          "name_annotation": "Kody Blois ‡"
+        }
+      ]
+    },
+    {
+      "mp": "Kristina Tesser Derksen",
+      "riding": "Milton East—Halton Hills South",
+      "provenance": [
+        {
+          "table_index": 8,
+          "row_index": 62,
+          "name_cell": {
+            "table_index": 8,
+            "row_index": 62,
+            "cell_index": 1
+          },
+          "riding_cell": {
+            "table_index": 8,
+            "row_index": 62,
+            "cell_index": 3
+          },
+          "name_annotation": "Kristina Tesser Derksen"
+        }
+      ]
+    },
+    {
+      "mp": "Kurt Holman",
+      "riding": "London—Fanshawe",
+      "provenance": [
+        {
+          "table_index": 8,
+          "row_index": 54,
+          "name_cell": {
+            "table_index": 8,
+            "row_index": 54,
+            "cell_index": 1
+          },
+          "riding_cell": {
+            "table_index": 8,
+            "row_index": 54,
+            "cell_index": 3
+          },
+          "name_annotation": "Kurt Holman"
+        }
+      ]
+    },
+    {
+      "mp": "Kyle Seeback",
+      "riding": "Dufferin—Caledon",
+      "provenance": [
+        {
+          "table_index": 8,
+          "row_index": 26,
+          "name_cell": {
+            "table_index": 8,
+            "row_index": 26,
+            "cell_index": 1
+          },
+          "riding_cell": {
+            "table_index": 8,
+            "row_index": 26,
+            "cell_index": 3
+          },
+          "name_annotation": "Kyle Seeback"
+        }
+      ]
+    },
+    {
+      "mp": "Laila Goodridge",
+      "riding": "Fort McMurray—Cold Lake",
+      "provenance": [
+        {
+          "table_index": 2,
+          "row_index": 27,
+          "name_cell": {
+            "table_index": 2,
+            "row_index": 27,
+            "cell_index": 1
+          },
+          "riding_cell": {
+            "table_index": 2,
+            "row_index": 27,
+            "cell_index": 3
+          },
+          "name_annotation": "Laila Goodridge"
+        }
+      ]
+    },
+    {
+      "mp": "Leah Gazan",
+      "riding": "Winnipeg Centre",
+      "provenance": [
+        {
+          "table_index": 4,
+          "row_index": 10,
+          "name_cell": {
+            "table_index": 4,
+            "row_index": 10,
+            "cell_index": 1
+          },
+          "riding_cell": {
+            "table_index": 4,
+            "row_index": 10,
+            "cell_index": 3
+          },
+          "name_annotation": "Leah Gazan"
+        }
+      ]
+    },
+    {
+      "mp": "Lena Diab",
+      "riding": "Halifax West",
+      "provenance": [
+        {
+          "table_index": 7,
+          "row_index": 8,
+          "name_cell": {
+            "table_index": 7,
+            "row_index": 8,
+            "cell_index": 1
+          },
+          "riding_cell": {
+            "table_index": 7,
+            "row_index": 8,
+            "cell_index": 3
+          },
+          "name_annotation": "Lena Diab"
+        }
+      ]
+    },
+    {
+      "mp": "Leslie Church",
+      "riding": "Toronto—St. Paul's",
+      "provenance": [
+        {
+          "table_index": 8,
+          "row_index": 115,
+          "name_cell": {
+            "table_index": 8,
+            "row_index": 115,
+            "cell_index": 1
+          },
+          "riding_cell": {
+            "table_index": 8,
+            "row_index": 115,
+            "cell_index": 3
+          },
+          "name_annotation": "Leslie Church ‡"
+        }
+      ]
+    },
+    {
+      "mp": "Leslyn Lewis",
+      "riding": "Haldimand—Norfolk",
+      "provenance": [
+        {
+          "table_index": 8,
+          "row_index": 35,
+          "name_cell": {
+            "table_index": 8,
+            "row_index": 35,
+            "cell_index": 1
+          },
+          "riding_cell": {
+            "table_index": 8,
+            "row_index": 35,
+            "cell_index": 3
+          },
+          "name_annotation": "Leslyn Lewis"
+        }
+      ]
+    },
+    {
+      "mp": "Lianne Rood",
+      "riding": "Middlesex—London",
+      "provenance": [
+        {
+          "table_index": 8,
+          "row_index": 61,
+          "name_cell": {
+            "table_index": 8,
+            "row_index": 61,
+            "cell_index": 1
+          },
+          "riding_cell": {
+            "table_index": 8,
+            "row_index": 61,
+            "cell_index": 3
+          },
+          "name_annotation": "Lianne Rood"
+        }
+      ]
+    },
+    {
+      "mp": "Linda Lapointe",
+      "riding": "Rivière-des-Mille-Îles",
+      "provenance": [
+        {
+          "table_index": 10,
+          "row_index": 64,
+          "name_cell": {
+            "table_index": 10,
+            "row_index": 64,
+            "cell_index": 1
+          },
+          "riding_cell": {
+            "table_index": 10,
+            "row_index": 64,
+            "cell_index": 3
+          },
+          "name_annotation": "Linda Lapointe"
+        }
+      ]
+    },
+    {
+      "mp": "Lisa Hepfner",
+      "riding": "Hamilton Mountain",
+      "provenance": [
+        {
+          "table_index": 8,
+          "row_index": 39,
+          "name_cell": {
+            "table_index": 8,
+            "row_index": 39,
+            "cell_index": 1
+          },
+          "riding_cell": {
+            "table_index": 8,
+            "row_index": 39,
+            "cell_index": 3
+          },
+          "name_annotation": "Lisa Hepfner"
+        }
+      ]
+    },
+    {
+      "mp": "Lori Idlout",
+      "riding": "Nunavut",
+      "provenance": [
+        {
+          "table_index": 12,
+          "row_index": 2,
+          "name_cell": {
+            "table_index": 12,
+            "row_index": 2,
+            "cell_index": 1
+          },
+          "riding_cell": {
+            "table_index": 12,
+            "row_index": 2,
+            "cell_index": 3
+          },
+          "name_annotation": "Lori Idlout"
+        },
+        {
+          "table_index": 12,
+          "row_index": 3,
+          "name_cell": {
+            "table_index": 12,
+            "row_index": 2,
+            "cell_index": 1
+          },
+          "riding_cell": {
+            "table_index": 12,
+            "row_index": 2,
+            "cell_index": 3
+          },
+          "name_annotation": "Lori Idlout"
+        }
+      ]
+    },
+    {
+      "mp": "Louis Plamondon",
+      "riding": "Bécancour—Nicolet—Saurel—Alnôbak",
+      "provenance": [
+        {
+          "table_index": 10,
+          "row_index": 9,
+          "name_cell": {
+            "table_index": 10,
+            "row_index": 9,
+            "cell_index": 1
+          },
+          "riding_cell": {
+            "table_index": 10,
+            "row_index": 9,
+            "cell_index": 3
+          },
+          "name_annotation": "Louis Plamondon"
+        }
+      ]
+    },
+    {
+      "mp": "Louis Villeneuve",
+      "riding": "Brome—Missisquoi",
+      "provenance": [
+        {
+          "table_index": 10,
+          "row_index": 14,
+          "name_cell": {
+            "table_index": 10,
+            "row_index": 14,
+            "cell_index": 1
+          },
+          "riding_cell": {
+            "table_index": 10,
+            "row_index": 14,
+            "cell_index": 3
+          },
+          "name_annotation": "Louis Villeneuve"
+        }
+      ]
+    },
+    {
+      "mp": "Luc Berthold",
+      "riding": "Mégantic—L'Érable—Lotbinière",
+      "provenance": [
+        {
+          "table_index": 10,
+          "row_index": 47,
+          "name_cell": {
+            "table_index": 10,
+            "row_index": 47,
+            "cell_index": 1
+          },
+          "riding_cell": {
+            "table_index": 10,
+            "row_index": 47,
+            "cell_index": 3
+          },
+          "name_annotation": "Luc Berthold"
+        }
+      ]
+    },
+    {
+      "mp": "Luc Thériault",
+      "riding": "Montcalm",
+      "provenance": [
+        {
+          "table_index": 10,
+          "row_index": 50,
+          "name_cell": {
+            "table_index": 10,
+            "row_index": 50,
+            "cell_index": 1
+          },
+          "riding_cell": {
+            "table_index": 10,
+            "row_index": 50,
+            "cell_index": 3
+          },
+          "name_annotation": "Luc Thériault"
+        }
+      ]
+    },
+    {
+      "mp": "Madeleine Chenette",
+      "riding": "Thérèse-De Blainville",
+      "provenance": [
+        {
+          "table_index": 10,
+          "row_index": 77,
+          "name_cell": {
+            "table_index": 10,
+            "row_index": 77,
+            "cell_index": 1
+          },
+          "riding_cell": {
+            "table_index": 10,
+            "row_index": 77,
+            "cell_index": 3
+          },
+          "name_annotation": "Madeleine Chenette ‡"
+        }
+      ]
+    },
+    {
+      "mp": "Maggie Chi",
+      "riding": "Don Valley North",
+      "provenance": [
+        {
+          "table_index": 8,
+          "row_index": 24,
+          "name_cell": {
+            "table_index": 8,
+            "row_index": 24,
+            "cell_index": 1
+          },
+          "riding_cell": {
+            "table_index": 8,
+            "row_index": 24,
+            "cell_index": 3
+          },
+          "name_annotation": "Maggie Chi ‡"
+        }
+      ]
+    },
+    {
+      "mp": "Mandy Gull-Masty",
+      "riding": "Abitibi—Baie-James—Nunavik—Eeyou",
+      "provenance": [
+        {
+          "table_index": 10,
+          "row_index": 1,
+          "name_cell": {
+            "table_index": 10,
+            "row_index": 1,
+            "cell_index": 1
+          },
+          "riding_cell": {
+            "table_index": 10,
+            "row_index": 1,
+            "cell_index": 3
+          },
+          "name_annotation": "Mandy Gull-Masty"
+        }
+      ]
+    },
+    {
+      "mp": "Maninder Sidhu",
+      "riding": "Brampton East",
+      "provenance": [
+        {
+          "table_index": 8,
+          "row_index": 11,
+          "name_cell": {
+            "table_index": 8,
+            "row_index": 11,
+            "cell_index": 1
+          },
+          "riding_cell": {
+            "table_index": 8,
+            "row_index": 11,
+            "cell_index": 3
+          },
+          "name_annotation": "Maninder Sidhu"
+        }
+      ]
+    },
+    {
+      "mp": "Marc Dalton",
+      "riding": "Pitt Meadows—Maple Ridge",
+      "provenance": [
+        {
+          "table_index": 3,
+          "row_index": 25,
+          "name_cell": {
+            "table_index": 3,
+            "row_index": 25,
+            "cell_index": 1
+          },
+          "riding_cell": {
+            "table_index": 3,
+            "row_index": 25,
+            "cell_index": 3
+          },
+          "name_annotation": "Marc Dalton"
+        }
+      ]
+    },
+    {
+      "mp": "Marc Miller",
+      "riding": "Ville-Marie—Le Sud-Ouest—Île-des-Soeurs",
+      "provenance": [
+        {
+          "table_index": 10,
+          "row_index": 80,
+          "name_cell": {
+            "table_index": 10,
+            "row_index": 80,
+            "cell_index": 1
+          },
+          "riding_cell": {
+            "table_index": 10,
+            "row_index": 80,
+            "cell_index": 3
+          },
+          "name_annotation": "Marc Miller"
+        }
+      ]
+    },
+    {
+      "mp": "Marc Serré",
+      "riding": "Sudbury East—Manitoulin—Nickel Belt",
+      "provenance": [
+        {
+          "table_index": 8,
+          "row_index": 108,
+          "name_cell": {
+            "table_index": 8,
+            "row_index": 108,
+            "cell_index": 1
+          },
+          "riding_cell": {
+            "table_index": 8,
+            "row_index": 108,
+            "cell_index": 3
+          },
+          "name_annotation": "Marc Serré"
+        }
+      ]
+    },
+    {
+      "mp": "Marcus Powlowski",
+      "riding": "Thunder Bay—Rainy River",
+      "provenance": [
+        {
+          "table_index": 8,
+          "row_index": 111,
+          "name_cell": {
+            "table_index": 8,
+            "row_index": 111,
+            "cell_index": 1
+          },
+          "riding_cell": {
+            "table_index": 8,
+            "row_index": 111,
+            "cell_index": 3
+          },
+          "name_annotation": "Marcus Powlowski"
+        }
+      ]
+    },
+    {
+      "mp": "Marianne Dandurand",
+      "riding": "Compton—Stanstead",
+      "provenance": [
+        {
+          "table_index": 10,
+          "row_index": 20,
+          "name_cell": {
+            "table_index": 10,
+            "row_index": 20,
+            "cell_index": 1
+          },
+          "riding_cell": {
+            "table_index": 10,
+            "row_index": 20,
+            "cell_index": 3
+          },
+          "name_annotation": "Marianne Dandurand"
+        }
+      ]
+    },
+    {
+      "mp": "Marie-France Lalonde",
+      "riding": "Orléans",
+      "provenance": [
+        {
+          "table_index": 8,
+          "row_index": 79,
+          "name_cell": {
+            "table_index": 8,
+            "row_index": 79,
+            "cell_index": 1
+          },
+          "riding_cell": {
+            "table_index": 8,
+            "row_index": 79,
+            "cell_index": 3
+          },
+          "name_annotation": "Marie-France Lalonde"
+        }
+      ]
+    },
+    {
+      "mp": "Marie-Gabrielle Ménard",
+      "riding": "Hochelaga—Rosemont-Est",
+      "provenance": [
+        {
+          "table_index": 10,
+          "row_index": 27,
+          "name_cell": {
+            "table_index": 10,
+            "row_index": 27,
+            "cell_index": 1
+          },
+          "riding_cell": {
+            "table_index": 10,
+            "row_index": 27,
+            "cell_index": 3
+          },
+          "name_annotation": "Marie-Gabrielle Ménard ‡"
+        }
+      ]
+    },
+    {
+      "mp": "Marie-Hélène Gaudreau",
+      "riding": "Laurentides—Labelle",
+      "provenance": [
+        {
+          "table_index": 10,
+          "row_index": 37,
+          "name_cell": {
+            "table_index": 10,
+            "row_index": 37,
+            "cell_index": 1
+          },
+          "riding_cell": {
+            "table_index": 10,
+            "row_index": 37,
+            "cell_index": 3
+          },
+          "name_annotation": "Marie-Hélène Gaudreau"
+        }
+      ]
+    },
+    {
+      "mp": "Marilyn Gladu",
+      "riding": "Sarnia—Lambton—Bkejwanong",
+      "provenance": [
+        {
+          "table_index": 8,
+          "row_index": 92,
+          "name_cell": {
+            "table_index": 8,
+            "row_index": 92,
+            "cell_index": 1
+          },
+          "riding_cell": {
+            "table_index": 8,
+            "row_index": 92,
+            "cell_index": 3
+          },
+          "name_annotation": "Marilyn Gladu"
+        },
+        {
+          "table_index": 8,
+          "row_index": 93,
+          "name_cell": {
+            "table_index": 8,
+            "row_index": 92,
+            "cell_index": 1
+          },
+          "riding_cell": {
+            "table_index": 8,
+            "row_index": 92,
+            "cell_index": 3
+          },
+          "name_annotation": "Marilyn Gladu"
+        }
+      ]
+    },
+    {
+      "mp": "Marilène Gill",
+      "riding": "Côte-Nord—Kawawachikamach—Nitassinan",
+      "provenance": [
+        {
+          "table_index": 10,
+          "row_index": 22,
+          "name_cell": {
+            "table_index": 10,
+            "row_index": 22,
+            "cell_index": 1
+          },
+          "riding_cell": {
+            "table_index": 10,
+            "row_index": 22,
+            "cell_index": 3
+          },
+          "name_annotation": "Marilène Gill"
+        }
+      ]
+    },
+    {
+      "mp": "Mario Beaulieu",
+      "riding": "La Pointe-de-l'Île",
+      "provenance": [
+        {
+          "table_index": 10,
+          "row_index": 32,
+          "name_cell": {
+            "table_index": 10,
+            "row_index": 32,
+            "cell_index": 1
+          },
+          "riding_cell": {
+            "table_index": 10,
+            "row_index": 32,
+            "cell_index": 3
+          },
+          "name_annotation": "Mario Beaulieu"
+        }
+      ]
+    },
+    {
+      "mp": "Mario Simard",
+      "riding": "Jonquière",
+      "provenance": [
+        {
+          "table_index": 10,
+          "row_index": 31,
+          "name_cell": {
+            "table_index": 10,
+            "row_index": 31,
+            "cell_index": 1
+          },
+          "riding_cell": {
+            "table_index": 10,
+            "row_index": 31,
+            "cell_index": 3
+          },
+          "name_annotation": "Mario Simard"
+        }
+      ]
+    },
+    {
+      "mp": "Marjorie Michel",
+      "riding": "Papineau",
+      "provenance": [
+        {
+          "table_index": 10,
+          "row_index": 55,
+          "name_cell": {
+            "table_index": 10,
+            "row_index": 55,
+            "cell_index": 1
+          },
+          "riding_cell": {
+            "table_index": 10,
+            "row_index": 55,
+            "cell_index": 3
+          },
+          "name_annotation": "Marjorie Michel"
+        }
+      ]
+    },
+    {
+      "mp": "Mark Carney",
+      "riding": "Nepean",
+      "provenance": [
+        {
+          "table_index": 8,
+          "row_index": 69,
+          "name_cell": {
+            "table_index": 8,
+            "row_index": 69,
+            "cell_index": 1
+          },
+          "riding_cell": {
+            "table_index": 8,
+            "row_index": 69,
+            "cell_index": 3
+          },
+          "name_annotation": "Mark Carney"
+        }
+      ]
+    },
+    {
+      "mp": "Mark Gerretsen",
+      "riding": "Kingston and the Islands",
+      "provenance": [
+        {
+          "table_index": 8,
+          "row_index": 48,
+          "name_cell": {
+            "table_index": 8,
+            "row_index": 48,
+            "cell_index": 1
+          },
+          "riding_cell": {
+            "table_index": 8,
+            "row_index": 48,
+            "cell_index": 3
+          },
+          "name_annotation": "Mark Gerretsen"
+        }
+      ]
+    },
+    {
+      "mp": "Mark Strahl",
+      "riding": "Chilliwack—Hope",
+      "provenance": [
+        {
+          "table_index": 3,
+          "row_index": 5,
+          "name_cell": {
+            "table_index": 3,
+            "row_index": 5,
+            "cell_index": 1
+          },
+          "riding_cell": {
+            "table_index": 3,
+            "row_index": 5,
+            "cell_index": 3
+          },
+          "name_annotation": "Mark Strahl"
+        }
+      ]
+    },
+    {
+      "mp": "Martin Champoux",
+      "riding": "Drummond",
+      "provenance": [
+        {
+          "table_index": 10,
+          "row_index": 24,
+          "name_cell": {
+            "table_index": 10,
+            "row_index": 24,
+            "cell_index": 1
+          },
+          "riding_cell": {
+            "table_index": 10,
+            "row_index": 24,
+            "cell_index": 3
+          },
+          "name_annotation": "Martin Champoux"
+        }
+      ]
+    },
+    {
+      "mp": "Matt Jeneroux",
+      "riding": "Edmonton Riverbend",
+      "provenance": [
+        {
+          "table_index": 2,
+          "row_index": 21,
+          "name_cell": {
+            "table_index": 2,
+            "row_index": 21,
+            "cell_index": 1
+          },
+          "riding_cell": {
+            "table_index": 2,
+            "row_index": 21,
+            "cell_index": 3
+          },
+          "name_annotation": "Matt Jeneroux"
+        },
+        {
+          "table_index": 2,
+          "row_index": 22,
+          "name_cell": {
+            "table_index": 2,
+            "row_index": 21,
+            "cell_index": 1
+          },
+          "riding_cell": {
+            "table_index": 2,
+            "row_index": 21,
+            "cell_index": 3
+          },
+          "name_annotation": "Matt Jeneroux"
+        }
+      ]
+    },
+    {
+      "mp": "Matt Strauss",
+      "riding": "Kitchener South—Hespeler",
+      "provenance": [
+        {
+          "table_index": 8,
+          "row_index": 50,
+          "name_cell": {
+            "table_index": 8,
+            "row_index": 50,
+            "cell_index": 1
+          },
+          "riding_cell": {
+            "table_index": 8,
+            "row_index": 50,
+            "cell_index": 3
+          },
+          "name_annotation": "Matt Strauss"
+        }
+      ]
+    },
+    {
+      "mp": "Maxime Blanchette-Joncas",
+      "riding": "Rimouski—La Matapédia",
+      "provenance": [
+        {
+          "table_index": 10,
+          "row_index": 63,
+          "name_cell": {
+            "table_index": 10,
+            "row_index": 63,
+            "cell_index": 1
+          },
+          "riding_cell": {
+            "table_index": 10,
+            "row_index": 63,
+            "cell_index": 3
+          },
+          "name_annotation": "Maxime Blanchette-Joncas"
+        }
+      ]
+    },
+    {
+      "mp": "Mel Arnold",
+      "riding": "Kamloops—Shuswap—Central Rockies",
+      "provenance": [
+        {
+          "table_index": 3,
+          "row_index": 14,
+          "name_cell": {
+            "table_index": 3,
+            "row_index": 14,
+            "cell_index": 1
+          },
+          "riding_cell": {
+            "table_index": 3,
+            "row_index": 14,
+            "cell_index": 3
+          },
+          "name_annotation": "Mel Arnold"
+        }
+      ]
+    },
+    {
+      "mp": "Melissa Lantsman",
+      "riding": "Thornhill",
+      "provenance": [
+        {
+          "table_index": 8,
+          "row_index": 110,
+          "name_cell": {
+            "table_index": 8,
+            "row_index": 110,
+            "cell_index": 1
+          },
+          "riding_cell": {
+            "table_index": 8,
+            "row_index": 110,
+            "cell_index": 3
+          },
+          "name_annotation": "Melissa Lantsman"
+        }
+      ]
+    },
+    {
+      "mp": "Michael Barrett",
+      "riding": "Leeds—Grenville—Thousand Islands—Rideau Lakes",
+      "provenance": [
+        {
+          "table_index": 8,
+          "row_index": 53,
+          "name_cell": {
+            "table_index": 8,
+            "row_index": 53,
+            "cell_index": 1
+          },
+          "riding_cell": {
+            "table_index": 8,
+            "row_index": 53,
+            "cell_index": 3
+          },
+          "name_annotation": "Michael Barrett"
+        }
+      ]
+    },
+    {
+      "mp": "Michael Chong",
+      "riding": "Wellington—Halton Hills North",
+      "provenance": [
+        {
+          "table_index": 8,
+          "row_index": 120,
+          "name_cell": {
+            "table_index": 8,
+            "row_index": 120,
+            "cell_index": 1
+          },
+          "riding_cell": {
+            "table_index": 8,
+            "row_index": 120,
+            "cell_index": 3
+          },
+          "name_annotation": "Michael Chong"
+        }
+      ]
+    },
+    {
+      "mp": "Michael Cooper",
+      "riding": "St. Albert—Sturgeon River",
+      "provenance": [
+        {
+          "table_index": 2,
+          "row_index": 38,
+          "name_cell": {
+            "table_index": 2,
+            "row_index": 38,
+            "cell_index": 1
+          },
+          "riding_cell": {
+            "table_index": 2,
+            "row_index": 38,
+            "cell_index": 3
+          },
+          "name_annotation": "Michael Cooper"
+        }
+      ]
+    },
+    {
+      "mp": "Michael Coteau",
+      "riding": "Scarborough—Woburn",
+      "provenance": [
+        {
+          "table_index": 8,
+          "row_index": 101,
+          "name_cell": {
+            "table_index": 8,
+            "row_index": 101,
+            "cell_index": 1
+          },
+          "riding_cell": {
+            "table_index": 8,
+            "row_index": 101,
+            "cell_index": 3
+          },
+          "name_annotation": "Michael Coteau"
+        }
+      ]
+    },
+    {
+      "mp": "Michael Dawson",
+      "riding": "Miramichi—Grand Lake",
+      "provenance": [
+        {
+          "table_index": 5,
+          "row_index": 6,
+          "name_cell": {
+            "table_index": 5,
+            "row_index": 6,
+            "cell_index": 1
+          },
+          "riding_cell": {
+            "table_index": 5,
+            "row_index": 6,
+            "cell_index": 3
+          },
+          "name_annotation": "Michael Dawson"
+        }
+      ]
+    },
+    {
+      "mp": "Michael Guglielmin",
+      "riding": "Vaughan—Woodbridge",
+      "provenance": [
+        {
+          "table_index": 8,
+          "row_index": 118,
+          "name_cell": {
+            "table_index": 8,
+            "row_index": 118,
+            "cell_index": 1
+          },
+          "riding_cell": {
+            "table_index": 8,
+            "row_index": 118,
+            "cell_index": 3
+          },
+          "name_annotation": "Michael Guglielmin"
+        }
+      ]
+    },
+    {
+      "mp": "Michael Kram",
+      "riding": "Regina—Wascana",
+      "provenance": [
+        {
+          "table_index": 11,
+          "row_index": 8,
+          "name_cell": {
+            "table_index": 11,
+            "row_index": 8,
+            "cell_index": 1
+          },
+          "riding_cell": {
+            "table_index": 11,
+            "row_index": 8,
+            "cell_index": 3
+          },
+          "name_annotation": "Michael Kram"
+        }
+      ]
+    },
+    {
+      "mp": "Michael Ma",
+      "riding": "Markham—Unionville",
+      "provenance": [
+        {
+          "table_index": 8,
+          "row_index": 59,
+          "name_cell": {
+            "table_index": 8,
+            "row_index": 59,
+            "cell_index": 1
+          },
+          "riding_cell": {
+            "table_index": 8,
+            "row_index": 59,
+            "cell_index": 3
+          },
+          "name_annotation": "Michael Ma"
+        },
+        {
+          "table_index": 8,
+          "row_index": 60,
+          "name_cell": {
+            "table_index": 8,
+            "row_index": 59,
+            "cell_index": 1
+          },
+          "riding_cell": {
+            "table_index": 8,
+            "row_index": 59,
+            "cell_index": 3
+          },
+          "name_annotation": "Michael Ma"
+        }
+      ]
+    },
+    {
+      "mp": "Michelle Rempel Garner",
+      "riding": "Calgary Nose Hill",
+      "provenance": [
+        {
+          "table_index": 2,
+          "row_index": 12,
+          "name_cell": {
+            "table_index": 2,
+            "row_index": 12,
+            "cell_index": 1
+          },
+          "riding_cell": {
+            "table_index": 2,
+            "row_index": 12,
+            "cell_index": 3
+          },
+          "name_annotation": "Michelle Rempel Garner"
+        }
+      ]
+    },
+    {
+      "mp": "Mike Kelloway",
+      "riding": "Sydney—Glace Bay",
+      "provenance": [
+        {
+          "table_index": 7,
+          "row_index": 12,
+          "name_cell": {
+            "table_index": 7,
+            "row_index": 12,
+            "cell_index": 1
+          },
+          "riding_cell": {
+            "table_index": 7,
+            "row_index": 12,
+            "cell_index": 3
+          },
+          "name_annotation": "Mike Kelloway ‡"
+        }
+      ]
+    },
+    {
+      "mp": "Mike Lake",
+      "riding": "Leduc—Wetaskiwin",
+      "provenance": [
+        {
+          "table_index": 2,
+          "row_index": 30,
+          "name_cell": {
+            "table_index": 2,
+            "row_index": 30,
+            "cell_index": 1
+          },
+          "riding_cell": {
+            "table_index": 2,
+            "row_index": 30,
+            "cell_index": 3
+          },
+          "name_annotation": "Mike Lake"
+        }
+      ]
+    },
+    {
+      "mp": "Mona Fortier",
+      "riding": "Ottawa—Vanier—Gloucester",
+      "provenance": [
+        {
+          "table_index": 8,
+          "row_index": 84,
+          "name_cell": {
+            "table_index": 8,
+            "row_index": 84,
+            "cell_index": 1
+          },
+          "riding_cell": {
+            "table_index": 8,
+            "row_index": 84,
+            "cell_index": 3
+          },
+          "name_annotation": "Mona Fortier ‡"
+        }
+      ]
+    },
+    {
+      "mp": "Mélanie Joly",
+      "riding": "Ahuntsic-Cartierville",
+      "provenance": [
+        {
+          "table_index": 10,
+          "row_index": 3,
+          "name_cell": {
+            "table_index": 10,
+            "row_index": 3,
+            "cell_index": 1
+          },
+          "riding_cell": {
+            "table_index": 10,
+            "row_index": 3,
+            "cell_index": 3
+          },
+          "name_annotation": "Mélanie Joly"
+        }
+      ]
+    },
+    {
+      "mp": "Nathalie Provost",
+      "riding": "Châteauguay—Les Jardins-de-Napierville",
+      "provenance": [
+        {
+          "table_index": 10,
+          "row_index": 17,
+          "name_cell": {
+            "table_index": 10,
+            "row_index": 17,
+            "cell_index": 1
+          },
+          "riding_cell": {
+            "table_index": 10,
+            "row_index": 17,
+            "cell_index": 3
+          },
+          "name_annotation": "Nathalie Provost"
+        }
+      ]
+    },
+    {
+      "mp": "Natilien Joseph",
+      "riding": "Longueuil—Saint-Hubert",
+      "provenance": [
+        {
+          "table_index": 10,
+          "row_index": 43,
+          "name_cell": {
+            "table_index": 10,
+            "row_index": 43,
+            "cell_index": 1
+          },
+          "riding_cell": {
+            "table_index": 10,
+            "row_index": 43,
+            "cell_index": 3
+          },
+          "name_annotation": "Natilien Joseph"
+        }
+      ]
+    },
+    {
+      "mp": "Ned Kuruc",
+      "riding": "Hamilton East—Stoney Creek",
+      "provenance": [
+        {
+          "table_index": 8,
+          "row_index": 38,
+          "name_cell": {
+            "table_index": 8,
+            "row_index": 38,
+            "cell_index": 1
+          },
+          "riding_cell": {
+            "table_index": 8,
+            "row_index": 38,
+            "cell_index": 3
+          },
+          "name_annotation": "Ned Kuruc"
+        }
+      ]
+    },
+    {
+      "mp": "Parm Bains",
+      "riding": "Richmond East—Steveston",
+      "provenance": [
+        {
+          "table_index": 3,
+          "row_index": 29,
+          "name_cell": {
+            "table_index": 3,
+            "row_index": 29,
+            "cell_index": 1
+          },
+          "riding_cell": {
+            "table_index": 3,
+            "row_index": 29,
+            "cell_index": 3
+          },
+          "name_annotation": "Parm Bains"
+        }
+      ]
+    },
+    {
+      "mp": "Pat Kelly",
+      "riding": "Calgary Crowfoot",
+      "provenance": [
+        {
+          "table_index": 2,
+          "row_index": 7,
+          "name_cell": {
+            "table_index": 2,
+            "row_index": 7,
+            "cell_index": 1
+          },
+          "riding_cell": {
+            "table_index": 2,
+            "row_index": 7,
+            "cell_index": 3
+          },
+          "name_annotation": "Pat Kelly"
+        }
+      ]
+    },
+    {
+      "mp": "Patricia Lattanzio",
+      "riding": "Saint-Léonard—Saint-Michel",
+      "provenance": [
+        {
+          "table_index": 10,
+          "row_index": 72,
+          "name_cell": {
+            "table_index": 10,
+            "row_index": 72,
+            "cell_index": 1
+          },
+          "riding_cell": {
+            "table_index": 10,
+            "row_index": 72,
+            "cell_index": 3
+          },
+          "name_annotation": "Patricia Lattanzio"
+        }
+      ]
+    },
+    {
+      "mp": "Patrick Bonin",
+      "riding": "Repentigny",
+      "provenance": [
+        {
+          "table_index": 10,
+          "row_index": 61,
+          "name_cell": {
+            "table_index": 10,
+            "row_index": 61,
+            "cell_index": 1
+          },
+          "riding_cell": {
+            "table_index": 10,
+            "row_index": 61,
+            "cell_index": 3
+          },
+          "name_annotation": "Patrick Bonin"
+        }
+      ]
+    },
+    {
+      "mp": "Patrick Weiler",
+      "riding": "West Vancouver—Sunshine Coast—Sea to Sky Country",
+      "provenance": [
+        {
+          "table_index": 3,
+          "row_index": 44,
+          "name_cell": {
+            "table_index": 3,
+            "row_index": 44,
+            "cell_index": 1
+          },
+          "riding_cell": {
+            "table_index": 3,
+            "row_index": 44,
+            "cell_index": 3
+          },
+          "name_annotation": "Patrick Weiler"
+        }
+      ]
+    },
+    {
+      "mp": "Patty Hajdu",
+      "riding": "Thunder Bay—Superior North",
+      "provenance": [
+        {
+          "table_index": 8,
+          "row_index": 112,
+          "name_cell": {
+            "table_index": 8,
+            "row_index": 112,
+            "cell_index": 1
+          },
+          "riding_cell": {
+            "table_index": 8,
+            "row_index": 112,
+            "cell_index": 3
+          },
+          "name_annotation": "Patty Hajdu"
+        }
+      ]
+    },
+    {
+      "mp": "Paul Connors",
+      "riding": "Avalon",
+      "provenance": [
+        {
+          "table_index": 6,
+          "row_index": 1,
+          "name_cell": {
+            "table_index": 6,
+            "row_index": 1,
+            "cell_index": 1
+          },
+          "riding_cell": {
+            "table_index": 6,
+            "row_index": 1,
+            "cell_index": 3
+          },
+          "name_annotation": "Paul Connors"
+        }
+      ]
+    },
+    {
+      "mp": "Pauline Rochefort",
+      "riding": "Nipissing—Timiskaming",
+      "provenance": [
+        {
+          "table_index": 8,
+          "row_index": 75,
+          "name_cell": {
+            "table_index": 8,
+            "row_index": 75,
+            "cell_index": 1
+          },
+          "riding_cell": {
+            "table_index": 8,
+            "row_index": 75,
+            "cell_index": 3
+          },
+          "name_annotation": "Pauline Rochefort ‡"
+        }
+      ]
+    },
+    {
+      "mp": "Peter Fonseca",
+      "riding": "Mississauga East—Cooksville",
+      "provenance": [
+        {
+          "table_index": 8,
+          "row_index": 64,
+          "name_cell": {
+            "table_index": 8,
+            "row_index": 64,
+            "cell_index": 1
+          },
+          "riding_cell": {
+            "table_index": 8,
+            "row_index": 64,
+            "cell_index": 3
+          },
+          "name_annotation": "Peter Fonseca"
+        }
+      ]
+    },
+    {
+      "mp": "Peter Fragiskatos",
+      "riding": "London North Centre",
+      "provenance": [
+        {
+          "table_index": 8,
+          "row_index": 55,
+          "name_cell": {
+            "table_index": 8,
+            "row_index": 55,
+            "cell_index": 1
+          },
+          "riding_cell": {
+            "table_index": 8,
+            "row_index": 55,
+            "cell_index": 3
+          },
+          "name_annotation": "Peter Fragiskatos ‡"
+        }
+      ]
+    },
+    {
+      "mp": "Peter Schiefke",
+      "riding": "Vaudreuil",
+      "provenance": [
+        {
+          "table_index": 10,
+          "row_index": 79,
+          "name_cell": {
+            "table_index": 10,
+            "row_index": 79,
+            "cell_index": 1
+          },
+          "riding_cell": {
+            "table_index": 10,
+            "row_index": 79,
+            "cell_index": 3
+          },
+          "name_annotation": "Peter Schiefke"
+        }
+      ]
+    },
+    {
+      "mp": "Philip Earle",
+      "riding": "Labrador",
+      "provenance": [
+        {
+          "table_index": 6,
+          "row_index": 4,
+          "name_cell": {
+            "table_index": 6,
+            "row_index": 4,
+            "cell_index": 1
+          },
+          "riding_cell": {
+            "table_index": 6,
+            "row_index": 4,
+            "cell_index": 3
+          },
+          "name_annotation": "Philip Earle"
+        }
+      ]
+    },
+    {
+      "mp": "Philip Lawrence",
+      "riding": "Northumberland—Clarke",
+      "provenance": [
+        {
+          "table_index": 8,
+          "row_index": 76,
+          "name_cell": {
+            "table_index": 8,
+            "row_index": 76,
+            "cell_index": 1
+          },
+          "riding_cell": {
+            "table_index": 8,
+            "row_index": 76,
+            "cell_index": 3
+          },
+          "name_annotation": "Philip Lawrence"
+        }
+      ]
+    },
+    {
+      "mp": "Pierre Paul-Hus",
+      "riding": "Charlesbourg—Haute-Saint-Charles",
+      "provenance": [
+        {
+          "table_index": 10,
+          "row_index": 16,
+          "name_cell": {
+            "table_index": 10,
+            "row_index": 16,
+            "cell_index": 1
+          },
+          "riding_cell": {
+            "table_index": 10,
+            "row_index": 16,
+            "cell_index": 3
+          },
+          "name_annotation": "Pierre Paul-Hus"
+        }
+      ]
+    },
+    {
+      "mp": "Pierre Poilievre",
+      "riding": "Battle River—Crowfoot",
+      "provenance": [
+        {
+          "table_index": 2,
+          "row_index": 3,
+          "name_cell": {
+            "table_index": 2,
+            "row_index": 3,
+            "cell_index": 1
+          },
+          "riding_cell": {
+            "table_index": 2,
+            "row_index": 2,
+            "cell_index": 3
+          },
+          "name_annotation": "Pierre Poilievre (From August 18, 2025)"
+        }
+      ]
+    },
+    {
+      "mp": "Rachael Thomas",
+      "riding": "Lethbridge",
+      "provenance": [
+        {
+          "table_index": 2,
+          "row_index": 31,
+          "name_cell": {
+            "table_index": 2,
+            "row_index": 31,
+            "cell_index": 1
+          },
+          "riding_cell": {
+            "table_index": 2,
+            "row_index": 31,
+            "cell_index": 3
+          },
+          "name_annotation": "Rachael Thomas"
+        }
+      ]
+    },
+    {
+      "mp": "Rachel Bendayan",
+      "riding": "Outremont",
+      "provenance": [
+        {
+          "table_index": 10,
+          "row_index": 54,
+          "name_cell": {
+            "table_index": 10,
+            "row_index": 54,
+            "cell_index": 1
+          },
+          "riding_cell": {
+            "table_index": 10,
+            "row_index": 54,
+            "cell_index": 3
+          },
+          "name_annotation": "Rachel Bendayan ‡"
+        }
+      ]
+    },
+    {
+      "mp": "Randeep Sarai",
+      "riding": "Surrey Centre",
+      "provenance": [
+        {
+          "table_index": 3,
+          "row_index": 34,
+          "name_cell": {
+            "table_index": 3,
+            "row_index": 34,
+            "cell_index": 1
+          },
+          "riding_cell": {
+            "table_index": 3,
+            "row_index": 34,
+            "cell_index": 3
+          },
+          "name_annotation": "Randeep Sarai"
+        }
+      ]
+    },
+    {
+      "mp": "Randy Hoback",
+      "riding": "Prince Albert",
+      "provenance": [
+        {
+          "table_index": 11,
+          "row_index": 5,
+          "name_cell": {
+            "table_index": 11,
+            "row_index": 5,
+            "cell_index": 1
+          },
+          "riding_cell": {
+            "table_index": 11,
+            "row_index": 5,
+            "cell_index": 3
+          },
+          "name_annotation": "Randy Hoback"
+        }
+      ]
+    },
+    {
+      "mp": "Raquel Dancho",
+      "riding": "Kildonan—St. Paul",
+      "provenance": [
+        {
+          "table_index": 4,
+          "row_index": 4,
+          "name_cell": {
+            "table_index": 4,
+            "row_index": 4,
+            "cell_index": 1
+          },
+          "riding_cell": {
+            "table_index": 4,
+            "row_index": 4,
+            "cell_index": 3
+          },
+          "name_annotation": "Raquel Dancho"
+        }
+      ]
+    },
+    {
+      "mp": "Rebecca Alty",
+      "riding": "Northwest Territories",
+      "provenance": [
+        {
+          "table_index": 12,
+          "row_index": 1,
+          "name_cell": {
+            "table_index": 12,
+            "row_index": 1,
+            "cell_index": 1
+          },
+          "riding_cell": {
+            "table_index": 12,
+            "row_index": 1,
+            "cell_index": 3
+          },
+          "name_annotation": "Rebecca Alty"
+        }
+      ]
+    },
+    {
+      "mp": "Rebecca Chartrand",
+      "riding": "Churchill—Keewatinook Aski",
+      "provenance": [
+        {
+          "table_index": 4,
+          "row_index": 2,
+          "name_cell": {
+            "table_index": 4,
+            "row_index": 2,
+            "cell_index": 1
+          },
+          "riding_cell": {
+            "table_index": 4,
+            "row_index": 2,
+            "cell_index": 3
+          },
+          "name_annotation": "Rebecca Chartrand"
+        }
+      ]
+    },
+    {
+      "mp": "Rechie Valdez",
+      "riding": "Mississauga—Streetsville",
+      "provenance": [
+        {
+          "table_index": 8,
+          "row_index": 68,
+          "name_cell": {
+            "table_index": 8,
+            "row_index": 68,
+            "cell_index": 1
+          },
+          "riding_cell": {
+            "table_index": 8,
+            "row_index": 68,
+            "cell_index": 3
+          },
+          "name_annotation": "Rechie Valdez"
+        }
+      ]
+    },
+    {
+      "mp": "Rhonda Kirkland",
+      "riding": "Oshawa",
+      "provenance": [
+        {
+          "table_index": 8,
+          "row_index": 80,
+          "name_cell": {
+            "table_index": 8,
+            "row_index": 80,
+            "cell_index": 1
+          },
+          "riding_cell": {
+            "table_index": 8,
+            "row_index": 80,
+            "cell_index": 3
+          },
+          "name_annotation": "Rhonda Kirkland"
+        }
+      ]
+    },
+    {
+      "mp": "Rhéal Fortin",
+      "riding": "Rivière-du-Nord",
+      "provenance": [
+        {
+          "table_index": 10,
+          "row_index": 65,
+          "name_cell": {
+            "table_index": 10,
+            "row_index": 65,
+            "cell_index": 1
+          },
+          "riding_cell": {
+            "table_index": 10,
+            "row_index": 65,
+            "cell_index": 3
+          },
+          "name_annotation": "Rhéal Fortin"
+        }
+      ]
+    },
+    {
+      "mp": "Richard Bragdon",
+      "riding": "Tobique—Mactaquac",
+      "provenance": [
+        {
+          "table_index": 5,
+          "row_index": 10,
+          "name_cell": {
+            "table_index": 5,
+            "row_index": 10,
+            "cell_index": 1
+          },
+          "riding_cell": {
+            "table_index": 5,
+            "row_index": 10,
+            "cell_index": 3
+          },
+          "name_annotation": "Richard Bragdon"
+        }
+      ]
+    },
+    {
+      "mp": "Rob Moore",
+      "riding": "Fundy Royal",
+      "provenance": [
+        {
+          "table_index": 5,
+          "row_index": 4,
+          "name_cell": {
+            "table_index": 5,
+            "row_index": 4,
+            "cell_index": 1
+          },
+          "riding_cell": {
+            "table_index": 5,
+            "row_index": 4,
+            "cell_index": 3
+          },
+          "name_annotation": "Rob Moore"
+        }
+      ]
+    },
+    {
+      "mp": "Rob Morrison",
+      "riding": "Columbia—Kootenay—Southern Rockies",
+      "provenance": [
+        {
+          "table_index": 3,
+          "row_index": 7,
+          "name_cell": {
+            "table_index": 3,
+            "row_index": 7,
+            "cell_index": 1
+          },
+          "riding_cell": {
+            "table_index": 3,
+            "row_index": 7,
+            "cell_index": 3
+          },
+          "name_annotation": "Rob Morrison"
+        }
+      ]
+    },
+    {
+      "mp": "Rob Oliphant",
+      "riding": "Don Valley West",
+      "provenance": [
+        {
+          "table_index": 8,
+          "row_index": 25,
+          "name_cell": {
+            "table_index": 8,
+            "row_index": 25,
+            "cell_index": 1
+          },
+          "riding_cell": {
+            "table_index": 8,
+            "row_index": 25,
+            "cell_index": 3
+          },
+          "name_annotation": "Rob Oliphant ‡"
+        }
+      ]
+    },
+    {
+      "mp": "Roman Baber",
+      "riding": "York Centre",
+      "provenance": [
+        {
+          "table_index": 8,
+          "row_index": 125,
+          "name_cell": {
+            "table_index": 8,
+            "row_index": 125,
+            "cell_index": 1
+          },
+          "riding_cell": {
+            "table_index": 8,
+            "row_index": 125,
+            "cell_index": 3
+          },
+          "name_annotation": "Roman Baber"
+        }
+      ]
+    },
+    {
+      "mp": "Ron McKinnon",
+      "riding": "Coquitlam—Port Coquitlam",
+      "provenance": [
+        {
+          "table_index": 3,
+          "row_index": 8,
+          "name_cell": {
+            "table_index": 3,
+            "row_index": 8,
+            "cell_index": 1
+          },
+          "riding_cell": {
+            "table_index": 3,
+            "row_index": 8,
+            "cell_index": 3
+          },
+          "name_annotation": "Ron McKinnon"
+        }
+      ]
+    },
+    {
+      "mp": "Rosemarie Falk",
+      "riding": "Battlefords—Lloydminster—Meadow Lake",
+      "provenance": [
+        {
+          "table_index": 11,
+          "row_index": 1,
+          "name_cell": {
+            "table_index": 11,
+            "row_index": 1,
+            "cell_index": 1
+          },
+          "riding_cell": {
+            "table_index": 11,
+            "row_index": 1,
+            "cell_index": 3
+          },
+          "name_annotation": "Rosemarie Falk"
+        }
+      ]
+    },
+    {
+      "mp": "Ruby Sahota",
+      "riding": "Brampton North—Caledon",
+      "provenance": [
+        {
+          "table_index": 8,
+          "row_index": 12,
+          "name_cell": {
+            "table_index": 8,
+            "row_index": 12,
+            "cell_index": 1
+          },
+          "riding_cell": {
+            "table_index": 8,
+            "row_index": 12,
+            "cell_index": 3
+          },
+          "name_annotation": "Ruby Sahota"
+        }
+      ]
+    },
+    {
+      "mp": "Ryan Turnbull",
+      "riding": "Whitby",
+      "provenance": [
+        {
+          "table_index": 8,
+          "row_index": 121,
+          "name_cell": {
+            "table_index": 8,
+            "row_index": 121,
+            "cell_index": 1
+          },
+          "riding_cell": {
+            "table_index": 8,
+            "row_index": 121,
+            "cell_index": 3
+          },
+          "name_annotation": "Ryan Turnbull ‡"
+        }
+      ]
+    },
+    {
+      "mp": "Salma Zahid",
+      "riding": "Scarborough Centre—Don Valley East",
+      "provenance": [
+        {
+          "table_index": 8,
+          "row_index": 95,
+          "name_cell": {
+            "table_index": 8,
+            "row_index": 95,
+            "cell_index": 1
+          },
+          "riding_cell": {
+            "table_index": 8,
+            "row_index": 95,
+            "cell_index": 3
+          },
+          "name_annotation": "Salma Zahid"
+        }
+      ]
+    },
+    {
+      "mp": "Sameer Zuberi",
+      "riding": "Pierrefonds—Dollard",
+      "provenance": [
+        {
+          "table_index": 10,
+          "row_index": 57,
+          "name_cell": {
+            "table_index": 10,
+            "row_index": 57,
+            "cell_index": 1
+          },
+          "riding_cell": {
+            "table_index": 10,
+            "row_index": 57,
+            "cell_index": 3
+          },
+          "name_annotation": "Sameer Zuberi"
+        }
+      ]
+    },
+    {
+      "mp": "Sandra Cobena",
+      "riding": "Newmarket—Aurora",
+      "provenance": [
+        {
+          "table_index": 8,
+          "row_index": 70,
+          "name_cell": {
+            "table_index": 8,
+            "row_index": 70,
+            "cell_index": 1
+          },
+          "riding_cell": {
+            "table_index": 8,
+            "row_index": 70,
+            "cell_index": 3
+          },
+          "name_annotation": "Sandra Cobena"
+        }
+      ]
+    },
+    {
+      "mp": "Scot Davidson",
+      "riding": "New Tecumseth—Gwillimbury",
+      "provenance": [
+        {
+          "table_index": 8,
+          "row_index": 71,
+          "name_cell": {
+            "table_index": 8,
+            "row_index": 71,
+            "cell_index": 1
+          },
+          "riding_cell": {
+            "table_index": 8,
+            "row_index": 71,
+            "cell_index": 3
+          },
+          "name_annotation": "Scot Davidson"
+        }
+      ]
+    },
+    {
+      "mp": "Scott Aitchison",
+      "riding": "Parry Sound—Muskoka",
+      "provenance": [
+        {
+          "table_index": 8,
+          "row_index": 86,
+          "name_cell": {
+            "table_index": 8,
+            "row_index": 86,
+            "cell_index": 1
+          },
+          "riding_cell": {
+            "table_index": 8,
+            "row_index": 86,
+            "cell_index": 3
+          },
+          "name_annotation": "Scott Aitchison"
+        }
+      ]
+    },
+    {
+      "mp": "Scott Anderson",
+      "riding": "Vernon—Lake Country—Monashee",
+      "provenance": [
+        {
+          "table_index": 3,
+          "row_index": 42,
+          "name_cell": {
+            "table_index": 3,
+            "row_index": 42,
+            "cell_index": 1
+          },
+          "riding_cell": {
+            "table_index": 3,
+            "row_index": 42,
+            "cell_index": 3
+          },
+          "name_annotation": "Scott Anderson"
+        }
+      ]
+    },
+    {
+      "mp": "Scott Reid",
+      "riding": "Lanark—Frontenac",
+      "provenance": [
+        {
+          "table_index": 8,
+          "row_index": 52,
+          "name_cell": {
+            "table_index": 8,
+            "row_index": 52,
+            "cell_index": 1
+          },
+          "riding_cell": {
+            "table_index": 8,
+            "row_index": 52,
+            "cell_index": 3
+          },
+          "name_annotation": "Scott Reid"
+        }
+      ]
+    },
+    {
+      "mp": "Sean Casey",
+      "riding": "Charlottetown",
+      "provenance": [
+        {
+          "table_index": 9,
+          "row_index": 2,
+          "name_cell": {
+            "table_index": 9,
+            "row_index": 2,
+            "cell_index": 1
+          },
+          "riding_cell": {
+            "table_index": 9,
+            "row_index": 2,
+            "cell_index": 3
+          },
+          "name_annotation": "Sean Casey ‡"
+        }
+      ]
+    },
+    {
+      "mp": "Sean Fraser",
+      "riding": "Central Nova",
+      "provenance": [
+        {
+          "table_index": 7,
+          "row_index": 4,
+          "name_cell": {
+            "table_index": 7,
+            "row_index": 4,
+            "cell_index": 1
+          },
+          "riding_cell": {
+            "table_index": 7,
+            "row_index": 4,
+            "cell_index": 3
+          },
+          "name_annotation": "Sean Fraser"
+        }
+      ]
+    },
+    {
+      "mp": "Serge Cormier",
+      "riding": "Acadie—Bathurst",
+      "provenance": [
+        {
+          "table_index": 5,
+          "row_index": 1,
+          "name_cell": {
+            "table_index": 5,
+            "row_index": 1,
+            "cell_index": 1
+          },
+          "riding_cell": {
+            "table_index": 5,
+            "row_index": 1,
+            "cell_index": 3
+          },
+          "name_annotation": "Serge Cormier"
+        }
+      ]
+    },
+    {
+      "mp": "Shafqat Ali",
+      "riding": "Brampton—Chinguacousy Park",
+      "provenance": [
+        {
+          "table_index": 8,
+          "row_index": 15,
+          "name_cell": {
+            "table_index": 8,
+            "row_index": 15,
+            "cell_index": 1
+          },
+          "riding_cell": {
+            "table_index": 8,
+            "row_index": 15,
+            "cell_index": 3
+          },
+          "name_annotation": "Shafqat Ali"
+        }
+      ]
+    },
+    {
+      "mp": "Shannon Miedema",
+      "riding": "Halifax",
+      "provenance": [
+        {
+          "table_index": 7,
+          "row_index": 7,
+          "name_cell": {
+            "table_index": 7,
+            "row_index": 7,
+            "cell_index": 1
+          },
+          "riding_cell": {
+            "table_index": 7,
+            "row_index": 7,
+            "cell_index": 3
+          },
+          "name_annotation": "Shannon Miedema"
+        }
+      ]
+    },
+    {
+      "mp": "Shannon Stubbs",
+      "riding": "Lakeland",
+      "provenance": [
+        {
+          "table_index": 2,
+          "row_index": 29,
+          "name_cell": {
+            "table_index": 2,
+            "row_index": 29,
+            "cell_index": 1
+          },
+          "riding_cell": {
+            "table_index": 2,
+            "row_index": 29,
+            "cell_index": 3
+          },
+          "name_annotation": "Shannon Stubbs"
+        }
+      ]
+    },
+    {
+      "mp": "Shelby Kramp-Neuman",
+      "riding": "Hastings—Lennox and Addington—Tyendinaga",
+      "provenance": [
+        {
+          "table_index": 8,
+          "row_index": 41,
+          "name_cell": {
+            "table_index": 8,
+            "row_index": 41,
+            "cell_index": 1
+          },
+          "riding_cell": {
+            "table_index": 8,
+            "row_index": 41,
+            "cell_index": 3
+          },
+          "name_annotation": "Shelby Kramp-Neuman"
+        }
+      ]
+    },
+    {
+      "mp": "Sherry Romanado",
+      "riding": "Longueuil—Charles-LeMoyne",
+      "provenance": [
+        {
+          "table_index": 10,
+          "row_index": 42,
+          "name_cell": {
+            "table_index": 10,
+            "row_index": 42,
+            "cell_index": 1
+          },
+          "riding_cell": {
+            "table_index": 10,
+            "row_index": 42,
+            "cell_index": 3
+          },
+          "name_annotation": "Sherry Romanado ‡"
+        }
+      ]
+    },
+    {
+      "mp": "Shuvaloy Majumdar",
+      "riding": "Calgary Heritage",
+      "provenance": [
+        {
+          "table_index": 2,
+          "row_index": 9,
+          "name_cell": {
+            "table_index": 2,
+            "row_index": 9,
+            "cell_index": 1
+          },
+          "riding_cell": {
+            "table_index": 2,
+            "row_index": 9,
+            "cell_index": 3
+          },
+          "name_annotation": "Shuvaloy Majumdar"
+        }
+      ]
+    },
+    {
+      "mp": "Sima Acan",
+      "riding": "Oakville West",
+      "provenance": [
+        {
+          "table_index": 8,
+          "row_index": 78,
+          "name_cell": {
+            "table_index": 8,
+            "row_index": 78,
+            "cell_index": 1
+          },
+          "riding_cell": {
+            "table_index": 8,
+            "row_index": 78,
+            "cell_index": 3
+          },
+          "name_annotation": "Sima Acan"
+        }
+      ]
+    },
+    {
+      "mp": "Sonia Sidhu",
+      "riding": "Brampton South",
+      "provenance": [
+        {
+          "table_index": 8,
+          "row_index": 13,
+          "name_cell": {
+            "table_index": 8,
+            "row_index": 13,
+            "cell_index": 1
+          },
+          "riding_cell": {
+            "table_index": 8,
+            "row_index": 13,
+            "cell_index": 3
+          },
+          "name_annotation": "Sonia Sidhu"
+        }
+      ]
+    },
+    {
+      "mp": "Sophie Chatel",
+      "riding": "Pontiac—Kitigan Zibi",
+      "provenance": [
+        {
+          "table_index": 10,
+          "row_index": 58,
+          "name_cell": {
+            "table_index": 10,
+            "row_index": 58,
+            "cell_index": 1
+          },
+          "riding_cell": {
+            "table_index": 10,
+            "row_index": 58,
+            "cell_index": 3
+          },
+          "name_annotation": "Sophie Chatel ‡"
+        }
+      ]
+    },
+    {
+      "mp": "Steeve Lavoie",
+      "riding": "Beauport—Limoilou",
+      "provenance": [
+        {
+          "table_index": 10,
+          "row_index": 8,
+          "name_cell": {
+            "table_index": 10,
+            "row_index": 8,
+            "cell_index": 1
+          },
+          "riding_cell": {
+            "table_index": 10,
+            "row_index": 8,
+            "cell_index": 3
+          },
+          "name_annotation": "Steeve Lavoie"
+        }
+      ]
+    },
+    {
+      "mp": "Stephanie Kusie",
+      "riding": "Calgary Midnapore",
+      "provenance": [
+        {
+          "table_index": 2,
+          "row_index": 11,
+          "name_cell": {
+            "table_index": 2,
+            "row_index": 11,
+            "cell_index": 1
+          },
+          "riding_cell": {
+            "table_index": 2,
+            "row_index": 11,
+            "cell_index": 3
+          },
+          "name_annotation": "Stephanie Kusie"
+        }
+      ]
+    },
+    {
+      "mp": "Stephanie McLean",
+      "riding": "Esquimalt—Saanich—Sooke",
+      "provenance": [
+        {
+          "table_index": 3,
+          "row_index": 12,
+          "name_cell": {
+            "table_index": 3,
+            "row_index": 12,
+            "cell_index": 1
+          },
+          "riding_cell": {
+            "table_index": 3,
+            "row_index": 12,
+            "cell_index": 3
+          },
+          "name_annotation": "Stephanie McLean"
+        }
+      ]
+    },
+    {
+      "mp": "Stephen Fuhr",
+      "riding": "Kelowna",
+      "provenance": [
+        {
+          "table_index": 3,
+          "row_index": 16,
+          "name_cell": {
+            "table_index": 3,
+            "row_index": 16,
+            "cell_index": 1
+          },
+          "riding_cell": {
+            "table_index": 3,
+            "row_index": 16,
+            "cell_index": 3
+          },
+          "name_annotation": "Stephen Fuhr"
+        }
+      ]
+    },
+    {
+      "mp": "Steven Bonk",
+      "riding": "Souris—Moose Mountain",
+      "provenance": [
+        {
+          "table_index": 11,
+          "row_index": 12,
+          "name_cell": {
+            "table_index": 11,
+            "row_index": 12,
+            "cell_index": 1
+          },
+          "riding_cell": {
+            "table_index": 11,
+            "row_index": 12,
+            "cell_index": 3
+          },
+          "name_annotation": "Steven Bonk"
+        }
+      ]
+    },
+    {
+      "mp": "Steven MacKinnon",
+      "riding": "Gatineau",
+      "provenance": [
+        {
+          "table_index": 10,
+          "row_index": 26,
+          "name_cell": {
+            "table_index": 10,
+            "row_index": 26,
+            "cell_index": 1
+          },
+          "riding_cell": {
+            "table_index": 10,
+            "row_index": 26,
+            "cell_index": 3
+          },
+          "name_annotation": "Steven MacKinnon"
+        }
+      ]
+    },
+    {
+      "mp": "Stéphane Lauzon",
+      "riding": "Argenteuil—La Petite-Nation",
+      "provenance": [
+        {
+          "table_index": 10,
+          "row_index": 5,
+          "name_cell": {
+            "table_index": 10,
+            "row_index": 5,
+            "cell_index": 1
+          },
+          "riding_cell": {
+            "table_index": 10,
+            "row_index": 5,
+            "cell_index": 3
+          },
+          "name_annotation": "Stéphane Lauzon"
+        }
+      ]
+    },
+    {
+      "mp": "Sukh Dhaliwal",
+      "riding": "Surrey Newton",
+      "provenance": [
+        {
+          "table_index": 3,
+          "row_index": 35,
+          "name_cell": {
+            "table_index": 3,
+            "row_index": 35,
+            "cell_index": 1
+          },
+          "riding_cell": {
+            "table_index": 3,
+            "row_index": 35,
+            "cell_index": 3
+          },
+          "name_annotation": "Sukh Dhaliwal"
+        }
+      ]
+    },
+    {
+      "mp": "Sukhman Gill",
+      "riding": "Abbotsford—South Langley",
+      "provenance": [
+        {
+          "table_index": 3,
+          "row_index": 1,
+          "name_cell": {
+            "table_index": 3,
+            "row_index": 1,
+            "cell_index": 1
+          },
+          "riding_cell": {
+            "table_index": 3,
+            "row_index": 1,
+            "cell_index": 3
+          },
+          "name_annotation": "Sukhman Gill"
+        }
+      ]
+    },
+    {
+      "mp": "Sébastien Lemire",
+      "riding": "Abitibi—Témiscamingue",
+      "provenance": [
+        {
+          "table_index": 10,
+          "row_index": 2,
+          "name_cell": {
+            "table_index": 10,
+            "row_index": 2,
+            "cell_index": 1
+          },
+          "riding_cell": {
+            "table_index": 10,
+            "row_index": 2,
+            "cell_index": 3
+          },
+          "name_annotation": "Sébastien Lemire"
+        }
+      ]
+    },
+    {
+      "mp": "Tako van Popta",
+      "riding": "Langley Township—Fraser Heights",
+      "provenance": [
+        {
+          "table_index": 3,
+          "row_index": 17,
+          "name_cell": {
+            "table_index": 3,
+            "row_index": 17,
+            "cell_index": 1
+          },
+          "riding_cell": {
+            "table_index": 3,
+            "row_index": 17,
+            "cell_index": 3
+          },
+          "name_annotation": "Tako van Popta"
+        }
+      ]
+    },
+    {
+      "mp": "Taleeb Noormohamed",
+      "riding": "Vancouver Granville",
+      "provenance": [
+        {
+          "table_index": 3,
+          "row_index": 39,
+          "name_cell": {
+            "table_index": 3,
+            "row_index": 39,
+            "cell_index": 1
+          },
+          "riding_cell": {
+            "table_index": 3,
+            "row_index": 39,
+            "cell_index": 3
+          },
+          "name_annotation": "Taleeb Noormohamed ‡"
+        }
+      ]
+    },
+    {
+      "mp": "Tamara Jansen",
+      "riding": "Cloverdale—Langley City",
+      "provenance": [
+        {
+          "table_index": 3,
+          "row_index": 6,
+          "name_cell": {
+            "table_index": 3,
+            "row_index": 6,
+            "cell_index": 1
+          },
+          "riding_cell": {
+            "table_index": 3,
+            "row_index": 6,
+            "cell_index": 3
+          },
+          "name_annotation": "Tamara Jansen"
+        }
+      ]
+    },
+    {
+      "mp": "Tamara Kronis",
+      "riding": "Nanaimo—Ladysmith",
+      "provenance": [
+        {
+          "table_index": 3,
+          "row_index": 19,
+          "name_cell": {
+            "table_index": 3,
+            "row_index": 19,
+            "cell_index": 1
+          },
+          "riding_cell": {
+            "table_index": 3,
+            "row_index": 19,
+            "cell_index": 3
+          },
+          "name_annotation": "Tamara Kronis"
+        }
+      ]
+    },
+    {
+      "mp": "Tanveer Shahnawaz",
+      "riding": "Beaches—East York",
+      "provenance": [
+        {
+          "table_index": 8,
+          "row_index": 8,
+          "name_cell": {
+            "table_index": 8,
+            "row_index": 8,
+            "cell_index": 1
+          },
+          "riding_cell": {
+            "table_index": 8,
+            "row_index": 7,
+            "cell_index": 3
+          },
+          "name_annotation": "Tanveer Shahnawaz (From August 31, 2026)"
+        }
+      ]
+    },
+    {
+      "mp": "Tatiana Auguste",
+      "riding": "Terrebonne",
+      "provenance": [
+        {
+          "table_index": 10,
+          "row_index": 76,
+          "name_cell": {
+            "table_index": 10,
+            "row_index": 76,
+            "cell_index": 1
+          },
+          "riding_cell": {
+            "table_index": 10,
+            "row_index": 76,
+            "cell_index": 3
+          },
+          "name_annotation": "Tatiana Auguste"
+        }
+      ]
+    },
+    {
+      "mp": "Ted Falk",
+      "riding": "Provencher",
+      "provenance": [
+        {
+          "table_index": 4,
+          "row_index": 6,
+          "name_cell": {
+            "table_index": 4,
+            "row_index": 6,
+            "cell_index": 1
+          },
+          "riding_cell": {
+            "table_index": 4,
+            "row_index": 6,
+            "cell_index": 3
+          },
+          "name_annotation": "Ted Falk"
+        }
+      ]
+    },
+    {
+      "mp": "Terry Beech",
+      "riding": "Burnaby North—Seymour",
+      "provenance": [
+        {
+          "table_index": 3,
+          "row_index": 3,
+          "name_cell": {
+            "table_index": 3,
+            "row_index": 3,
+            "cell_index": 1
+          },
+          "riding_cell": {
+            "table_index": 3,
+            "row_index": 3,
+            "cell_index": 3
+          },
+          "name_annotation": "Terry Beech"
+        }
+      ]
+    },
+    {
+      "mp": "Terry Dowdall",
+      "riding": "Simcoe—Grey",
+      "provenance": [
+        {
+          "table_index": 8,
+          "row_index": 103,
+          "name_cell": {
+            "table_index": 8,
+            "row_index": 103,
+            "cell_index": 1
+          },
+          "riding_cell": {
+            "table_index": 8,
+            "row_index": 103,
+            "cell_index": 3
+          },
+          "name_annotation": "Terry Dowdall"
+        }
+      ]
+    },
+    {
+      "mp": "Terry Duguid",
+      "riding": "Winnipeg South",
+      "provenance": [
+        {
+          "table_index": 4,
+          "row_index": 12,
+          "name_cell": {
+            "table_index": 4,
+            "row_index": 12,
+            "cell_index": 1
+          },
+          "riding_cell": {
+            "table_index": 4,
+            "row_index": 12,
+            "cell_index": 3
+          },
+          "name_annotation": "Terry Duguid"
+        }
+      ]
+    },
+    {
+      "mp": "Terry Sheehan",
+      "riding": "Sault Ste. Marie—Algoma",
+      "provenance": [
+        {
+          "table_index": 8,
+          "row_index": 94,
+          "name_cell": {
+            "table_index": 8,
+            "row_index": 94,
+            "cell_index": 1
+          },
+          "riding_cell": {
+            "table_index": 8,
+            "row_index": 94,
+            "cell_index": 3
+          },
+          "name_annotation": "Terry Sheehan"
+        }
+      ]
+    },
+    {
+      "mp": "Tim Hodgson",
+      "riding": "Markham—Thornhill",
+      "provenance": [
+        {
+          "table_index": 8,
+          "row_index": 58,
+          "name_cell": {
+            "table_index": 8,
+            "row_index": 58,
+            "cell_index": 1
+          },
+          "riding_cell": {
+            "table_index": 8,
+            "row_index": 58,
+            "cell_index": 3
+          },
+          "name_annotation": "Tim Hodgson"
+        }
+      ]
+    },
+    {
+      "mp": "Tim Louis",
+      "riding": "Kitchener—Conestoga",
+      "provenance": [
+        {
+          "table_index": 8,
+          "row_index": 51,
+          "name_cell": {
+            "table_index": 8,
+            "row_index": 51,
+            "cell_index": 1
+          },
+          "riding_cell": {
+            "table_index": 8,
+            "row_index": 51,
+            "cell_index": 3
+          },
+          "name_annotation": "Tim Louis ‡"
+        }
+      ]
+    },
+    {
+      "mp": "Tim Uppal",
+      "riding": "Edmonton Gateway",
+      "provenance": [
+        {
+          "table_index": 2,
+          "row_index": 17,
+          "name_cell": {
+            "table_index": 2,
+            "row_index": 17,
+            "cell_index": 1
+          },
+          "riding_cell": {
+            "table_index": 2,
+            "row_index": 17,
+            "cell_index": 3
+          },
+          "name_annotation": "Tim Uppal"
+        }
+      ]
+    },
+    {
+      "mp": "Tim Watchorn",
+      "riding": "Les Pays-d'en-Haut",
+      "provenance": [
+        {
+          "table_index": 10,
+          "row_index": 40,
+          "name_cell": {
+            "table_index": 10,
+            "row_index": 40,
+            "cell_index": 1
+          },
+          "riding_cell": {
+            "table_index": 10,
+            "row_index": 40,
+            "cell_index": 3
+          },
+          "name_annotation": "Tim Watchorn"
+        }
+      ]
+    },
+    {
+      "mp": "Todd Doherty",
+      "riding": "Cariboo—Prince George",
+      "provenance": [
+        {
+          "table_index": 3,
+          "row_index": 4,
+          "name_cell": {
+            "table_index": 3,
+            "row_index": 4,
+            "cell_index": 1
+          },
+          "riding_cell": {
+            "table_index": 3,
+            "row_index": 4,
+            "cell_index": 3
+          },
+          "name_annotation": "Todd Doherty"
+        }
+      ]
+    },
+    {
+      "mp": "Tom Kmiec",
+      "riding": "Calgary Shepard",
+      "provenance": [
+        {
+          "table_index": 2,
+          "row_index": 13,
+          "name_cell": {
+            "table_index": 2,
+            "row_index": 13,
+            "cell_index": 1
+          },
+          "riding_cell": {
+            "table_index": 2,
+            "row_index": 13,
+            "cell_index": 3
+          },
+          "name_annotation": "Tom Kmiec"
+        }
+      ]
+    },
+    {
+      "mp": "Tom Osborne",
+      "riding": "Cape Spear",
+      "provenance": [
+        {
+          "table_index": 6,
+          "row_index": 2,
+          "name_cell": {
+            "table_index": 6,
+            "row_index": 2,
+            "cell_index": 1
+          },
+          "riding_cell": {
+            "table_index": 6,
+            "row_index": 2,
+            "cell_index": 3
+          },
+          "name_annotation": "Tom Osborne ‡"
+        }
+      ]
+    },
+    {
+      "mp": "Tony Baldinelli",
+      "riding": "Niagara Falls—Niagara-on-the-Lake",
+      "provenance": [
+        {
+          "table_index": 8,
+          "row_index": 72,
+          "name_cell": {
+            "table_index": 8,
+            "row_index": 72,
+            "cell_index": 1
+          },
+          "riding_cell": {
+            "table_index": 8,
+            "row_index": 72,
+            "cell_index": 3
+          },
+          "name_annotation": "Tony Baldinelli"
+        }
+      ]
+    },
+    {
+      "mp": "Vince Gasparro",
+      "riding": "Eglinton—Lawrence",
+      "provenance": [
+        {
+          "table_index": 8,
+          "row_index": 27,
+          "name_cell": {
+            "table_index": 8,
+            "row_index": 27,
+            "cell_index": 1
+          },
+          "riding_cell": {
+            "table_index": 8,
+            "row_index": 27,
+            "cell_index": 3
+          },
+          "name_annotation": "Vince Gasparro ‡"
+        }
+      ]
+    },
+    {
+      "mp": "Vincent Ho",
+      "riding": "Richmond Hill South",
+      "provenance": [
+        {
+          "table_index": 8,
+          "row_index": 91,
+          "name_cell": {
+            "table_index": 8,
+            "row_index": 91,
+            "cell_index": 1
+          },
+          "riding_cell": {
+            "table_index": 8,
+            "row_index": 91,
+            "cell_index": 3
+          },
+          "name_annotation": "Vincent Ho"
+        }
+      ]
+    },
+    {
+      "mp": "Viviane Lapointe",
+      "riding": "Sudbury",
+      "provenance": [
+        {
+          "table_index": 8,
+          "row_index": 107,
+          "name_cell": {
+            "table_index": 8,
+            "row_index": 107,
+            "cell_index": 1
+          },
+          "riding_cell": {
+            "table_index": 8,
+            "row_index": 107,
+            "cell_index": 3
+          },
+          "name_annotation": "Viviane Lapointe"
+        }
+      ]
+    },
+    {
+      "mp": "Wade Chang",
+      "riding": "Burnaby Central",
+      "provenance": [
+        {
+          "table_index": 3,
+          "row_index": 2,
+          "name_cell": {
+            "table_index": 3,
+            "row_index": 2,
+            "cell_index": 1
+          },
+          "riding_cell": {
+            "table_index": 3,
+            "row_index": 2,
+            "cell_index": 3
+          },
+          "name_annotation": "Wade Chang"
+        }
+      ]
+    },
+    {
+      "mp": "Wade Grant",
+      "riding": "Vancouver Quadra",
+      "provenance": [
+        {
+          "table_index": 3,
+          "row_index": 41,
+          "name_cell": {
+            "table_index": 3,
+            "row_index": 41,
+            "cell_index": 1
+          },
+          "riding_cell": {
+            "table_index": 3,
+            "row_index": 41,
+            "cell_index": 3
+          },
+          "name_annotation": "Wade Grant ‡"
+        }
+      ]
+    },
+    {
+      "mp": "Warren Steinley",
+      "riding": "Regina—Lewvan",
+      "provenance": [
+        {
+          "table_index": 11,
+          "row_index": 6,
+          "name_cell": {
+            "table_index": 11,
+            "row_index": 6,
+            "cell_index": 1
+          },
+          "riding_cell": {
+            "table_index": 11,
+            "row_index": 6,
+            "cell_index": 3
+          },
+          "name_annotation": "Warren Steinley"
+        }
+      ]
+    },
+    {
+      "mp": "Wayne Long",
+      "riding": "Saint John—Kennebecasis",
+      "provenance": [
+        {
+          "table_index": 5,
+          "row_index": 8,
+          "name_cell": {
+            "table_index": 5,
+            "row_index": 8,
+            "cell_index": 1
+          },
+          "riding_cell": {
+            "table_index": 5,
+            "row_index": 8,
+            "cell_index": 3
+          },
+          "name_annotation": "Wayne Long"
+        }
+      ]
+    },
+    {
+      "mp": "Will Greaves",
+      "riding": "Victoria",
+      "provenance": [
+        {
+          "table_index": 3,
+          "row_index": 43,
+          "name_cell": {
+            "table_index": 3,
+            "row_index": 43,
+            "cell_index": 1
+          },
+          "riding_cell": {
+            "table_index": 3,
+            "row_index": 43,
+            "cell_index": 3
+          },
+          "name_annotation": "Will Greaves"
+        }
+      ]
+    },
+    {
+      "mp": "William Stevenson",
+      "riding": "Yellowhead",
+      "provenance": [
+        {
+          "table_index": 2,
+          "row_index": 39,
+          "name_cell": {
+            "table_index": 2,
+            "row_index": 39,
+            "cell_index": 1
+          },
+          "riding_cell": {
+            "table_index": 2,
+            "row_index": 39,
+            "cell_index": 3
+          },
+          "name_annotation": "William Stevenson"
+        }
+      ]
+    },
+    {
+      "mp": "Xavier Barsalou-Duval",
+      "riding": "Pierre-Boucher—Les Patriotes—Verchères",
+      "provenance": [
+        {
+          "table_index": 10,
+          "row_index": 56,
+          "name_cell": {
+            "table_index": 10,
+            "row_index": 56,
+            "cell_index": 1
+          },
+          "riding_cell": {
+            "table_index": 10,
+            "row_index": 56,
+            "cell_index": 3
+          },
+          "name_annotation": "Xavier Barsalou-Duval"
+        }
+      ]
+    },
+    {
+      "mp": "Yasir Naqvi",
+      "riding": "Ottawa Centre",
+      "provenance": [
+        {
+          "table_index": 8,
+          "row_index": 81,
+          "name_cell": {
+            "table_index": 8,
+            "row_index": 81,
+            "cell_index": 1
+          },
+          "riding_cell": {
+            "table_index": 8,
+            "row_index": 81,
+            "cell_index": 3
+          },
+          "name_annotation": "Yasir Naqvi ‡"
+        }
+      ]
+    },
+    {
+      "mp": "Yvan Baker",
+      "riding": "Etobicoke Centre",
+      "provenance": [
+        {
+          "table_index": 8,
+          "row_index": 30,
+          "name_cell": {
+            "table_index": 8,
+            "row_index": 30,
+            "cell_index": 1
+          },
+          "riding_cell": {
+            "table_index": 8,
+            "row_index": 30,
+            "cell_index": 3
+          },
+          "name_annotation": "Yvan Baker"
+        }
+      ]
+    },
+    {
+      "mp": "Yves Perron",
+      "riding": "Berthier—Maskinongé",
+      "provenance": [
+        {
+          "table_index": 10,
+          "row_index": 12,
+          "name_cell": {
+            "table_index": 10,
+            "row_index": 12,
+            "cell_index": 1
+          },
+          "riding_cell": {
+            "table_index": 10,
+            "row_index": 12,
+            "cell_index": 3
+          },
+          "name_annotation": "Yves Perron"
+        }
+      ]
+    },
+    {
+      "mp": "Yves-François Blanchet",
+      "riding": "Belœil—Chambly",
+      "provenance": [
+        {
+          "table_index": 10,
+          "row_index": 11,
+          "name_cell": {
+            "table_index": 10,
+            "row_index": 11,
+            "cell_index": 1
+          },
+          "riding_cell": {
+            "table_index": 10,
+            "row_index": 11,
+            "cell_index": 3
+          },
+          "name_annotation": "Yves-François Blanchet"
+        }
+      ]
+    },
+    {
+      "mp": "Ziad Aboultaif",
+      "riding": "Edmonton Manning",
+      "provenance": [
+        {
+          "table_index": 2,
+          "row_index": 19,
+          "name_cell": {
+            "table_index": 2,
+            "row_index": 19,
+            "cell_index": 1
+          },
+          "riding_cell": {
+            "table_index": 2,
+            "row_index": 19,
+            "cell_index": 3
+          },
+          "name_annotation": "Ziad Aboultaif"
+        }
+      ]
+    },
+    {
+      "mp": "Zoe Royer",
+      "riding": "Port Moody—Coquitlam",
+      "provenance": [
+        {
+          "table_index": 3,
+          "row_index": 26,
+          "name_cell": {
+            "table_index": 3,
+            "row_index": 26,
+            "cell_index": 1
+          },
+          "riding_cell": {
+            "table_index": 3,
+            "row_index": 26,
+            "cell_index": 3
+          },
+          "name_annotation": "Zoe Royer"
+        }
+      ]
+    },
+    {
+      "mp": "Élisabeth Brière",
+      "riding": "Sherbrooke",
+      "provenance": [
+        {
+          "table_index": 10,
+          "row_index": 75,
+          "name_cell": {
+            "table_index": 10,
+            "row_index": 75,
+            "cell_index": 1
+          },
+          "riding_cell": {
+            "table_index": 10,
+            "row_index": 75,
+            "cell_index": 3
+          },
+          "name_annotation": "Élisabeth Brière"
+        }
+      ]
+    },
+    {
+      "mp": "Éric Lefebvre",
+      "riding": "Richmond—Arthabaska",
+      "provenance": [
+        {
+          "table_index": 10,
+          "row_index": 62,
+          "name_cell": {
+            "table_index": 10,
+            "row_index": 62,
+            "cell_index": 1
+          },
+          "riding_cell": {
+            "table_index": 10,
+            "row_index": 62,
+            "cell_index": 3
+          },
+          "name_annotation": "Éric Lefebvre"
+        }
+      ]
+    },
+    {
+      "mp": "Éric St-Pierre",
+      "riding": "Honoré-Mercier",
+      "provenance": [
+        {
+          "table_index": 10,
+          "row_index": 28,
+          "name_cell": {
+            "table_index": 10,
+            "row_index": 28,
+            "cell_index": 1
+          },
+          "riding_cell": {
+            "table_index": 10,
+            "row_index": 28,
+            "cell_index": 3
+          },
+          "name_annotation": "Éric St-Pierre"
+        }
+      ]
+    }
+  ],
+  "excluded_historical_pairs": [
+    {
+      "mp": "Damien Kurek",
+      "riding": "Battle River—Crowfoot",
+      "provenance": [
+        {
+          "table_index": 2,
+          "row_index": 2,
+          "name_cell": {
+            "table_index": 2,
+            "row_index": 2,
+            "cell_index": 1
+          },
+          "riding_cell": {
+            "table_index": 2,
+            "row_index": 2,
+            "cell_index": 3
+          },
+          "name_annotation": "Damien Kurek (until June 17, 2025)"
+        }
+      ]
+    },
+    {
+      "mp": "Jonathan Wilkinson",
+      "riding": "North Vancouver—Capilano",
+      "provenance": [
+        {
+          "table_index": 3,
+          "row_index": 22,
+          "name_cell": {
+            "table_index": 3,
+            "row_index": 22,
+            "cell_index": 1
+          },
+          "riding_cell": {
+            "table_index": 3,
+            "row_index": 22,
+            "cell_index": 3
+          },
+          "name_annotation": "Jonathan Wilkinson (Until June 22, 2026)"
+        }
+      ]
+    },
+    {
+      "mp": "Nathaniel Erskine-Smith",
+      "riding": "Beaches—East York",
+      "provenance": [
+        {
+          "table_index": 8,
+          "row_index": 7,
+          "name_cell": {
+            "table_index": 8,
+            "row_index": 7,
+            "cell_index": 1
+          },
+          "riding_cell": {
+            "table_index": 8,
+            "row_index": 7,
+            "cell_index": 3
+          },
+          "name_annotation": "Nathaniel Erskine-Smith (Until July 7, 2026)"
+        }
+      ]
+    },
+    {
+      "mp": "Larry Brock",
+      "riding": "Brantford—Brant South—Six Nations",
+      "provenance": [
+        {
+          "table_index": 8,
+          "row_index": 16,
+          "name_cell": {
+            "table_index": 8,
+            "row_index": 16,
+            "cell_index": 1
+          },
+          "riding_cell": {
+            "table_index": 8,
+            "row_index": 16,
+            "cell_index": 3
+          },
+          "name_annotation": "Larry Brock (Until September 18, 2026)"
+        }
+      ]
+    },
+    {
+      "mp": "Shaun Chen",
+      "riding": "Scarborough North",
+      "provenance": [
+        {
+          "table_index": 8,
+          "row_index": 96,
+          "name_cell": {
+            "table_index": 8,
+            "row_index": 96,
+            "cell_index": 1
+          },
+          "riding_cell": {
+            "table_index": 8,
+            "row_index": 96,
+            "cell_index": 3
+          },
+          "name_annotation": "Shaun Chen (Until August 15, 2026)"
+        }
+      ]
+    },
+    {
+      "mp": "Bill Blair",
+      "riding": "Scarborough Southwest",
+      "provenance": [
+        {
+          "table_index": 8,
+          "row_index": 97,
+          "name_cell": {
+            "table_index": 8,
+            "row_index": 97,
+            "cell_index": 1
+          },
+          "riding_cell": {
+            "table_index": 8,
+            "row_index": 97,
+            "cell_index": 3
+          },
+          "name_annotation": "Bill Blair (Until February 2, 2026)"
+        }
+      ]
+    },
+    {
+      "mp": "Chrystia Freeland",
+      "riding": "University—Rosedale",
+      "provenance": [
+        {
+          "table_index": 8,
+          "row_index": 116,
+          "name_cell": {
+            "table_index": 8,
+            "row_index": 116,
+            "cell_index": 1
+          },
+          "riding_cell": {
+            "table_index": 8,
+            "row_index": 116,
+            "cell_index": 3
+          },
+          "name_annotation": "Chrystia Freeland ‡ (Until January 9, 2026)"
+        }
+      ]
+    },
+    {
+      "mp": "Richard Martel",
+      "riding": "Chicoutimi—Le Fjord",
+      "provenance": [
+        {
+          "table_index": 10,
+          "row_index": 18,
+          "name_cell": {
+            "table_index": 10,
+            "row_index": 18,
+            "cell_index": 1
+          },
+          "riding_cell": {
+            "table_index": 10,
+            "row_index": 18,
+            "cell_index": 3
+          },
+          "name_annotation": "Richard Martel (until July 9, 2026)"
+        }
+      ]
+    },
+    {
+      "mp": "Steven Guilbeault",
+      "riding": "Laurier—Sainte-Marie",
+      "provenance": [
+        {
+          "table_index": 10,
+          "row_index": 38,
+          "name_cell": {
+            "table_index": 10,
+            "row_index": 38,
+            "cell_index": 1
+          },
+          "riding_cell": {
+            "table_index": 10,
+            "row_index": 38,
+            "cell_index": 3
+          },
+          "name_annotation": "Steven Guilbeault (until August 28, 2026)"
+        }
+      ]
+    },
+    {
+      "mp": "Alexandre Boulerice",
+      "riding": "Rosemont—La Petite-Patrie",
+      "provenance": [
+        {
+          "table_index": 10,
+          "row_index": 66,
+          "name_cell": {
+            "table_index": 10,
+            "row_index": 66,
+            "cell_index": 1
+          },
+          "riding_cell": {
+            "table_index": 10,
+            "row_index": 66,
+            "cell_index": 3
+          },
+          "name_annotation": "Alexandre Boulerice (Until August 26, 2026)"
+        },
+        {
+          "table_index": 10,
+          "row_index": 67,
+          "name_cell": {
+            "table_index": 10,
+            "row_index": 66,
+            "cell_index": 1
+          },
+          "riding_cell": {
+            "table_index": 10,
+            "row_index": 66,
+            "cell_index": 3
+          },
+          "name_annotation": "Alexandre Boulerice (Until August 26, 2026)"
+        }
+      ]
+    },
+    {
+      "mp": "Simon-Pierre Savard-Tremblay",
+      "riding": "Saint-Hyacinthe—Bagot—Acton",
+      "provenance": [
+        {
+          "table_index": 10,
+          "row_index": 68,
+          "name_cell": {
+            "table_index": 10,
+            "row_index": 68,
+            "cell_index": 1
+          },
+          "riding_cell": {
+            "table_index": 10,
+            "row_index": 68,
+            "cell_index": 3
+          },
+          "name_annotation": "Simon-Pierre Savard-Tremblay (Until June 19, 2026)"
+        },
+        {
+          "table_index": 10,
+          "row_index": 69,
+          "name_cell": {
+            "table_index": 10,
+            "row_index": 68,
+            "cell_index": 1
+          },
+          "riding_cell": {
+            "table_index": 10,
+            "row_index": 68,
+            "cell_index": 3
+          },
+          "name_annotation": "Simon-Pierre Savard-Tremblay (Until June 19, 2026)"
+        }
+      ]
+    },
+    {
+      "mp": "Cathay Wagantall",
+      "riding": "Yorkton—Melville",
+      "provenance": [
+        {
+          "table_index": 11,
+          "row_index": 14,
+          "name_cell": {
+            "table_index": 11,
+            "row_index": 14,
+            "cell_index": 1
+          },
+          "riding_cell": {
+            "table_index": 11,
+            "row_index": 14,
+            "cell_index": 3
+          },
+          "name_annotation": "Cathay Wagantall (Until August 31, 2026)"
+        }
+      ]
+    }
+  ],
+  "notes": {
+    "roster_tables": 11,
+    "physical_member_rows": 356,
+    "historical_rows": 14,
+    "active_rows_before_pair_deduplication": 342,
+    "duplicate_active_party_history_rows": 5,
+    "distinct_ridings_in_roster": 343,
+    "ridings_without_a_current_member_as_presented": [
+      "Brantford—Brant South—Six Nations",
+      "Laurier—Sainte-Marie",
+      "Rosemont—La Petite-Patrie",
+      "Saint-Hyacinthe—Bagot—Acton",
+      "Scarborough North",
+      "Yorkton—Melville"
+    ],
+    "provenance_coordinates": "Zero-based table index among all HTML tables, row index among table tr elements, and physical cell index among direct td/th children. Rowspan-inherited cells point to their origin, not the later physical row.",
+    "temporal_policy": "Exclude names with an Until date before the snapshot date; include From/Since dates only when reached. Preserve dates and footnotes in provenance. Party changes do not create extra MP-riding pairs.",
+    "label_policy": "Use this page’s literal personal names and riding labels, including older names; do not substitute the official directory’s spellings or riding renames.",
+    "cross_page_conflict": {
+      "riding": "Sudbury East—Manitoulin—Nickel Belt",
+      "this_page_mp": "Marc Serré",
+      "other_page_mp": "Jim Bélanger",
+      "policy": "Expected for source-fidelity extraction only; not independently verified as a current real-world fact."
+    }
+  }
+}

@@ -1,7 +1,7 @@
 """Implement the extract_knowledge LangGraph node: read evidence with an LLM.
 
 START HERE for the extraction feature. After retrieval, this node lists the
-saved passages, asks the model about one passage at a time, and records every
+saved passages, asks the model independently about each passage, and records every
 outcome. For example, S1/P1 may produce two claims while S1/P2 has no findings;
 both are completed work. A passage skipped because the request budget ran out
 is NOT a completed empty result. You can inspect those differences on disk.
@@ -12,7 +12,7 @@ It does not print a UI, search, approve claims, or choose publication policy.
 The next nodes separately check evidence and save inspectable candidates.
 
 Where to change things:
-  knowledge_extraction_messages.py: the prompt and LangChain/Anthropic adapter.
+  knowledge_extraction_messages.py: load prompt text and build messages/model adapter.
   extraction_contracts.py: the model's reply and local receipt formats.
   saved_source_passages.py: bounded, hash-checked reading and passage boundaries.
   nodes/validate_evidence/node.py: reference and quotation checks, without an LLM.
@@ -22,9 +22,10 @@ Where to change things:
 
 Controls: extraction is opt-in; its calls share --max-requests with planning.
 Each call reserves its attempt BEFORE invocation, has the configured output cap
-and a 60-second provider timeout, and is never automatically retried. Cancellation
-is checked between calls; a blocking call must return before cooperative cancel
-can take effect. The central scheduler resumes unattempted passages from saved receipts after
+and a configurable provider timeout. The shared executor retries only classified
+transient failures within the saved retry and request allowances. Cancellation
+is checked by the coordinator while calls are in flight; sent requests cannot
+be recalled and may still incur usage. The central scheduler resumes unattempted passages from saved receipts after
 restart; failed or uncertain in-flight model calls are not silently replayed. Source text goes to the configured provider
 only when this feature is enabled; no API key enters graph state or artifacts.
 """
@@ -39,23 +40,39 @@ from projectclarity.extraction.extraction_call_tracing import start_trace, captu
 from projectclarity.extraction.extraction_contracts import ExtractionAttempt, ExtractionBatch, ExtractionRecord
 from projectclarity.extraction.knowledge_extraction_messages import SYSTEM_PROMPT, create_extractor, extraction_messages
 from projectclarity.extraction.saved_source_passages import EvidenceInputError, iter_passages, read_verified_text
+from projectclarity.extraction.local_identifier_recovery import recover_local_identifiers
+from projectclarity.extraction.record_refinement import record_followups
+from projectclarity.extraction.document_structure import section_probes, passage_order
 from projectclarity.nodes.plan_research.research_planner import read_api_key
 from projectclarity.run_monitor import MonitoringError
 from projectclarity.retrieval.retrieval_limits import RunCancelled
 from projectclarity.session_storage import write_text
+from projectclarity.providers.model_retry import model_attempt_steps, remaining_model_time
+from projectclarity.coverage.checkpoints import model_request_ceiling
+from projectclarity.providers.concurrent_calls import run_model_jobs
+from projectclarity.providers.model_failures import ModelCallFailure, describe_model_failure
 
 
 def extract_knowledge(state: dict, output_root: Path, key_reader=read_api_key, monitor=None, *, max_batches=None) -> dict:
-    """Inventory saved passages, make sequential budgeted calls and preserve each outcome.
+    """Prepare source passages and ask the model for claims from the scheduled passages.
 
-    The plan tells the model what to seek; it is not source evidence. One call sees one
-    passage, not the whole corpus or previous replies. Empty lists are valid completed work;
-    unattempted passages remain visible. Malformed output fails that passage, while
-    provider/adapter errors stop later calls. Validation and candidate storage follow in
-    separate nodes, including after partial work. Follow-up invocations inventory newly
-    retrieved sources and resume unattempted passages. Prior completed/failed
-    model calls remain receipts, not automatic retries; source-balanced quanta
-    prevent long documents from draining the whole allowance in one turn.
+    Read and hash-check saved documents, recording every passage so a budget stop
+    leaves unread work visible. Each requested passage can produce claims and field
+    values, an empty completed result, or a recorded failure. Several independent
+    requests may overlap up to the configured concurrency, but the calling thread
+    owns parsing, budget accounting and saved-state updates.
+
+    The scheduler limits how many passages this invocation may attempt. In runs using
+    the answer-cycle controller, source preparation only inventories text; paid reads
+    must belong to the explicit reserved passage list. Exact duplicate saved text can
+    share extraction work, but does not supply independent corroborating evidence.
+    Completed, failed or uncertain earlier requests are not automatically repeated.
+
+    Missing relationship or result-field structure can queue a one-level focused
+    reread; original passages are preferred before these repairs. All requests and
+    retries share the run allowance and preserve any reserved final coverage request.
+    Quotation validation and support review happen in later workflow steps. This
+    function records proposals and execution outcomes, not an approved final answer.
 
     Args:
         state: Graph-state dictionary whose session entry is a typed ResearchSession for the
@@ -64,8 +81,10 @@ def extract_knowledge(state: dict, output_root: Path, key_reader=read_api_key, m
             a URL or an individual run folder.
         key_reader: Zero-argument callable returning the model API key when a request needs
             it; defaults to read_api_key.
-        max_batches: Optional scheduling quantum; stop after this many passage attempts
-            and retain all remaining passages for a later scheduler turn.
+        max_batches: Optional per-invocation limit; stop after this many passage attempts
+            and retain all remaining passages for a later scheduler turn. Up to
+            request.model_concurrency independent calls overlap, but all parsing,
+            accounting and file writes remain on the coordinating thread.
         monitor: Optional RunMonitor for progress events and cooperative cancellation; None
             disables those hooks.
 
@@ -79,7 +98,7 @@ def extract_knowledge(state: dict, output_root: Path, key_reader=read_api_key, m
     directory = output_root / session.session_id
     record = ExtractionRecord.model_validate(session.extraction) if session.extraction else ExtractionRecord()
     # New requests use the current contract even when earlier receipts were loaded.
-    record.prompt_version = "knowledge-extraction-v3"
+    record.prompt_version = "knowledge-extraction-v5"
     record.retrieval_incomplete = any(d.status != "retrieved" for d in session.documents) or len(session.documents) < len(session.sources)
     previous_batches = {attempt.batch_id for attempt in record.attempts if attempt.status != "not_attempted"}
     previous_sources = {attempt.source_id for attempt in record.attempts} | {error["source_id"] for error in record.source_errors}
@@ -92,9 +111,19 @@ def extract_knowledge(state: dict, output_root: Path, key_reader=read_api_key, m
         "system_prompt": SYSTEM_PROMPT, "model": session.request.model,
         "max_output_tokens": session.request.budget.max_output_tokens,
         "max_requests_including_planning": session.request.budget.max_requests,
-        "effort": "low", "timeout_seconds": 60, "max_retries": 0,
+        "effort": "low", "timeout_seconds": session.request.model_timeout_seconds,
+        "max_retries": 0, "application_retries": session.request.model_retries,
         "max_serialized_message_characters": 48_000,
     }, indent=2) + "\n")
+    from projectclarity.nodes.schedule_work.answer_controller import enabled as answer_controlled
+    from projectclarity.extraction.content_identity import content_aliases
+    controlled = answer_controlled(session)
+    active = session.workflow.get('tasks', {}).get(session.workflow.get('active'), {})
+    inventory_only = controlled and active.get('action') == 'extract_knowledge' and not active.get('batch_id')
+    if controlled:
+        valid_aliases = content_aliases(session)
+        record.source_aliases = {sid: row for sid, row in record.source_aliases.items() if sid in valid_aliases}
+        previous_sources.update(valid_aliases)
     current = None
     try:
         if monitor:
@@ -105,6 +134,12 @@ def extract_knowledge(state: dict, output_root: Path, key_reader=read_api_key, m
         # Inventory every readable passage first, so a budget stop cannot hide
         # the fact that some evidence was never examined. Only one text is held
         # at a time; unreadable versions receive explicit source-level errors.
+        canonical_versions = {}
+        if controlled:
+            for attempt in record.attempts:
+                doc = documents.get(attempt.source_id)
+                if doc and doc.text_sha256 == attempt.text_sha256:
+                    canonical_versions.setdefault(doc.text_sha256, doc.source_id)
         for document in documents.values():
             if document.source_id in previous_sources:
                 continue
@@ -114,30 +149,73 @@ def extract_knowledge(state: dict, output_root: Path, key_reader=read_api_key, m
                 text = read_verified_text(directory, document)
                 if not text.strip():
                     raise EvidenceInputError("empty_saved_text")
+                canonical = canonical_versions.get(document.text_sha256) if controlled else None
+                if canonical and canonical != document.source_id:
+                    # Verify bytes, not merely matching stored labels. Results stay
+                    # attached to the original source; aliases are not corroboration.
+                    canonical_text = read_verified_text(directory, documents[canonical])
+                    if canonical_text == text:
+                        record.source_aliases[document.source_id] = {
+                            'source_id': canonical, 'text_sha256': document.text_sha256}
+                        continue
+                canonical_versions.setdefault(document.text_sha256, document.source_id)
                 for passage_id, start, end in iter_passages(text):
                     record.attempts.append(ExtractionAttempt(
                         batch_id=f"{document.source_id}_{passage_id}", source_id=document.source_id,
                         text_sha256=document.text_sha256, passage_id=passage_id, start=start, end=end))
+                session.workflow.setdefault('document_structure', {})[document.source_id] = {
+                    'text_sha256': document.text_sha256,
+                    'probes': section_probes(text, [a.model_dump() for a in record.attempts
+                        if a.source_id == document.source_id])}
             except EvidenceInputError as exc:
                 record.source_errors.append({"source_id": document.source_id, "error_code": str(exc)})
+        # Reconcile deterministic follow-ups after a restart without replaying the
+        # parent's call or any uncertain/failed child. Old plain-text runs have no
+        # parser-labelled records and keep their existing passage inventory.
+        known_batches = {attempt.batch_id for attempt in record.attempts}
+        for attempt in list(record.attempts):
+            if attempt.status != 'completed' or attempt.source_id not in documents:
+                continue
+            if attempt.text_sha256 != documents[attempt.source_id].text_sha256:
+                continue
+            try:
+                text = read_verified_text(directory, documents[attempt.source_id])
+                children = record_followups(attempt, text, [g.model_dump() for g in session.plan.goals])
+            except EvidenceInputError:
+                continue
+            for child in children:
+                if child.batch_id not in known_batches:
+                    record.attempts.append(child)
+                    known_batches.add(child.batch_id)
         save_extraction_record(session, record, output_root)
-        extractor, api_key = None, None
-        from collections import Counter
-        served = Counter(a.source_id for a in record.attempts if a.status != 'not_attempted')
-        active = session.workflow.get('tasks', {}).get(session.workflow.get('active'), {})
-        ordered = sorted(record.attempts, key=lambda a: (a.batch_id != active.get('batch_id'), served[a.source_id]))
-        consumed = 0
-        for current in ordered:
-            if current.batch_id in previous_batches:
-                continue
-            if max_batches is not None and consumed >= max_batches:
-                break
-            if monitor:
-                monitor.check_cancel()
-            if session.usage.requests_attempted >= session.request.budget.max_requests:
-                current.error_code = "request_limit"
-                continue
-            consumed += 1
+        api_key = None
+        by_id = {a.batch_id: a for a in record.attempts}
+        ordered = [by_id[a['batch_id']] for a in passage_order(session, [a.model_dump() for a in record.attempts])]
+        ordered.sort(key=lambda a: a.batch_id != active.get('batch_id'))
+        selected = active.get('batch_ids') or ([active['batch_id']]
+            if controlled and active.get('batch_id') else None)
+        if inventory_only:
+            ordered = []
+        elif selected:
+            ordered = [by_id[bid] for bid in selected if bid in by_id]
+        elif active.get('source_id'):
+            # An inventory/first-read handoff belongs to this source. Inventory
+            # all documents, but never spend its reserved calls on an older focus.
+            ordered = [a for a in ordered if a.source_id == active['source_id']]
+            if active.get('first_read'):
+                max_batches = 1
+
+        def extract_passage(current):
+            """Prepare, execute and retain one passage without worker-owned state.
+
+            Args:
+                current: Reserved passage receipt in the shared extraction record.
+            Returns:
+                A generator yielding network/retry operations to the coordinator.
+                Its boolean return stops further dispatch on a provider failure;
+                completed peers still retain their proposals and original evidence.
+            """
+            nonlocal api_key
             current.error_code = None
             started = time.monotonic()
             trace, stop_after_error = None, False
@@ -150,9 +228,8 @@ def extract_knowledge(state: dict, output_root: Path, key_reader=read_api_key, m
                 if len(serialized) > 48_000:
                     raise EvidenceInputError("extraction_input_too_large")
                 current.input_sha256 = hashlib.sha256(serialized.encode()).hexdigest()
-                if extractor is None:
+                if api_key is None:
                     api_key = key_reader()
-                    extractor = create_extractor(api_key, session)
                 # This private trace is separate from operational logging. Save
                 # the actual application messages before invocation, and never
                 # let a configured credential become document/prompt content.
@@ -163,16 +240,18 @@ def extract_knowledge(state: dict, output_root: Path, key_reader=read_api_key, m
                 if monitor:
                     monitor.check_cancel()
                 current.status = "started"
-                session.usage.requests_attempted += 1
                 save_extraction_record(session, record, output_root)
                 if monitor:
                     monitor.observe("extraction_call_started", source_id=current.source_id,
-                        stage="extracting", llm_requests=session.usage.requests_attempted,
+                        stage="extracting", llm_requests=session.usage.requests_attempted + 1,
                         passages_total=len(record.attempts), batch_id=current.batch_id,
                         passage_id=current.passage_id, trace_path=current.trace_path)
                 if monitor:
                     monitor.model_input("extract_knowledge", current.batch_id, messages, ExtractionBatch, api_key)
-                response = extractor.invoke(messages)
+                response = yield from model_attempt_steps(session, output_root, task='extract_knowledge',
+                    call_id=current.batch_id, messages=messages,
+                    model_factory=lambda timeout: create_extractor(api_key, session, timeout_seconds=timeout),
+                    monitor=monitor, secret=api_key)
                 raw = response["raw"]
                 if monitor:
                     monitor.model_output("extract_knowledge", current.batch_id, raw, api_key)
@@ -193,13 +272,34 @@ def extract_knowledge(state: dict, output_root: Path, key_reader=read_api_key, m
                 if current.stop_reason != "end_turn":
                     current.status, current.error_code = "failed", "incomplete_model_output"
                 elif response.get("parsing_error") is not None or response.get("parsed") is None:
-                    current.status, current.error_code = "failed", "invalid_extraction_schema"
+                    # The provider may emit overlong model-local labels despite the
+                    # response schema. Recover only those labels, never facts or quotes.
+                    try:
+                        if trace.get('response_text_truncated'):
+                            raise ValueError('truncated_response')
+                        parsed, aliases = recover_local_identifiers(trace['response_text'])
+                        if api_key and api_key in parsed.model_dump_json():
+                            raise EvidenceInputError('credential_in_response')
+                        current.result = parsed
+                        current.identifier_aliases = aliases
+                        current.status = 'completed'
+                    except EvidenceInputError:
+                        raise
+                    except (ValueError, KeyError, TypeError):
+                        current.status, current.error_code = "failed", "invalid_extraction_schema"
                 else:
                     parsed = ExtractionBatch.model_validate(response["parsed"])
                     if api_key and api_key in parsed.model_dump_json():
                         raise EvidenceInputError("credential_in_response")
                     current.result = parsed
                     current.status = "completed"
+                if current.status == 'completed':
+                    for child in record_followups(current, text, [g.model_dump() for g in session.plan.goals]):
+                        if child.batch_id not in known_batches:
+                            record.attempts.append(child)
+                            if not selected:
+                                ordered.append(child)
+                            known_batches.add(child.batch_id)
             except EvidenceInputError as exc:
                 current.status, current.error_code = "failed", str(exc)
             except (RunCancelled, KeyboardInterrupt, EOFError, MonitoringError):
@@ -207,10 +307,13 @@ def extract_knowledge(state: dict, output_root: Path, key_reader=read_api_key, m
                     current.status, current.error_code = "failed", "interrupted"
                     session.usage.input_tokens = session.usage.output_tokens = session.usage.total_tokens = None
                 raise
-            except Exception:
+            except Exception as exc:
                 if current.status == "started":
                     session.usage.input_tokens = session.usage.output_tokens = session.usage.total_tokens = None
-                current.status, current.error_code = "failed", "provider_or_adapter_error"
+                current.status = 'failed'
+                current.error_code = exc.code if isinstance(exc, ModelCallFailure) else 'provider_or_adapter_error'
+                current.diagnostics = exc.diagnostics if isinstance(exc, ModelCallFailure) else describe_model_failure(exc, api_key)
+                current.last_attempt_id = exc.attempt_id if isinstance(exc, ModelCallFailure) else None
                 # Authentication/transport failures should not cause a storm of
                 # requests to other passages. Preserve them as unattempted work.
                 for pending in record.attempts:
@@ -235,8 +338,36 @@ def extract_knowledge(state: dict, output_root: Path, key_reader=read_api_key, m
                         input_tokens=current.input_tokens, output_tokens=current.output_tokens,
                         call_seconds=current.elapsed_seconds, stop_reason=current.stop_reason,
                         trace_path=current.trace_path)
-            if stop_after_error:
-                break
+            return stop_after_error
+
+        def jobs():
+            """Offer a bounded wave without charging skipped or previously attempted work.
+
+            Args:
+                None. Read the current ordered inventory and shared request limits.
+            Returns:
+                Passage generators, at most max_batches when configured. New
+                refinement children are eligible only after their parent completes.
+            """
+            consumed = 0
+            for attempt in ordered:
+                if attempt.batch_id in previous_batches or attempt.status != 'not_attempted':
+                    continue
+                if max_batches is not None and consumed >= max_batches:
+                    break
+                if monitor:
+                    monitor.check_cancel()
+                remaining = remaining_model_time(session)
+                if session.usage.requests_attempted >= model_request_ceiling(session, 'extract_knowledge'):
+                    attempt.error_code = 'request_limit'
+                    continue
+                if remaining is not None and remaining <= 0:
+                    attempt.error_code = 'run_time_limit'
+                    continue
+                consumed += 1
+                yield extract_passage(attempt)
+
+        run_model_jobs(jobs(), concurrency=session.request.model_concurrency, monitor=monitor)
         if monitor:
             monitor.check_cancel()
     except (RunCancelled, KeyboardInterrupt, EOFError):

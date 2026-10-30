@@ -1,6 +1,6 @@
 """Exercise the actual user-facing menus through a real pseudo-terminal.
 
-These tests type into the production CLI, not a separate demo UI. The provider
+These tests type into the production terminal entry point, not a separate demo UI. The provider
 fixture replaces Anthropic HTTP and denies networking/credential reads; actual
 LangGraph interruption, review validation, checkpoints, local file parsing and
 saved decisions remain in the path. Source files and outputs are temporary.
@@ -53,7 +53,7 @@ class GuidedTerminalIntegrationTests(unittest.TestCase):
                 invocation.
 
         Returns:
-            An argument-vector list launching the offline provider fixture and production CLI
+            An argument-vector list launching the offline provider fixture and production terminal entry point
             entry point.
         """
         return [sys.executable, "-m", "tests.interactive.interactive_research_process", str(self.directory), *arguments]

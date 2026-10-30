@@ -1,4 +1,11 @@
-"""Register initial sources and create the run; invoked by the production graph."""
+"""Create a research session and register the user's starting source references.
+
+This is the first processing step for a new run. It assigns the run identifier,
+loads URLs and local document paths, creates the output directory and starts
+monitoring. Registering a source assigns an identifier for later use; it does not
+download its contents or establish what it says. The workflow uses the returned
+session for optional answer design and research planning.
+"""
 from datetime import UTC, datetime
 from pathlib import Path
 from uuid import uuid4
@@ -16,7 +23,8 @@ def initialize_research(state: ResearchState, output_root: Path, monitor=None) -
     metadata are read; actual document contents wait until after planning/review. The
     initial saved session makes early failures inspectable. Optional catalogue seeds
     are merged with supplied URLs; domain policy and the total-source cap are checked
-    before planning can spend a model request.
+    before planning can spend a model request. Designed runs record their controller
+    version here; loading an older run never silently opts it into a new policy.
 
     Args:
         state: Graph-state dictionary containing the validated ResearchRequest under
@@ -56,11 +64,13 @@ def initialize_research(state: ResearchState, output_root: Path, monitor=None) -
         sources=sources,
         visited_nodes=["initialize_research"],
     )
+    if request.design_answer:
+        from projectclarity.nodes.schedule_work.answer_controller import POLICY
+        session.workflow['controller_policy'] = POLICY
     # A unique directory isolates runs; no existing output is overwritten.
     (output_root / session.session_id).mkdir(parents=True, exist_ok=False)
     save_session(session, output_root)
     if monitor:
         monitor.start(session)
     return {"session": session}
-
 

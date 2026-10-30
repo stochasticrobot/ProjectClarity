@@ -1,13 +1,14 @@
 """Run adversarial workflows through __main__, LangGraph and real saved journals.
 
 Only model/search/HTTP/DNS transports are synthetic. Tests exercise production
-selectors, budgets, parsing, evidence persistence, retries and CLI restart. They
+selectors, budgets, parsing, evidence persistence, retries and terminal interface restart. They
 do not establish live search availability or the quality of model judgments.
 """
 import contextlib
 import io
 import json
 import runpy
+import sqlite3
 import unittest
 from collections import Counter
 from unittest.mock import patch
@@ -42,7 +43,7 @@ class WorkflowControlCLITests(unittest.TestCase):
     """Verify combined faults and restart against the deployed application path."""
 
     def setUp(self):
-        """Prepare two source branches and transport switches under an isolated CLI root.
+        """Prepare two source branches and transport switches under an isolated terminal interface root.
 
         Args:
             self: Test owner with temporary source inputs and no live credentials.
@@ -144,11 +145,11 @@ class WorkflowControlCLITests(unittest.TestCase):
         return [{'url': 'https://example.org/other', 'title': 'Other seed', 'snippet': 'A lead, not evidence.'}]
 
     def run_workflow(self, *flags):
-        """Invoke the normal CLI with bounded calls and real source/model parsing.
+        """Invoke the normal terminal interface with bounded calls and real source/model parsing.
 
         Args:
             self: Fixture whose transport responders inject the configured faults.
-            *flags: Additional genuine CLI options for this case.
+            *flags: Additional genuine terminal interface options for this case.
 
         Returns:
             Exit code, saved run directory, session dictionary and stderr.
@@ -163,8 +164,8 @@ class WorkflowControlCLITests(unittest.TestCase):
         """Execute the public resume command under the same network-forbidden fixture.
 
         Args:
-            self: Fixture retaining prior files and counters across CLI invocations.
-            run_id: Existing run identifier printed by the initial CLI process.
+            self: Fixture retaining prior files and counters across terminal interface invocations.
+            run_id: Existing run identifier printed by the initial terminal interface process.
 
         Returns:
             Exit code and saved session after reloading the journal; no planner or
@@ -184,7 +185,7 @@ class WorkflowControlCLITests(unittest.TestCase):
         return result.exception.code, saved
 
     def test_combined_challenge_two_504s_and_invented_link_retains_valid_work(self):
-        """Reproduce the harmful failure combination through the real CLI.
+        """Reproduce the harmful failure combination through the real terminal entry point.
 
         Args:
             self: Synthetic transport fixture with no altered control nodes.
@@ -266,6 +267,8 @@ class WorkflowControlCLITests(unittest.TestCase):
         self.crash = True
         code, _, saved, _ = self.run_workflow()
         self.assertEqual(code, 77)
+        with sqlite3.connect(self.cli.output / 'workflow_checkpoints.sqlite') as connection:
+            self.assertEqual(connection.execute('SELECT count(*) FROM checkpoints').fetchone()[0], 1)
         before = saved['usage']['requests_attempted']
         self.assertIsNotNone(saved['workflow']['active'])
         code, saved = self.resume(saved['session_id'])
@@ -279,6 +282,39 @@ class WorkflowControlCLITests(unittest.TestCase):
         calls, requests = len(self.tasks), len(self.http.requests)
         self.resume(saved['session_id'])
         self.assertEqual((len(self.tasks), len(self.http.requests)), (calls, requests))
+        with sqlite3.connect(self.cli.output / 'workflow_checkpoints.sqlite') as connection:
+            self.assertEqual(connection.execute('SELECT count(*) FROM checkpoints').fetchone()[0], 3,
+                'The failed invocation and two resumes each save only one checkpoint')
+
+    def test_restart_uses_journal_when_no_graph_exit_checkpoint_survived(self):
+        """Recover charged research without needing an intermediate graph snapshot.
+
+        Args:
+            self: Isolated CLI fixture that interrupts the first extraction request.
+
+        Returns:
+            None. Move the fixture's closed checkpoint database aside to represent
+            a process dying before its first exit checkpoint. Assert the production
+            resume command uses session.json, keeps the uncertain request charged,
+            and does not repeat planning or that extraction. This simulates absent
+            checkpoint storage; it does not claim a tested power-loss scenario.
+        """
+        self.cli.urls.write_text('https://example.org/research\nhttps://example.org/other\n')
+        self.crash = True
+        code, directory, saved, _ = self.run_workflow()
+        self.assertEqual(code, 77)
+        charged = saved['usage']['requests_attempted']
+        database = self.cli.output / 'workflow_checkpoints.sqlite'
+        database.rename(self.cli.output / 'pre-exit-checkpoint.sqlite')
+        self.assertFalse(database.exists())
+        code, recovered = self.resume(directory.name)
+        self.assertEqual(code, 1)
+        self.assertGreaterEqual(recovered['usage']['requests_attempted'], charged)
+        self.assertEqual(sum(t[0] == 'ResearchPlan' for t in self.tasks), 1)
+        self.assertEqual(sum(t[0] == 'ExtractionBatch' and t[1] == 'S1' for t in self.tasks), 1)
+        self.assertTrue(any(t['status'] == 'uncertain' for t in recovered['workflow']['tasks'].values()))
+        with sqlite3.connect(database) as connection:
+            self.assertEqual(connection.execute('SELECT count(*) FROM checkpoints').fetchone()[0], 1)
 
     def test_malformed_extraction_and_coverage_do_not_stop_other_sources(self):
         """Independent documents survive failed model tasks, not just broken selectors.
@@ -305,11 +341,13 @@ class WorkflowControlCLITests(unittest.TestCase):
         Returns:
             None. Assert selection and child extraction occur before the long
             source finishes, while all pending passage identities remain saved.
+            The real database must retain one exit checkpoint and bounded pending
+            writes, rather than duplicate the growing session at every step.
         """
         text = ('A long independent context paragraph.\n' * 8000).encode()
         self.routes[('example.org', '/research')] = (200, {'Content-Type': 'text/html'},
             b'<main><pre>' + text + b'</pre><a href="/first">Small source</a></main>')
-        _, _, saved, _ = self.run_workflow('--max-requests', '12')
+        _, directory, saved, _ = self.run_workflow('--max-requests', '12')
         long_positions = [i for i, task in enumerate(self.tasks) if task[0] == 'ExtractionBatch' and task[1] == 'S1']
         selection = next(i for i, task in enumerate(self.tasks) if task[0] == 'FollowupPlan')
         child = next(i for i, task in enumerate(self.tasks) if task[0] == 'ExtractionBatch' and task[1] == 'S2')
@@ -317,6 +355,15 @@ class WorkflowControlCLITests(unittest.TestCase):
         self.assertLess(child, long_positions[-1])
         self.assertLessEqual(saved['usage']['requests_attempted'], 12)
         self.assertTrue(any(a['status'] == 'not_attempted' for a in saved['extraction']['attempts']))
+        database = self.cli.output / 'workflow_checkpoints.sqlite'
+        with sqlite3.connect(database) as connection:
+            self.assertEqual(connection.execute('SELECT count(*) FROM checkpoints').fetchone()[0], 1)
+            write_bytes = connection.execute('SELECT coalesce(sum(length(value)), 0) FROM writes').fetchone()[0]
+        session_bytes = (directory / 'session.json').stat().st_size
+        self.assertLess(write_bytes, session_bytes * 2,
+            'Pending writes must not accumulate a session copy for every research step')
+        self.assertLess(database.stat().st_size, max(1048576, session_bytes * 4),
+            'Checkpoint storage must scale with final state, not the number of completed steps')
 
     def test_retry_after_beyond_remaining_time_is_deferred_without_busy_wait(self):
         """A server cooldown longer than the run cannot be shortened to force a retry.

@@ -1,7 +1,10 @@
-"""Check layout-tolerant anchoring without accepting rewritten or ambiguous evidence.
+"""Check quotation matching that tolerates layout whitespace but not changed wording.
 
-These are small invented strings, not model-quality examples. Both validators
-use this matcher; production-CLI tests separately prove it is wired into them.
+Small invented strings exercise the production matcher directly. Newlines, tabs
+and nonbreaking spaces can differ while returned offsets still identify the exact
+saved source text. Changed words, punctuation, case or ambiguous repeated matches
+must not be silently repaired. Other integration tests connect the matcher to
+extraction and review; this file does not call a model.
 """
 import unittest
 from projectclarity.extraction.source_quote_matching import match_source_quote, QuoteMatchError

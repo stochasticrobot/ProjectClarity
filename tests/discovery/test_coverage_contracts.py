@@ -1,4 +1,10 @@
-"""Falsify false-completeness shortcuts without prescribing a research topic."""
+"""Check that numerical matches and plausible IDs cannot bypass evidence requirements.
+
+The tests construct coverage replies and call the same validators used after model
+assessment. They cover unknown totals, missing evidence, duplicate items, partial
+input and different goal associations. No model supplies these judgments; passing
+proves the exercised validation rules, not research completeness.
+"""
 import json
 import unittest
 from types import SimpleNamespace

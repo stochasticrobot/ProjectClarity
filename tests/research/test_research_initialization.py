@@ -180,7 +180,7 @@ class InitializationTests(unittest.TestCase):
             session = initialize_research({"request": request}, self.output)["session"]
         saved_path = self.output / session.session_id / "session.json"
         restored = ResearchSession.model_validate_json(saved_path.read_text())
-        self.assertEqual(restored.schema_version, "1.7")
+        self.assertEqual(restored.schema_version, "1.8")
         self.assertEqual(restored.request.document_paths, references)
         self.assertEqual(restored.sources, [
             URLSource(source_id="S1", url="https://example.org/research"),

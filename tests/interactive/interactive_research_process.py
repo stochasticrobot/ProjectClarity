@@ -1,6 +1,6 @@
-"""Launch the real CLI under a terminal, substituting only Anthropic HTTP.
+"""Launch the real terminal entry point under a terminal, substituting only Anthropic HTTP.
 
-Tests pass a temporary fixture directory followed by ordinary CLI arguments.
+Tests pass a temporary fixture directory followed by ordinary terminal interface arguments.
 stdin/stdout remain attached to a real pseudo-terminal: isatty(), input(), menu
 routing, LangGraph, checkpoints, local parsing and saving are production code.
 A fixed provider reply asks two questions; a counter file detects repeated model
@@ -25,7 +25,7 @@ def main():
         None.
 
     Returns:
-        Never returns normally on the CLI path; the production __main__ raises SystemExit
+        Never returns normally on the terminal interface path; the production __main__ raises SystemExit
         with its command result. Fixture setup errors propagate.
     """
     directory = Path(sys.argv[1])

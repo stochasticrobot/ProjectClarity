@@ -1,7 +1,11 @@
-"""Preserve provider response classifications that DDGS otherwise reduces to emptiness.
+"""Keep HTTP failures distinguishable from genuine empty search results.
 
-The scoped engine adapter runs in the existing single-query subprocess. It does not
-solve challenges, change endpoints, or select a different provider. No HTML is saved.
+The DDGS search library can turn an unfamiliar page, access challenge or failed
+response into an empty result list. Inside the isolated search worker, these
+helpers wrap the chosen engine's request function and inspect response status and
+recognizable page markers before parsing. A confirmed no-results page remains an
+empty success; a block or unrecognized response remains a failure. The wrapper
+uses the engine's existing HTTP request and does not fetch discovered pages.
 """
 from contextlib import contextmanager
 from email.utils import parsedate_to_datetime

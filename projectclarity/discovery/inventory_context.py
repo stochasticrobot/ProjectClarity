@@ -1,8 +1,10 @@
-"""Present persistent inventories fairly within the executing adapter's context allowance.
+"""Fit saved source choices into a model request without always showing the first rows.
 
-This is presentation scheduling, not a relevance model: source-balanced,
-least-exposed-first rows reach the existing goal-aware model selector. Deferred
-rows remain eligible and their IDs are recorded. No source gets the first-N prefix.
+Source-selection requests have a character limit. A run can contain more observed
+links or search results than fit in one request, so these helpers interleave rows
+from different sources and favor rows shown less often. Rows that do not fit stay
+available for later selection. Message size is measured after the same JSON
+serialization used for sending. No model request or source retrieval happens here.
 """
 import json
 from collections import defaultdict, deque
@@ -56,7 +58,7 @@ def balanced_rows(rows, id_key, source_key, exposures):
 
 
 def pack_inventory(system, payload, field, rows, *, id_key, source_key, exposures,
-                   max_characters=MAX_MESSAGE_CHARACTERS):
+                   max_characters=MAX_MESSAGE_CHARACTERS, task=None):
     """Fit fair inventory rows to the real message limit without discarding deferred work.
 
     Args:
@@ -69,6 +71,8 @@ def pack_inventory(system, payload, field, rows, *, id_key, source_key, exposure
         exposures: Prior presentation counts; this function does not modify them.
         max_characters: Optional smaller context allocation, in serialized characters,
             to reserve room for another inventory. Never exceeds the adapter allowance.
+        task: Optional task name selecting the adapter's aggregate coverage ceiling;
+            omitted retains the ordinary passage/selection ceiling.
 
     Returns:
         Updated payload and deferred IDs. Metadata discloses total/offered/deferred
@@ -86,7 +90,8 @@ def pack_inventory(system, payload, field, rows, *, id_key, source_key, exposure
         Returns:
             True if the current messages fit the adapter's character allowance.
         """
-        return len(json.dumps(payload_messages(system, packed), ensure_ascii=False)) <= min(max_characters, MAX_MESSAGE_CHARACTERS)
+        from projectclarity.providers.structured_model_call_execution import message_character_limit
+        return len(json.dumps(payload_messages(system, packed), ensure_ascii=False)) <= min(max_characters, message_character_limit(task))
     if not fits():
         raise ValueError("inventory_base_context_too_large")
     deferred = []

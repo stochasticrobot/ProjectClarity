@@ -1,37 +1,23 @@
-"""Define the data contracts exchanged by the CLI, graph, and LLM adapter.
+"""Define the validated data exchanged by research commands, workflow steps and planning.
 
-Purpose:
-    Specify what information a request, source, plan, or saved run must contain.
-    These are Python models used to reject missing, unexpected, or wrongly typed
-    fields. This code tries to ensure the response we get back from an LLM is valid.
-    For example, a source is either a web address or a local file path,
-    and each proposed research step must point to goals that actually exist.
-    ResearchPlanOutput supplies the planner's JSON schema, including required
-    completion criteria with schema-enforced count/basis branches, and
-    InitialScopeEstimate with an optional numeric range.
-    Its to_plan() conversion supplies evidence metadata before workflow use;
-    the model does not provide basis or candidate_ids during initial planning.
-    ResearchPlan is the persisted form and can still read
-    older saved plans without criteria. The schema defines actual fields rather
-    than relying on instructions in the prompt to create them.
-Responsibilities:
-    ResearchRequest/Budget describe user input and application-owned limits.
-    ResearchPlanOutput, Goal, StrategyStep and CompletionCriterion define the
-    structured planning reply and how the proposed research will measure coverage.
-    Source, Usage, and ResearchSession describe local state and saved snapshots.
-Typical use:
-    command_line.py constructs a ResearchRequest; agentic_workflow.py creates and updates a
-    ResearchSession. research_planner.py configures the adapter with ResearchPlanOutput,
-    which generates the JSON schema sent separately alongside the prompt.
-Boundary:
-    Validation checks structure and goal links, not whether a plan is useful or
-    true. Source-ID membership is checked against the session in agentic_workflow.py.
-    This module performs no I/O, model calls, or research execution.
+These Pydantic models specify required fields and reject malformed values. For
+example, a source record identifies either a web URL or a local document, and a
+plan's investigation steps must refer to goals that actually exist. ResearchRequest
+and Budget describe the user's question, permissions and limits; ResearchSession
+holds the evolving plan, sources, usage and saved execution state.
 
-Maintenance gotcha:
-    Pydantic includes model class docstrings and Field descriptions in generated
-    JSON schemas. Changing those can change what the LLM receives; treat that as
-    a contract/prompt change. Ordinary # comments are developer-only explanations.
+ResearchPlanOutput is the response format sent to the planning model. Its conversion
+to ResearchPlan adds application-owned evidence metadata and preserves compatibility
+with older saved plans. Goal, completion-criterion and scope-estimate models describe
+what the plan intends to investigate and how progress may be assessed. They do not
+establish that the plan is useful or that its estimates are correct.
+
+This file checks types and internal relationships without reading sources, making
+model calls or executing research. Whether a proposed source ID belongs to the
+current run is checked separately when the planning or plan-review code accepts it.
+Pydantic includes class docstrings and Field descriptions in generated JSON schemas;
+those descriptions can reach the model. Ordinary comments and this module overview
+are developer documentation, not task instructions.
 """
 
 from typing import Annotated, Literal, Self
@@ -57,7 +43,7 @@ class Budget(Contract):
     """Application-owned limits; the planner never writes or enlarges these."""
 
     model_config = ConfigDict(frozen=True)
-    # CLI research modes choose a larger default; saved/API requests retain their
+    # terminal interface research modes choose a larger default; saved/API requests retain their
     # explicit allowance. No node may enlarge this immutable budget during work.
     max_requests: int = Field(default=1, ge=0, le=1000)
     max_output_tokens: int = Field(default=2048, ge=128, le=8192)
@@ -66,7 +52,7 @@ class Budget(Contract):
 class FetchLimits(Contract):
     """Operator-selected retrieval bounds, independent of LLM token budgets.
 
-    CLI options select crawl-scale allowances within hard ceilings. Legacy/API
+    terminal interface options select crawl-scale allowances within hard ceilings. Legacy/API
     defaults remain unchanged. These settings are saved with the request; the
     model cannot change them. Per-file parser bounds and robots delays remain.
     """
@@ -75,7 +61,7 @@ class FetchLimits(Contract):
     max_source_bytes: int = Field(default=5 * 1024 * 1024, ge=1, le=5 * 1024 * 1024)
     max_total_bytes: int = Field(default=25 * 1024 * 1024, ge=1, le=1024 * 1024 * 1024)
     max_http_requests: int = Field(default=50, ge=0, le=10000)
-    # Preserve saved/API defaults; new CLI runs choose 1800 seconds because the
+    # Preserve saved/API defaults; new terminal interface runs choose 1800 seconds because the
     # acquisition clock includes model work between retrieval rounds.
     max_run_seconds: float = Field(default=180.0, gt=0, le=7200.0)
     request_timeout_seconds: float = Field(default=10.0, gt=0, le=10.0)
@@ -99,15 +85,17 @@ class ResearchRequest(Contract):
     # These are user-supplied references, not document text. Initialization
     # resolves relative paths from the directory where the command was launched.
     document_paths: list[Annotated[str, StringConstraints(min_length=1, max_length=4096)]] = Field(default_factory=list, max_length=25)
-    # The CLI sets this from --plan-only. Python callers default to no retrieval.
+    # The terminal interface sets this from --plan-only. Python callers default to no retrieval.
     plan_only: bool = True
+    # Explicit for terminal/API callers; old runs never acquire a new model step.
+    design_answer: bool = False
     # Explicit opt-in: retrieved text may be sent to the configured LLM only
     # when this is true. It does not authorize searches or accepted publication.
     extract_knowledge: bool = False
     # Old saved requests default off, so resuming them never silently adds calls.
-    # New CLI runs require an explicit auxiliary capture allowance.
+    # New terminal interface runs require an explicit auxiliary capture allowance.
     accumulate_knowledge: bool = False
-    # None preserves historical shared-budget behavior; new CLI requests use zero
+    # None preserves historical shared-budget behavior; new terminal interface requests use zero
     # unless an auxiliary allowance is explicitly selected. Never raises max_requests.
     knowledge_max_requests: int | None = Field(default=None, ge=0, le=1000)
     # None preserves exhaustive capture for saved/API runs. New discovery runs
@@ -118,21 +106,21 @@ class ResearchRequest(Contract):
     follow_links: bool = False
     # Batch size per selection round, not total links or allowed traversal depth.
     max_followup_sources: int = Field(default=2, ge=1)
-    # Saved/API requests retain old scope; the CLI explicitly selects open recursive links.
+    # Saved/API requests retain old scope; the terminal interface explicitly selects open recursive links.
     max_link_depth: int | None = Field(default=1, ge=1, le=100)
-    # Legacy/API runs keep their recorded traversal policy; new CLI runs choose 3.
+    # Legacy/API runs keep their recorded traversal policy; new terminal interface runs choose 3.
     max_unproductive_depth: int | None = Field(default=None, ge=1, le=100)
-    # New CLI runs explore two relative link levels before search. Saved/API
+    # New terminal interface runs explore two relative link levels before search. Saved/API
     # requests without this field keep their original scheduling policy.
     explore_before_search_depth: int | None = Field(default=None, ge=1, le=100)
     same_origin_links: bool = True
-    # Counts registered pages/documents, not domains. New CLI default is 250;
+    # Counts registered pages/documents, not domains. New terminal interface default is 250;
     # saved/API requests retain 25 unless explicitly configured otherwise.
     max_sources: int = Field(default=25, ge=1, le=1000)
-    # The CLI loads repository policy files before constructing this snapshot.
+    # The terminal interface loads repository policy files before constructing this snapshot.
     # Bare API/legacy requests do not implicitly read a filesystem blacklist.
     url_policy: URLPolicy = Field(default_factory=URLPolicy)
-    # Only populated by CLI --use-default-sources; these merge with supplied URLs.
+    # Only populated by terminal interface --use-default-sources; these merge with supplied URLs.
     default_source_urls: list[str] = Field(default_factory=list, max_length=25)
     search_provider: Literal["duckduckgo", "brave", "google", "yahoo", "mojeek", "startpage", "wikipedia"] = "duckduckgo"
     # Legacy/API requests remain single-provider with no new delayed calls.
@@ -143,15 +131,45 @@ class ResearchRequest(Contract):
     search_retries: int = Field(default=1, ge=0, le=3)
     web_search: bool = False
     assess_coverage: bool = False
-    # Preserve legacy/API defaults. New CLI runs can share run budgets without
+    # Independent, opt-in preliminary study; old runs do not acquire new work.
+    coverage_study: bool = False
+    coverage_estimate_fallback: bool = False
+    # Opt-in semantic stopping never disables hard budgets or cancellation.
+    stop_when_satisfied: bool = False
+    # Preserve legacy/API defaults. New terminal interface runs can share run budgets without
     # an extra query-count partition; explicit caps remain cumulative.
     max_search_queries: int | None = Field(default=4, ge=1)
     # None shares max_sources; explicit historical/operator caps remain binding.
     max_search_sources: int | None = Field(default=5, ge=1, le=1000)
     search_results_per_query: int = Field(default=5, ge=1, le=10)
     model: str = Field(default=DEFAULT_MODEL, min_length=1, max_length=100)
+    # Saved/API requests retain no-retry behavior; terminal runs explicitly choose two.
+    model_retries: int = Field(default=0, ge=0, le=2)
+    # Legacy checkpoints/API calls stay sequential; new terminal/dashboard runs select 3.
+    model_concurrency: int = Field(default=1, ge=1, le=16)
+    # Legacy/API snapshots retain whole-document focus. New terminal/dashboard
+    # runs pause focus after three successful passages without goal-level gain.
+    max_no_gain_passages: int | None = Field(default=None, ge=1, le=100)
+    # Operator-designated institutions supplement the conservative government-domain hints.
+    official_domains: list[str] = Field(default_factory=list, max_length=100)
+    model_timeout_seconds: float = Field(default=60.0, gt=0, le=300)
     budget: Budget = Field(default_factory=Budget)
     fetch_limits: FetchLimits = Field(default_factory=FetchLimits)
+
+    @field_validator('official_domains')
+    @classmethod
+    def validate_official_domains(cls, values):
+        """Normalize explicit institution hints without granting source access.
+
+        Args:
+            cls: Request model supplied by Pydantic.
+            values: Domain-only strings supplied by the operator.
+        Returns:
+            Deduplicated domains, or ValueError for malformed hosts. These affect
+            scheduling only, never source permissions or evidence acceptance.
+        """
+        from projectclarity.discovery.url_policy import normalize_domain
+        return list(dict.fromkeys(normalize_domain(v) for v in values))
 
     @field_validator("question")
     @classmethod
@@ -175,7 +193,9 @@ class ResearchRequest(Contract):
         starts, avoiding runs that cannot perform their requested stages.
 
         Check search selection, extraction, claim review, link discovery and coverage
-        requirements together. Plan-only mode cannot also extract documents.
+        requirements together. Semantic stopping requires coverage and claim review.
+        The preliminary study needs its shared request allowance; its optional
+        fallback requires study opt-in. Plan-only mode cannot also extract documents.
 
         Args:
             self: Request model being validated for compatible execution flags and resource
@@ -185,12 +205,20 @@ class ResearchRequest(Contract):
             This request after cross-option validation; incompatible stage flags or limits raise
             ValueError.
         """
+        if self.design_answer and self.budget.max_requests < 2:
+            raise PydanticCustomError('answer_design_budget', 'Answer design requires two shared requests including planning')
         if self.accumulate_knowledge and not self.extract_knowledge:
             raise ValueError("Knowledge accumulation requires extraction mode")
         if self.web_search and not self.plan_only and self.budget.max_requests < 2:
             raise ValueError("Web search needs --max-requests >= 2 for planning and source selection")
         if self.assess_coverage and (not self.extract_knowledge or self.budget.max_requests < 3):
             raise ValueError("Coverage assessment needs --extract and --max-requests >= 3")
+        if self.stop_when_satisfied and not (self.assess_coverage and self.review_claims):
+            raise PydanticCustomError('stopping_requirements', 'Stopping requires coverage and claim review')
+        if self.coverage_study and not self.plan_only and self.budget.max_requests < 3:
+            raise PydanticCustomError('study_budget', 'A coverage study needs at least three shared model requests')
+        if self.coverage_estimate_fallback and not self.coverage_study:
+            raise PydanticCustomError('study_fallback', 'Coverage-estimate fallback requires the coverage study')
         if self.extract_knowledge and self.plan_only:
             raise PydanticCustomError("extraction_plan_only", "Extraction cannot be combined with plan-only mode")
         if self.extract_knowledge and self.budget.max_requests < 2:
@@ -228,12 +256,23 @@ class FileSource(Contract):
 Source = Annotated[URLSource | FileSource, Field(discriminator="kind")]
 
 
+class ResultShape(Contract):
+    """The unit being counted and required fields identifying one enumeration result."""
+
+    unit: Text
+    required_fields: list[Identifier] = Field(min_length=1, max_length=8)
+
+
 class Goal(Contract):
     """One answerable research question and the evidence it would require."""
 
     goal_id: Identifier
     question: Text
     evidence_required: list[Text] = Field(min_length=1, max_length=6)
+    # None keeps non-enumeration goals and older saved plans readable. Counts may
+    # not be inferred from mentions when the planner did not define a result shape.
+    result_shape: ResultShape | None = None
+    requirement_ids: list[Identifier] = Field(default_factory=list, max_length=24)
 
 
 class StrategyStep(Contract):
@@ -574,6 +613,8 @@ class RetrievedDocument(Contract):
     raw_path: str | None = None
     text_path: str | None = None
     parser: str | None = None
+    # Parsed document assertions, not verified publisher identity or currentness.
+    source_metadata: dict = Field(default_factory=dict)
     # Observed HTML anchors, not approved fetch targets or verified evidence.
     links: list[dict[str, str]] = Field(default_factory=list)
     links_truncated: bool = False
@@ -587,7 +628,7 @@ class ResearchSession(Contract):
 
     # 1.7 adds opt-in review/discovery and ancestry/call receipts. Older snapshots
     # remain readable and do not opt into any new model calls or link following.
-    schema_version: Literal["1.5", "1.6", "1.7"] = "1.7"
+    schema_version: Literal["1.5", "1.6", "1.7", "1.8"] = "1.8"
     session_id: str
     created_at: str
     request: ResearchRequest
@@ -598,11 +639,13 @@ class ResearchSession(Contract):
     # v8 separates initial planning estimates from evidence-based scope metadata.
     # v11 branches only the completion target to keep the provider grammar small.
     # This is a manually maintained contract revision, not an automatic prompt hash.
-    prompt_version: Literal["research-plan-v1", "research-plan-v2", "research-plan-v3", "research-plan-v4", "research-plan-v5", "research-plan-v6", "research-plan-v7", "research-plan-v8", "research-plan-v9", "research-plan-v10", "research-plan-v11"] = "research-plan-v11"
+    prompt_version: Literal["research-plan-v1", "research-plan-v2", "research-plan-v3", "research-plan-v4", "research-plan-v5", "research-plan-v6", "research-plan-v7", "research-plan-v8", "research-plan-v9", "research-plan-v10", "research-plan-v11", "research-plan-v12"] = "research-plan-v12"
     status: Literal["initialized", "planning", "plan_ready", "needs_clarification", "awaiting_review", "rejected", "retrieving", "sources_retrieved", "retrieval_partial", "retrieval_failed", "extracting", "candidates_saved", "extraction_partial", "extraction_failed", "failed", "cancelled"] = "initialized"
     usage: Usage = Field(default_factory=Usage)
     visited_nodes: list[str] = Field(default_factory=list)
     plan: ResearchPlan | None = None
+    # Validated by answer_schema.contracts on design/binding; kept JSON-shaped at checkpoints.
+    answer_schema: dict | None = None
     # JSON-shaped copies avoid a circular dependency with ResearchPlan. Their
     # full typed contracts are validated by plan_review_contracts/service.
     pending_review: dict | None = None
@@ -616,9 +659,12 @@ class ResearchSession(Contract):
     # Typed by claim_review/discovery at node boundaries; no provider objects.
     claim_reviews: dict = Field(default_factory=dict)
     processing_calls: list[dict] = Field(default_factory=list)
+    # Content-free per-wire-attempt ledger, separate from logical task outcomes.
+    model_attempts: list[dict] = Field(default_factory=list)
     discovery: dict = Field(default_factory=dict)
     search: dict = Field(default_factory=dict)
     coverage: dict = Field(default_factory=dict)
+    coverage_study: dict = Field(default_factory=dict)
     knowledge: dict = Field(default_factory=dict)
     source_value: dict = Field(default_factory=dict)
     # Application-only durable scheduler; not part of any model response schema.

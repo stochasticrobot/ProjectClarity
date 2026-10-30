@@ -1,4 +1,4 @@
-"""Run the production CLI in a fresh interpreter with external calls forbidden.
+"""Run the production terminal entry point in a fresh interpreter with external calls forbidden.
 
 Review integration tests launch this module instead of trusting a future code
 change not to contact Anthropic. It delegates to projectclarity.__main__ after
@@ -21,7 +21,7 @@ def main():
         None.
 
     Returns:
-        Never returns normally on the CLI path; the production __main__ raises SystemExit
+        Never returns normally on the terminal interface path; the production __main__ raises SystemExit
         with its command result. Fixture setup errors propagate.
     """
     with (

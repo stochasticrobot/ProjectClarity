@@ -1,7 +1,14 @@
-"""Cumulative goal-linked candidate facts, independent of partial model assessments.
+"""Keep a cumulative record of proposed claims for each research-plan question.
 
-This is a materialized evidence ledger, not an entity resolver or truth oracle.
-Existing stable candidate IDs preserve source-scoped facts and their review history.
+A candidate is a statement proposed during extraction, before acceptance as a
+supported finding. refresh_goal_register records candidates, their source and
+quotation checks, review statuses and status history in goal_register.json. Claims
+missing from a later snapshot remain marked as historical rather than disappearing.
+
+The register lets progress displays and model tasks see what has been found so
+far even when one assessment considers only some evidence. Counts refer to claims:
+five claims about one researcher are not five researchers. This module saves the
+register but does not resolve identities, review claims or declare goals complete.
 """
 from collections import Counter
 import json
@@ -67,7 +74,11 @@ def refresh_goal_register(session, output_root):
 
 
 def goal_progress_summary(session):
-    """Expose compact cumulative counts without pretending unseen facts were offered evidence.
+    """Return per-goal counts from the saved cumulative claim register.
+
+    These small summaries let model tasks see the amount and status of recorded work
+    without copying all claim text. Counts alone are not evidence of the statements
+    or a count of distinct answer items.
 
     Args:
         session: Run whose register is refreshed when extraction/review records are saved.

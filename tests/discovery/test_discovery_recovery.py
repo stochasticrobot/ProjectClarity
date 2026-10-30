@@ -1,7 +1,10 @@
-"""Verify broad scheduling and fault isolation through the real research CLI.
+"""Check that one failed research operation does not discard independent queued work.
 
-Only model/search/source transports are synthetic. Fixtures use seed-library
-research, not a university shortlist, and cannot prove live relevance or recall.
+Synthetic seed-library pages, search results and model replies exercise the real
+command-line workflow. Tests combine failures and successful work and inspect
+saved tasks, limits and outcomes. The fixtures are chosen to test scheduling and
+failure isolation rather than a particular research answer. They do not establish
+that a live model finds relevant sources or extracts all useful information.
 """
 import copy
 import json
@@ -127,15 +130,15 @@ class DiscoveryRecoveryTests(unittest.TestCase):
         return self.cli.response(text=json.dumps(answer))
 
     def run_pipeline(self, *flags, knowledge=False):
-        """Invoke the public CLI with only provider transports replaced.
+        """Invoke the public terminal interface with only provider transports replaced.
 
         Args:
             self: Fixture holding independent provider/source transports.
-            *flags: Additional real CLI options, including explicit limits.
+            *flags: Additional real terminal entry point options, including explicit limits.
             knowledge: Enable the normal separate graph-capture stage when True.
 
         Returns:
-            CLI exit code, saved session and stderr. All files remain temporary.
+            terminal interface exit code, saved session and stderr. All files remain temporary.
         """
         with patch('projectclarity.nodes.web_search.node.search_web', side_effect=self.search), patch(
                 'projectclarity.retrieval.public_url_fetcher.urllib3.HTTPSConnectionPool', side_effect=self.http.pool):
@@ -153,7 +156,7 @@ class DiscoveryRecoveryTests(unittest.TestCase):
             session: Saved session whose planner and accepted coverage proposals define work.
 
         Returns:
-            None. Fail if a proposal disappears, even when the CLI exits successfully or
+            None. Fail if a proposal disappears, even when the terminal interface exits successfully or
             other queries run. This checks work conservation, not query relevance.
         """
         planned = {' '.join(q.split()).casefold() for step in session['plan']['strategy']
@@ -168,8 +171,8 @@ class DiscoveryRecoveryTests(unittest.TestCase):
             for q in session['coverage'].get('next_searches', [])}
         self.assertEqual(proposed - attempted, retained - attempted)
 
-    def test_search_directions_interleave_and_continue_beyond_four(self):
-        """Reach all six proposed queries despite one failure, without a hidden four-query stop.
+    def test_initial_queries_stay_first_then_directions_continue_beyond_four(self):
+        """Protect the first planned pair, then reach all six queries despite one failure.
 
         Args:
             self: Independent two-direction search fixture.
@@ -180,7 +183,7 @@ class DiscoveryRecoveryTests(unittest.TestCase):
         self.fail_search = True
         code, session, _ = self.run_pipeline()
         self.assertEqual(code, 1)
-        self.assertEqual(self.queries, ['directory one', 'catalogue one', 'directory two',
+        self.assertEqual(self.queries, ['directory one', 'directory two', 'catalogue one',
             'catalogue two', 'directory three', 'catalogue three'])
         self.assertEqual(len(session['documents']), 5)
         self.assertIsNone(session['request']['max_search_queries'])
@@ -234,7 +237,9 @@ class DiscoveryRecoveryTests(unittest.TestCase):
         self.assertEqual(code, 1)
         self.assertIn('search_query_limit', session['workflow']['stop_details'])
         first_extract = self.tasks.index('ExtractionBatch')
-        self.assertEqual(self.tasks[:first_extract].count('KnowledgeBatch'), 1)
+        # Search-selected sources now receive their primary first read before
+        # optional broad capture; the later failure-isolation/drain checks remain.
+        self.assertEqual(self.tasks[:first_extract].count('KnowledgeBatch'), 0)
         self.assertGreater(session['visited_nodes'].count('accumulate_knowledge'), 1)
         windows = session['knowledge']['windows']
         self.assertEqual(sum(w['status'] == 'failed' for w in windows), 1)
@@ -319,7 +324,7 @@ class DiscoveryRecoveryTests(unittest.TestCase):
         """Retain a complete fifteen-claim response without changing quote/reference validation.
 
         Args:
-            self: Test owner creating an isolated extraction CLI fixture.
+            self: Test owner creating an isolated extraction terminal interface fixture.
 
         Returns:
             None. Assert every claim becomes an anchored candidate, not an unvalidated record.
@@ -338,7 +343,7 @@ class DiscoveryRecoveryTests(unittest.TestCase):
         """Accept local Unicode references while retaining actual quote and endpoint checks.
 
         Args:
-            self: Test owner using an independent roster through the real capture CLI.
+            self: Test owner using an independent roster through the real capture terminal interface.
 
         Returns:
             None. Assert long Unicode labels retain all anchored relationships in storage.

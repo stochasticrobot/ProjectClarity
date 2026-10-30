@@ -1,14 +1,21 @@
-"""Validate model-proposed actions individually without changing model contracts.
+"""Check each proposed source choice against the IDs actually offered to the model.
 
-Both selectors use this boundary. The offered inventory is authoritative; model
-IDs never create URLs. Receipts retain rejected, duplicate and deferred choices.
+Search-result and observed-link selectors share these rules. A model may choose an
+existing ID, but cannot create a new URL by returning a plausible identifier.
+Helpers separate accepted, invalid, duplicate and capacity-deferred choices so one
+bad proposal does not discard valid neighbors. Unseen or deferred choices can stay
+available for a later request. These checks do not fetch or semantically review pages.
 """
 from projectclarity.discovery.observed_link_inventory import canonical_url
 from projectclarity.discovery.url_policy import url_denial
 
 
 def accept_choices(session, choices, offered, id_field, capacity):
-    """Partition ordered proposals so one invalid choice cannot poison its neighbors.
+    """Validate source-selection proposals separately so one bad choice does not discard valid neighbors.
+
+    Check offered IDs, goal links, explicit relevance decisions and selection capacity.
+    Separate accepted, rejected and deferred choices; none of these checks establishes
+    that the selected page contains truthful or sufficient evidence.
 
     Args:
         session: Run containing authorized goals, URL policy and registered sources.
@@ -20,8 +27,11 @@ def accept_choices(session, choices, offered, id_field, capacity):
     Returns:
         Accepted choice objects and per-item receipt dictionaries. Valid overflow
         is deferred; duplicate IDs/URLs and policy violations are recorded. No
-        sources are registered and no model/network call is made here.
+        sources are registered and no model/network call is made here. Versioned choices
+        require explicit requirement links; rejected dispositions are declined, not
+        fetched, regardless of list membership or accompanying prose.
     """
+    from projectclarity.discovery.source_disposition import disposition_error
     goals = {g.goal_id for g in session.plan.goals}
     urls = {canonical_url(s.url) for s in session.sources if s.kind == 'url'}
     seen, accepted, outcomes = set(), [], []
@@ -35,6 +45,8 @@ def accept_choices(session, choices, offered, id_field, capacity):
             reason = 'unknown_or_unoffered_id'
         elif set(choice.goal_ids) - goals:
             reason = 'unknown_goal'
+        elif error := disposition_error(session, choice):
+            reason = error
         elif not canonical_url(row['url']):
             reason = 'invalid_url'
         else:
@@ -43,7 +55,9 @@ def accept_choices(session, choices, offered, id_field, capacity):
                 reason = 'duplicate_url'
         seen.add(identifier)
         outcome = {**choice.model_dump(mode='json'), 'status': 'rejected', 'reason_code': reason}
-        if not reason:
+        if not reason and getattr(choice, 'disposition', None) == 'reject':
+            outcome.update(status='declined', reason_code='model_rejected')
+        elif not reason:
             urls.add(canonical_url(row['url']))
             if len(accepted) < capacity:
                 accepted.append(choice)

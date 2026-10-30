@@ -12,8 +12,8 @@ reader separately handles hidden key entry when needed. It constructs the same t
 decisions used by plan_review_service.py; the graph, checkpoint, budgets and
 source permissions are unchanged. Nothing is approved by pressing Enter on an
 empty menu. Leaving review keeps the native pause; unfinished answers are kept
-only in memory and are not submitted. A future web UI replaces this file, not
-the workflow or its contracts. No model calls happen inside the review prompts.
+only in memory and are not submitted. The dashboard provides its own input handling while sharing
+the workflow and validated decision format. No model calls happen inside the review prompts.
 """
 
 import sys
@@ -30,18 +30,18 @@ from projectclarity.nodes.initialize_research.source_reference_loader import loa
 
 
 class ReviewDeferred(Exception):
-    """Leave the CLI while keeping the review pending; this is not run cancellation."""
+    """Leave the terminal interface while keeping the review pending; this is not run cancellation."""
 
     def __init__(self, *, interrupted=False):
-        """Tell the CLI to leave the durable review paused, with a distinct exit code.
+        """Tell the terminal interface to leave the durable review paused, with a distinct exit code.
 
         Args:
-            self: Deferred-review exception instance carrying its reason and CLI exit code.
+            self: Deferred-review exception instance carrying its reason and process exit code.
             interrupted: Whether Ctrl-C interrupted the review, rather than an ordinary user
                 decision to leave it paused.
 
         Returns:
-            None. Initialize an exception carrying the deferred-review reason and CLI exit code.
+            None. Initialize an exception carrying the deferred-review reason and process exit code.
         """
         super().__init__("Review left paused. No decision submitted; unfinished answers were not saved. "
                          "Open the ProjectClarity menu to continue later.")
@@ -65,7 +65,7 @@ def use_interactive_review(args) -> bool:
     """Structured streams and an explicit script switch override terminal detection.
 
     Args:
-        args: Parsed CLI namespace containing interactive and output-mode switches.
+        args: Parsed argument namespace containing interactive and output-mode switches.
 
     Returns:
         True when terminal review is available and not disabled by script/structured-output
@@ -286,7 +286,7 @@ def interactive_plan_review(output_root: Path, run_id: str, *, on_event=None):
 
 
 def new_research_arguments(output_root: Path) -> list[str]:
-    """Collect question/source references and return arguments for the normal CLI.
+    """Collect question/source references and return arguments for the normal terminal interface.
 
     The simple menu uses default planning/retrieval behavior; it does not yet offer
     extraction or budget controls. Use explicit --extract/--max-requests flags at launch for
@@ -297,7 +297,7 @@ def new_research_arguments(output_root: Path) -> list[str]:
             a URL or an individual run folder.
 
     Returns:
-        A list of normal CLI argument strings representing the user's choices; no research
+        A list of normal command-line argument strings representing the user's choices; no research
         is executed by this form.
     """
     while True:
@@ -334,14 +334,14 @@ def new_research_arguments(output_root: Path) -> list[str]:
 
 
 def launch_research_menu(output_root: Path) -> list[str] | None:
-    """Choose a normal CLI action, including saved reviews by title rather than ID.
+    """Choose a normal terminal interface action, including saved reviews by title rather than ID.
 
     Args:
         output_root: Local filesystem directory containing research-run subdirectories; not
             a URL or an individual run folder.
 
     Returns:
-        CLI argument strings for the selected action, or None when the user chooses to exit.
+        command-line argument strings for the selected action, or None when the user chooses to exit.
     """
     if not terminal_available():
         raise ResearchError("The guided menu needs a terminal. Use research/review flags for scripts.")

@@ -1,17 +1,15 @@
-"""Explain why a planner reply was rejected without recording the reply itself.
+"""Explain why a model's proposed research plan failed validation.
 
-For example, report "question_category: required field is missing" instead of
-just "invalid plan". LangChain wraps Pydantic's validation errors, so this module
-looks through that exception chain for structured field locations and rule codes.
-It never copies exception messages, rejected values, unknown field names, model
-text, or tracebacks: those can contain private research data or credentials.
+For example, a missing question_category field should produce that explanation
+instead of just "invalid plan". The planning node calls these helpers after a
+parser failure. They inspect structured validation errors through the exception
+chain, retaining known field locations and application-written rule messages.
 
-agentic_workflow.py calls describe_planning_failure() after a failed parse, saves
-its versioned record as planning_failure.json, and puts a short explanation in
-session.json and the terminal. The monitor receives only the failure category.
-This is diagnosis, not repair: no answer is changed, no rule is relaxed, and no
-additional model request is made. An old run without these details cannot be
-diagnosed retroactively. At most eight issues are recorded per failed reply.
+Rejected values, unknown field names, arbitrary exception text and tracebacks can
+contain private question data or credentials and are not copied into these public
+diagnostics. The caller saves planning_failure.json and a short session error.
+This module reports at most eight issues and does not repair the reply, relax a
+validation rule or send another model request.
 """
 
 import json

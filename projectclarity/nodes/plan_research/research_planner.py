@@ -14,8 +14,9 @@ Purpose:
     remains the persisted representation and accepts older plans without those
     criteria. node.py makes the actual planning invocation.
 Responsibilities:
-    Load the user-owned SYSTEM_PROMPT, resolve credentials privately, configure the bounded
-    model call, attach the ResearchPlanOutput schema, and assemble task messages.
+    Load instructions from the user-owned prompt file, resolve credentials privately,
+    configure the model adapter, attach the ResearchPlanOutput response schema, and
+    assemble task messages.
 Typical use:
     nodes.plan_research.node.plan_research() calls read_api_key(), create_planner(), and
     planning_messages(), then invokes the resulting structured-output runnable.
@@ -39,7 +40,7 @@ from pathlib import Path
 from dotenv import dotenv_values
 from projectclarity.providers.structured_model_provider import create_structured_model
 
-from projectclarity.research_schemas import ResearchPlan, ResearchPlanOutput, ResearchSession
+from projectclarity.research_schemas import ResearchPlanOutput, ResearchSession
 
 
 # Resolve only this checkout's file; do not search parent directories or cwd.
@@ -97,7 +98,7 @@ def read_api_key() -> str:
     return key
 
 
-def create_planner(api_key: str, session: ResearchSession):
+def create_planner(api_key: str, session: ResearchSession, *, timeout_seconds=None):
     """Configure the planning adapter to require ResearchPlanOutput so downstream nodes
     receive structured goals, strategies and completion criteria rather than prose.
 
@@ -109,6 +110,7 @@ def create_planner(api_key: str, session: ResearchSession):
             saved as research data.
         session: ResearchSession containing this run's request, plan, source records,
             accumulated results and status.
+        timeout_seconds: Optional attempt-specific timeout; None uses the saved policy.
 
     Returns:
         A configured runnable expecting ResearchPlanOutput, including explicit completion
@@ -117,7 +119,7 @@ def create_planner(api_key: str, session: ResearchSession):
     # Task instructions and schema belong here; provider configuration belongs
     # to providers/structured_model_provider.py. The task can outlive the current backend.
     # include_raw retains metadata even when schema parsing fails.
-    return create_structured_model(api_key, session, ResearchPlanOutput)
+    return create_structured_model(api_key, session, ResearchPlanOutput, timeout_seconds=timeout_seconds)
 
 
 def planning_messages(session: ResearchSession) -> list[tuple[str, str]]:
@@ -126,7 +128,8 @@ def planning_messages(session: ResearchSession) -> list[tuple[str, str]]:
 
     Keep user data separate from instructions. Include source policy, concrete source
     constraints, planning ceilings and the research date, but not execution-mode flags,
-    credentials or unread document bodies.
+    credentials or unread document bodies. Include the answer schema when designed;
+    acceptance binds its section IDs and fields to the returned plan.
 
     Args:
         session: ResearchSession containing this run's request, plan, source records,
@@ -160,5 +163,7 @@ def planning_messages(session: ResearchSession) -> list[tuple[str, str]]:
                               session.request.max_search_sources or session.request.max_sources)} if session.request.web_search else None,
         "research_date": session.created_at[:10],
     }
+    if session.answer_schema:
+        payload['answer_schema'] = session.answer_schema
     return [("system", SYSTEM_PROMPT),
             ("human", json.dumps(payload, ensure_ascii=False))]

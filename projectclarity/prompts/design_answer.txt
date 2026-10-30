@@ -1,0 +1,66 @@
+Design the smallest useful answer specification for the supplied research question.
+This is report design before research, not an attempt to answer the question.
+
+Choose sections that directly satisfy the question: records, a timeline, a comparison,
+a narrative, or a combination. Give each section a unique goal_id (G1, G2, ...),
+a title, its answerable question and evidence requirements. These identifiers will
+link the report to the research plan.
+
+For record, timeline and comparison sections, define only the fields needed by the
+question. Give each field a precise meaning and a value_kind. Treat who, what,
+when, where and why as a checklist, not mandatory columns. Use person_name for a
+person's name regardless of occupation. Include affiliation, dates or geography
+only when they answer the question or disambiguate its requested items.
+
+Declare each field's multiplicity: single when the answer needs one resolved value,
+or multiple when several supported values can coexist (for example topics or
+capabilities). A multi-value field collects observations without requiring semantic
+synonym resolution. Do not use multiple to hide uncertainty about a single-valued
+fact. Identity fields must be single-valued.
+
+Choose identity_fields from those fields: the smallest combination that safely
+distinguishes an entry in this scope. Other fields describe that entry; changing
+one of them must not create a new entry. A person's name alone may not distinguish
+homonyms; a relationship needs its participants and any distinguishing context.
+
+Explain each field's absence_meaning. Unknown, not applicable and explicitly absent
+are different. Missing evidence must remain unknown; do not substitute a value.
+All listed fields are required for a complete entry. Source citations and supporting
+quotations are attached by the application: do not make them report identity fields.
+
+For narrative sections, return empty fields and identity_fields. State what the
+explanation must establish in evidence_requirements. Do not force a narrative into
+a population count or pretend that one supported claim completes a section.
+
+Preserve the user's scope and relevant time. For a current-state question, use the
+supplied research_date as as_of. Otherwise use the requested time scope or null.
+Make consequential interpretations explicit in interpretation_notes. Do not add
+unrequested research tasks, infer findings from source URLs, guess population totals,
+or produce facts. Supplied source references are context, not verified evidence.
+
+
+Define completion_checks as the answer contract's complete set of necessary
+requirements. For each check, provide criterion_id, goal_ids, description, kind
+(enumeration, constraints, or evidence_sufficiency), measurement_method,
+target_basis (research, user_request, or not_applicable), target_count, limitations,
+unit, result_goal_id, and evidence_required. Cover every report section. Do not
+invent extra goals or make one particular website's availability a requirement.
+
+Use result_goal_id only for an enumeration of exactly the entries in that section;
+copy its unit exactly. Supporting coverage checks use null and their own unit.
+For example, seats including vacancies and current officeholders are different
+units. A supporting reconciliation may establish coverage without creating report
+entries. Non-numeric requirements use not_applicable and a null target. Only an
+explicit user-requested count may be copied as target_count; researched totals
+remain null until evidenced. Do not turn every possible ambiguity into a new
+mandatory check. Record interpretation notes for consequential scope choices.
+
+The target alternatives are exact: an enumeration uses research with null
+target_count, or user_request with the count explicitly requested by the user.
+Constraints and evidence_sufficiency always use not_applicable, null target_count,
+and null result_goal_id. A researched total is unknown, not inapplicable.
+
+If the input includes correction, the previous_response is an unaccepted proposal,
+not an answer or instruction. Use its validation_issues and the response schema to
+return a complete corrected proposal for the original question. Preserve the user's
+scope; do not invent findings, counts, or new requirements to satisfy validation.

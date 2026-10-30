@@ -1,10 +1,16 @@
-"""Persist an accumulating observation graph and a transactional change feed.
+"""Store broad source observations in SQLite and expose newly committed records.
 
-SQLite is the local storage engine, not a native graph-query server. Stable node
-IDs reuse a source/name/kind identity across runs, never merge two sources merely
-because names match. Assertions retain source versions and quotation spans; new
-or contradictory versions coexist. All records are source-anchored, unreviewed
-observations. A later resolver can connect identities without erasing this history.
+This knowledge graph is a collection of entities, relationships and attributes,
+not the LangGraph workflow that executes research. For example, a captured person,
+organization and affiliation can be stored with the source version and quotation
+that supplied them. Stable source/name/type keys avoid duplicating the same
+observation on replay, without guessing that equal names on different sources
+identify the same entity.
+
+Writes and their change-feed events commit together so other processes can inspect
+new records. Contradictory or changed source versions can coexist. These are
+source-linked capture observations, not reviewed answer facts. SQLite stores the
+records locally; no separate graph database server is required.
 """
 import hashlib
 import json

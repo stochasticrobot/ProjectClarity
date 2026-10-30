@@ -148,7 +148,8 @@ def start_trace(directory: Path, session, attempt, messages, secret: str) -> dic
         "output_schema": ExtractionBatch.model_json_schema(),
         "schema_boundary": "Pydantic schema supplied to LangChain, not the SDK-transformed wire schema",
         "requested_model": session.request.model, "max_output_tokens": session.request.budget.max_output_tokens,
-        "effort": "low", "timeout_seconds": 60, "max_retries": 0,
+        "effort": "low", "timeout_seconds": session.request.model_timeout_seconds,
+        "max_retries": 0, "application_retries": session.request.model_retries,
         "status": "prepared", "response_text": None, "response_text_truncated": False,
         "non_text_blocks_omitted": False,
     }
@@ -198,7 +199,7 @@ def finish_trace(directory: Path, trace: dict, attempt, secret: str) -> None:
         None. Merge final attempt status and usage into the trace and save it.
     """
     for field in ("status", "error_code", "response_model", "stop_reason", "input_tokens",
-                  "output_tokens", "total_tokens", "elapsed_seconds"):
+                  "output_tokens", "total_tokens", "elapsed_seconds", "diagnostics", "last_attempt_id"):
         trace[field] = getattr(attempt, field)
     trace["parsed_result"] = attempt.result.model_dump(mode="json") if attempt.result is not None else None
     save_trace(directory, trace, secret)

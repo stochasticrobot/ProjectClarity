@@ -1,8 +1,11 @@
-"""Normalize declared representation variants without changing observed graph records.
+"""Define which representation differences a knowledge-graph score may ignore.
 
-Policies belong to the evaluation case, never a particular model. They express
-known equivalence, not fuzzy similarity: unknown labels remain unmatched. Roles,
-directions, dates and values retain meaning; the grader still checks source evidence.
+A graph contains entity records and relationships with labels, directions and
+values. An evaluation case can explicitly declare equivalent labels or date
+formats; these helpers validate that policy and build comparison keys without
+rewriting saved observations. For example, a declared predicate alias can match,
+while an unknown synonym remains different. The policy is tied to the case, not
+to a model, and does not replace checks of the supporting source evidence.
 """
 from datetime import datetime
 from decimal import Decimal, InvalidOperation

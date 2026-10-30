@@ -1,4 +1,4 @@
-"""Check monitoring along the actual research CLI, graph, parser, and file-save path.
+"""Check monitoring along the actual research tool’s terminal entry point, graph, parser, and file-save path.
 
 Synthetic provider/source responses keep this offline. Assertions inspect the
 real event stream and snapshots, including plans that stop before retrieval and
@@ -45,13 +45,13 @@ class FetchMonitoringCLIIntegrationTests(unittest.TestCase):
                 invocation.
 
         Returns:
-            A tuple of CLI exit code, captured stdout and captured stderr from the production
+            A tuple of terminal interface exit code, captured stdout and captured stderr from the production
             command.
         """
         return self.cli.run_cli(lambda request: self.cli.response(), *options, plan_only=False, source_dns=public_dns)
 
     def test_success_exposes_real_phases_counters_and_saved_document_location(self):
-        """Every 'retrieved' event corresponds to files actually saved through the CLI.
+        """Every 'retrieved' event corresponds to files actually saved through the terminal interface.
 
         Args:
             self: This unittest case instance, holding its isolated fixtures and assertion

@@ -1,8 +1,11 @@
-"""Structured observation capture; topic relevance never excludes an entity.
+"""Define model replies for broad, source-linked knowledge capture.
 
-These schemas are sent to the model. Entities remain source-scoped until a later
-identity-resolution step. Attributes and relationships carry their own quotations,
-so one ambiguous date cannot invalidate unrelated affiliation evidence.
+Unlike answer-focused extraction, this optional task can record entities,
+relationships and attributes even when their relevance to the current question
+is unknown. The Pydantic models specify the proposed observations and quotation
+references. Later Python checks locate the quotations before storage. Structural
+validation is not a factual review. Class docstrings and field descriptions here
+are included in the JSON schema sent to the model.
 """
 from typing import Literal
 from projectclarity.research_schemas import Contract, LocalReference, Text

@@ -1,4 +1,4 @@
-"""Prove an evaluation run calls the real research CLI and scores its actual saved artifacts.
+"""Prove an evaluation run calls the real research tool’s terminal entry point and scores its actual saved artifacts.
 
 The existing transport fixture supplies invented Alice/Lab X facts. This proves
 runner wiring and independent score handling, NOT real parliamentary accuracy.
@@ -67,7 +67,7 @@ class ResearchCaseRunnerTests(unittest.TestCase):
         flow.overrides['ExtractionBatch'] = lambda body: flow.cli.response(text=json.dumps(batch))
         output = flow.cli.directory / 'evaluations'
         def evaluation_entry(*args, **kwargs):
-            """Enter the real evaluation CLI inside the existing offline transport harness.
+            """Enter the real evaluation terminal interface inside the existing offline transport harness.
 
             Args:
                 *args: Arguments accepted to match the intercepted runpy entry point; the selected
@@ -76,7 +76,7 @@ class ResearchCaseRunnerTests(unittest.TestCase):
                     evaluator is selected from them.
 
             Returns:
-                Never returns normally; SystemExit carries the actual evaluation CLI result to the
+                Never returns normally; SystemExit carries the actual evaluation terminal interface result to the
                 harness.
             """
             raise SystemExit(main(['run', case['case_id'], '--max-requests', '3', '--max-output-tokens', '1024',

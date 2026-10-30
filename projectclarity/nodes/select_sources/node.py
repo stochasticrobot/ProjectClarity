@@ -1,8 +1,10 @@
-"""Select useful search-result leads before retrieval, with no invented URLs.
+"""Ask the model which saved search results should become sources to read.
 
-This is relevance selection, not claim verification. Direct evidence, indexes,
-context, denominator sources and uncertain leads can all be useful. The model
-selects IDs; Python registers only URLs from the saved result inventory.
+The model sees the research goals and an allowed set of search-result IDs. It can
+propose direct evidence, a useful directory, background context or a specific lead.
+Python checks each proposal and registers only the matching observed URL, within
+source capacity and access rules. Selection does not download the page or verify
+its claims; retrieval, extraction and review follow as separate scheduled steps.
 """
 import json
 from pydantic import Field
@@ -28,6 +30,19 @@ class SearchSourceSelection(Contract):
     selections: list[SearchSourceChoice]
 
 
+from projectclarity.discovery.source_disposition import SourceDisposition
+
+
+class ContractSearchChoice(SearchSourceChoice, SourceDisposition):
+    """An offered search result with an explicit requirement-linked disposition."""
+
+
+class ContractSearchSelection(Contract):
+    """Ordered source decisions; rejected entries never authorize acquisition."""
+
+    selections: list[ContractSearchChoice]
+
+
 from projectclarity.prompt_loader import load_prompt
 
 SYSTEM_PROMPT = load_prompt('select_search_sources.txt')
@@ -40,7 +55,12 @@ def select_sources(state, output_root, key_reader=read_api_key, monitor=None):
     Ask the model to select from the observed result inventory, validate returned IDs and
     goal references, then apply source limits and duplicate checks. Retain valid surplus
     rankings for later selection rather than rejecting the reply for exceeding capacity.
-    Search snippets remain
+    Capacity also leaves a minimum extraction/review opportunity per accepted source
+    within the shared request budget, excluding the final coverage reservation.
+    Registered-source summaries include bounded
+    run-local result examples and their statuses, never unseen destination contents.
+    New answer-controller runs require explicit dispositions and requirement links;
+    rejection cannot authorize acquisition. Search snippets remain
     leads rather than claim evidence; only later retrieval supplies source text. Offer
     result IDs, URLs, titles and snippets with interpreted human guidance, not internal
     eligibility receipts or query IDs whose queries are absent.
@@ -69,6 +89,13 @@ def select_sources(state, output_root, key_reader=read_api_key, monitor=None):
         if r["result_id"] in search.get("active_result_ids", []) and r["eligible"]}
     # Ten is a processing batch, not a validation rule or cumulative quota.
     capacity = min(10, search_source_limit(session) - len(search.get("selected_sources", [])), session.request.max_sources - len(session.sources))
+    if session.request.extract_knowledge:
+        from projectclarity.nodes.schedule_work.workflow_control import processing_reserve
+        from projectclarity.coverage.checkpoints import coverage_enabled
+        remaining = (session.request.budget.max_requests - session.usage.requests_attempted
+                     - int(coverage_enabled(session)))
+        capacity = min(capacity, max(0, (remaining - 1 - session.request.model_retries - processing_reserve(session))
+            // (1 + int(session.request.review_claims))))
     search["registered_this_round"] = []
     if not session.request.web_search or not offered or capacity <= 0 or session.status == "cancelled":
         if session.request.web_search and not session.sources and session.status != 'cancelled' and not search_can_continue(session):
@@ -76,6 +103,8 @@ def select_sources(state, output_root, key_reader=read_api_key, monitor=None):
             session.error = 'No source was available for retrieval before discovery stopped; inspect search.json.'
         save_search(session, output_root)
         return {"session": session}
+    from projectclarity.nodes.schedule_work.answer_controller import enabled
+    controlled = enabled(session)
     payload = {"original_question": session.request.question,
         "goals": [g.model_dump(mode="json") for g in session.plan.goals],
         "criteria": [c.model_dump(mode="json") for c in session.plan.completion_criteria],
@@ -87,14 +116,14 @@ def select_sources(state, output_root, key_reader=read_api_key, monitor=None):
             [e.model_dump(mode='json') for e in session.plan.scope_estimates]),
         "results": [{k: r[k] for k in ('result_id', 'url', 'title', 'snippet')}
             for r in offered.values()], "capacity": capacity}
-    payload['registered_sources'] = [{'source_id': source.source_id, 'url': source.url}
-        for source in session.sources if source.kind == 'url']
     from projectclarity.coverage.goal_register import goal_progress_summary
     payload['cumulative_goal_progress'] = goal_progress_summary(session)
+    from projectclarity.discovery.registered_source_context import add_registered_context
+    add_registered_context(session, payload, SYSTEM_PROMPT)
     answer, receipt = invoke_structured(session, output_root, call_id=f"search_select_{len(search['selections']) + 1}",
-        task="select_sources", prompt_version="search-source-selection-v4",
+        task="select_sources", prompt_version="search-source-dispositions-v1" if controlled else "search-source-selection-v4",
         messages=[("system", SYSTEM_PROMPT), ("human", json.dumps(payload, ensure_ascii=False))],
-        schema=SearchSourceSelection, key_reader=key_reader, monitor=monitor)
+        schema=ContractSearchSelection if controlled else SearchSourceSelection, key_reader=key_reader, monitor=monitor)
     selection = {"round": search["round"], "call_id": receipt["call_id"],
         "offered_ids": list(offered), "capacity": capacity, "proposal": None, "error_code": None}
     search["selections"].append(selection)

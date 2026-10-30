@@ -1,4 +1,11 @@
-"""Use MediaWiki full-text search for discovery, without fetching article bodies."""
+"""Find candidate Wikipedia articles through its public full-text search API.
+
+The isolated search worker calls this adapter when Wikipedia is the explicitly
+selected engine. It sends a bounded query, decodes result titles and snippets,
+and returns article URLs for later source selection. It does not download article
+bodies. An empty Wikipedia result is not evidence that the topic is absent from
+the wider web; failures remain distinct from successful empty responses.
+"""
 import json
 from urllib.parse import quote
 

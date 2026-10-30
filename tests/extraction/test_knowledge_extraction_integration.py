@@ -1,4 +1,4 @@
-"""Run extraction through the same CLI, LangGraph and SDK used by the developer.
+"""Run extraction through the same terminal interface, LangGraph and SDK used by the developer.
 
 Normally only the provider HTTP reply is synthetic. Real local documents pass through
 retrieval, the separately defined extraction node, evidence validation and saved
@@ -13,7 +13,6 @@ Those narrower substitutions are explicit and are not provider-wire proofs.
 
 import json
 import unittest
-from pathlib import Path
 from unittest.mock import patch
 
 import httpx2
@@ -64,7 +63,7 @@ class KnowledgeExtractionIntegrationTests(unittest.TestCase):
                 invocation.
 
         Returns:
-            A tuple of CLI exit code, captured stdout, captured stderr, run-directory Path and
+            A tuple of terminal interface exit code, captured stdout, captured stderr, run-directory Path and
             saved-session dictionary.
         """
         def response(request):
@@ -109,7 +108,9 @@ class KnowledgeExtractionIntegrationTests(unittest.TestCase):
         self.assertEqual(session["usage"]["output_tokens"], 440)
         request = json.loads(self.cli.requests[1].content)
         payload = json.loads(request["messages"][0]["content"])
-        self.assertEqual(payload["goals"], self.cli.plan["goals"])
+        # Legacy fixtures omit the new optional mapping; serialized goals expose
+        # its empty default without gaining any cross-requirement authority.
+        self.assertEqual(payload["goals"], [{**g, 'requirement_ids': []} for g in self.cli.plan["goals"]])
         self.assertEqual(payload["scope_in"], self.cli.plan["scope_in"])
         saved_text = (directory / "documents/S1/text.txt").read_text()
         self.assertEqual(payload["passage"]["text"], saved_text)
@@ -131,6 +132,88 @@ class KnowledgeExtractionIntegrationTests(unittest.TestCase):
         self.assertIn('"extraction_call_started"', events)
         self.assertNotIn("Alice", events)
         self.assertEqual(json.loads((directory / "extraction_config.json").read_text())["max_retries"], 0)
+
+    def test_local_identifier_recovery_through_real_entry_point(self):
+        """Keep a valid claim when the provider's local label exceeds its schema limit.
+
+        Args:
+            self: Test instance with a temporary source and synthetic HTTP transport.
+
+        Returns:
+            None; fails if recovery loses a claim, alters the raw reply or adds a call.
+            This proves production wiring, not live-model extraction accuracy.
+        """
+        batch = proposed_batch()
+        label = 'organization_' + 'x' * 40
+        batch['entities'][1]['entity_id'] = label
+        batch['claims'][0]['entity_ids'][1] = label
+        batch['claims'][0]['relationship']['object_id'] = label
+        code, _, stderr, directory, session = self.run_extraction(batch=batch)
+        self.assertEqual(code, 0, stderr)
+        self.assertEqual(session['usage']['requests_attempted'], 2)
+        attempt = session['extraction']['attempts'][0]
+        self.assertEqual(attempt['status'], 'completed')
+        self.assertEqual(len(attempt['identifier_aliases']), 1)
+        self.assertEqual(session['extraction']['candidates'][0]['evidence_status'], 'anchored')
+        trace = json.loads((directory / attempt['trace_path']).read_text())
+        self.assertEqual(json.loads(trace['response_text']), batch)
+        self.assertEqual(attempt['result']['claims'][0]['statement'], batch['claims'][0]['statement'])
+
+    def test_html_records_reach_real_graph_without_cross_row_splitting(self):
+        """Exercise structural formatting and smaller passages through the research entry point.
+
+        Args:
+            self: Test instance with synthetic planning/model HTTP replies.
+
+        Returns:
+            None; fails if production retrieval bypasses the structural parser or if
+            extraction receives a row without its shared cell. This is wiring evidence.
+        """
+        self.document = self.cli.directory / 'records.html'
+        self.document.write_text('<main><table><tr><th>Name</th><th>Place</th></tr>'
+            '<tr><td>Aster</td><td rowspan="2">North</td></tr>'
+            '<tr><td>Birch</td></tr></table></main>')
+        code, _, stderr, directory, session = self.run_extraction(
+            batch={'entities': [], 'claims': []}, budget=8)
+        self.assertEqual(code, 0, stderr)
+        self.assertIn('records-v3', session['documents'][0]['parser'])
+        received = []
+        for request in self.cli.requests[1:]:
+            body = json.loads(request.content)
+            payload = json.loads(body['messages'][0]['content'])
+            received.append(payload['passage']['text'])
+        self.assertEqual(''.join(received), (directory / 'documents/S1/text.txt').read_text())
+        self.assertTrue(any('Name: Aster | Place: North' in passage for passage in received))
+        self.assertTrue(any('Name: Birch | Place: North' in passage for passage in received))
+
+    def test_malformed_table_spans_reach_extraction_through_real_entry_point(self):
+        """Prove saved malformed markup becomes aligned evidence through the full graph.
+
+        Args:
+            self: Test instance with synthetic provider HTTP replies and real parsing.
+
+        Returns:
+            None; fails if retrieval rejects the table, shifts columns or drops rows
+            before extraction. This checks production wiring, not live-model accuracy.
+        """
+        self.document = self.cli.directory / 'malformed-spans.html'
+        raw = ('<main><table><tr><th colspan="2 style=">Party</th><th>Name</th><th>Place</th></tr>'
+            '<tr><td></td><td>Maple</td><td>Aster</td><td rowspan="2 style=">North</td></tr>'
+            '<tr><td></td><td>Cedar</td><td>Birch</td></tr></table></main>')
+        self.document.write_text(raw)
+        code, _, stderr, directory, session = self.run_extraction(
+            batch={'entities': [], 'claims': []}, budget=8)
+        self.assertEqual(code, 0, stderr)
+        document = session['documents'][0]
+        self.assertEqual(document['status'], 'retrieved')
+        self.assertIn('records-v3', document['parser'])
+        self.assertEqual((directory / document['raw_path']).read_text(), raw)
+        received = [json.loads(json.loads(request.content)['messages'][0]['content'])['passage']['text']
+                    for request in self.cli.requests[1:]]
+        self.assertEqual(''.join(received), (directory / document['text_path']).read_text())
+        self.assertTrue(any('Party: Maple | Name: Aster | Place: North' in text for text in received))
+        self.assertTrue(any('Party: Cedar | Name: Birch | Place: North' in text for text in received))
+        self.assertTrue(all(attempt['status'] == 'completed' for attempt in session['extraction']['attempts']))
 
     def test_fake_quotes_are_retained_as_invalid_not_published_or_successful(self):
         """A well-shaped reply with invented evidence produces a visible partial failure.

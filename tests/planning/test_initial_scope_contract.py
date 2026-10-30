@@ -1,6 +1,6 @@
 """Prove initial scope conversion and failure diagnostics through the real planning path.
 
-Model HTTP replies are synthetic. The CLI, provider schema serialization, parser,
+Model HTTP replies are synthetic. The terminal interface, provider schema serialization, parser,
 normalization and saved-plan loading are real; no paid requests are made.
 """
 import json
@@ -24,7 +24,7 @@ class InitialScopeContractTests(unittest.TestCase):
         """Exercise the actual provider schema and persistence with four estimate forms.
 
         Args:
-            self: Test case running the real CLI with an isolated synthetic response.
+            self: Test case running the real terminal entry point with an isolated synthetic response.
 
         Returns:
             None. Fail if evidence bookkeeping reaches the model schema, if Python
@@ -67,7 +67,7 @@ class InitialScopeContractTests(unittest.TestCase):
         """Keep malformed ranges rejected with specific, safe field-level diagnostics.
 
         Args:
-            self: Test case using the production CLI/SDK failure harness.
+            self: Test case using the production terminal entry point/SDK failure harness.
 
         Returns:
             None. Fail if missing, reversed or negative bounds become a valid plan,

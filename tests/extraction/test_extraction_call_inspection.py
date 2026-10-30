@@ -1,6 +1,6 @@
 """Check that a developer can see what extraction actually asked and received.
 
-Integration cases run the real CLI, graph and SDK with invented HTTP answers. They
+Integration cases run the real terminal entry point, graph and SDK with invented HTTP answers. They
 compare the private trace to the SDK request, exercise the inspection command,
 and ensure failed answers remain inspectable without leaking into event logs.
 No live model or developer credential is used. Historical reconstruction is
@@ -31,7 +31,7 @@ class ExtractionCallInspectionTests(unittest.TestCase):
     """Use the shared offline production-path harness, not a second workflow."""
 
     def setUp(self):
-        """Create an isolated extraction CLI harness so inspection never touches real runs.
+        """Create an isolated extraction terminal interface harness so inspection never touches real runs.
 
         Args:
             self: This unittest case instance, holding its isolated fixtures and assertion
@@ -116,8 +116,8 @@ class ExtractionCallInspectionTests(unittest.TestCase):
         self.assertIn("invalid_extraction_schema", stderr)
         self.assertNotIn("bad answer", (directory / "events.jsonl").read_text())
 
-    def test_provider_failure_has_receipt_without_exception_body(self):
-        """HTTP failures finish the live event and leave an explicit missing-answer receipt.
+    def test_provider_failure_retains_private_body_without_public_leak(self):
+        """Retain provider failures privately without leaking them into ordinary artifacts.
 
         Args:
             self: This unittest case instance, holding its isolated fixtures and assertion
@@ -137,8 +137,18 @@ class ExtractionCallInspectionTests(unittest.TestCase):
         events = [json.loads(line) for line in (directory / "events.jsonl").read_text().splitlines()]
         finished = next(e for e in events if e["event"] == "extraction_call_finished")
         self.assertEqual(finished["level"], "error")
+        receipts = list((directory / "provider_errors").glob("*.json"))
+        self.assertTrue(receipts, "Provider error body must never be discarded.")
+        for path in receipts:
+            receipt = json.loads(path.read_text())
+            self.assertEqual(path.stat().st_mode & 0o777, 0o600)
+            self.assertTrue(any(row.get("response_body") == reply.text
+                                for row in receipt["errors"]))
+            self.assertTrue(any("PRIVATE_PROVIDER_ERROR_BODY" in row["message"]
+                                for row in receipt["errors"]))
+        self.assertEqual((directory / "provider_errors").stat().st_mode & 0o777, 0o700)
         for path in directory.rglob("*"):
-            if path.is_file():
+            if path.is_file() and path not in receipts:
                 self.assertNotIn(b"PRIVATE_PROVIDER_ERROR_BODY", path.read_bytes())
 
     def test_inspection_cli_reads_saved_call_without_provider_or_session_mutation(self):

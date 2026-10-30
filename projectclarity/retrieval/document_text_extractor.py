@@ -35,8 +35,8 @@ def parse_document(raw: bytes, content_type: str, limits: RetrievalLimits, *, ch
             ceilings.
         check_control: Optional zero-argument cancellation/deadline callback polled while
             supervising the parser child.
-        link_inventory: Optional mutable dictionary filled with bounded HTML anchors and
-            truncation metadata; None skips returning link metadata.
+        link_inventory: Optional mutable dictionary filled with bounded HTML anchors,
+            truncation and source-stated metadata; None skips returning metadata.
 
     Returns:
         A pair of normalized text and parser/version label. Failed or unsupported parsing
@@ -88,4 +88,5 @@ def parse_document(raw: bytes, content_type: str, limits: RetrievalLimits, *, ch
         raise RetrievalError(payload["error_code"], payload["error"])
     if link_inventory is not None:
         link_inventory.update(links=payload.get("links", []), links_truncated=payload.get("links_truncated", False))
+        link_inventory['source_metadata'] = payload.get('source_metadata', {})
     return payload["text"], payload["parser"]

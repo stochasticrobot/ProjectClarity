@@ -1,4 +1,4 @@
-"""Exercise the production research CLI with an in-memory HTTP provider.
+"""Exercise the production research tool’s terminal entry point with an in-memory HTTP provider.
 
 Purpose:
     Run the same research command you use, but answer its model request with
@@ -14,7 +14,7 @@ Typical use:
     Run ``python -m unittest tests.planning.test_planning_cli_integration -v`` or discover the
     suite. Fixtures are handwritten; no developer key or model credits are used.
 Boundary:
-    The actual CLI/graph/SDK execute, but the model does not. Passing tests prove
+    The actual terminal interface/graph/SDK execute, but the model does not. Passing tests prove
     application wiring and validation, not prompt quality or live provider access.
 """
 
@@ -98,19 +98,19 @@ class PlanningCLIIntegrationTests(unittest.TestCase):
                 retrieval.
             source_dns: Optional DNS substitute for source retrieval; None rejects all DNS
                 attempts.
-            direct_entry: Whether to invoke the root CLI shortcut rather than the explicit
+            direct_entry: Whether to invoke the root terminal interface shortcut rather than the explicit
                 research subcommand.
-            details: Whether to request the full CLI plan/graph display instead of compact
+            details: Whether to request the full terminal interface plan/graph display instead of compact
                 output.
             knowledge: True explicitly enables auxiliary capture, False adds the explicit
-                disable flag, and None leaves CLI defaults untouched. Tests may override
+                disable flag, and None leaves terminal interface defaults untouched. Tests may override
                 the auxiliary cap using extra_args.
             *extra_args: Additional command-line argument strings appended to this helper's base
                 invocation. This harness explicitly selects legacy single-engine/no-cooldown
-                defaults; recovery tests override them with real CLI flags.
+                defaults; recovery tests override them with real terminal entry point flags.
 
         Returns:
-            A tuple of exit code, captured stdout and captured stderr from the real CLI entry
+            A tuple of exit code, captured stdout and captured stderr from the real terminal entry point entry
             point.
         """
         def respond(request):
@@ -131,6 +131,7 @@ class PlanningCLIIntegrationTests(unittest.TestCase):
             "projectclarity", "research", "--question", "Who researches AI security in Canada?",
             "--output-dir", str(self.output),
             "--max-fetch-seconds", "180",
+            "--model-retries", "0", "--model-concurrency", "1",
             "--search-min-interval-seconds", "0", "--search-retries", "0",
             "--search-fallbacks", "none", "--search-cooldown-seconds", "0", "--search-recovery-rounds", "0",
         ]
@@ -190,7 +191,7 @@ class PlanningCLIIntegrationTests(unittest.TestCase):
         return paths[0].parent, json.loads(paths[0].read_text())
 
     def test_project_dotenv_authenticates_without_prompting(self):
-        """The production CLI can use the local key file without leaking it to outputs.
+        """The production terminal entry point can use the local key file without leaking it to outputs.
 
         Args:
             self: This unittest case instance, holding its isolated fixtures and assertion
@@ -241,7 +242,10 @@ class PlanningCLIIntegrationTests(unittest.TestCase):
         self.assertEqual(saved["status"], "needs_clarification")
         self.assertEqual(saved["usage"]["requests_attempted"], 1)
         self.assertEqual(saved["usage"]["total_tokens"], 370)
-        self.assertEqual(json.loads((directory / "plan.json").read_text()), self.plan)
+        # The old input remains accepted; only the explicit empty mapping default
+        # is added to its serialized goals. All other plan fields must match exactly.
+        self.assertEqual(json.loads((directory / "plan.json").read_text()),
+            {**self.plan, 'goals': [{**g, 'requirement_ids': []} for g in self.plan['goals']]})
         self.assertEqual(saved["plan"]["question_category"], self.plan["question_category"])
         category_section = "## Question category\n" + self.plan["question_category"]
         self.assertIn(category_section, stdout)
@@ -304,7 +308,7 @@ class PlanningCLIIntegrationTests(unittest.TestCase):
         self.assertNotIn("run_mode", payload)
         self.assertNotIn("workflow_phase", payload)
         _, saved = self.saved_session()
-        self.assertEqual(saved["prompt_version"], "research-plan-v11")
+        self.assertEqual(saved["prompt_version"], "research-plan-v12")
 
     def test_mixed_sources_keep_document_bodies_and_full_paths_out_of_model_request(self):
         """The real command plans over source references without reading local documents.
@@ -365,10 +369,13 @@ class PlanningCLIIntegrationTests(unittest.TestCase):
         self.assertIs(payload["source_contents_available"], False)
         self.assertEqual(payload["source_policy"], "supplied_only")
         directory, saved = self.saved_session()
-        self.assertEqual(saved["schema_version"], "1.7")
+        self.assertEqual(saved["schema_version"], "1.8")
         self.assertEqual(saved["visited_nodes"], ["initialize_research", "plan_research"])
         self.assertEqual([source["path"] for source in saved["sources"][1:]], [str(path) for path in documents])
-        self.assertEqual(json.loads((directory / "plan.json").read_text()), self.plan)
+        # The old input remains accepted; only the explicit empty mapping default
+        # is added to its serialized goals. All other plan fields must match exactly.
+        self.assertEqual(json.loads((directory / "plan.json").read_text()),
+            {**self.plan, 'goals': [{**g, 'requirement_ids': []} for g in self.plan['goals']]})
         self.assertIn("S2 [file]", stdout)
         self.assertIn("S3 [file]", (directory / "plan.md").read_text())
         self.assertIn("Local document contents have not been read", stdout)
@@ -392,7 +399,7 @@ class PlanningCLIIntegrationTests(unittest.TestCase):
         self.assertEqual(saved["sources"], [{"source_id": "S1", "kind": "file", "path": str(document)}])
 
     def test_missing_document_stops_cli_before_provider_or_session(self):
-        """The CLI must surface a bad path before any model request can spend credits.
+        """The terminal interface must surface a bad path before any model request can spend credits.
 
         Args:
             self: This unittest case instance, holding its isolated fixtures and assertion
@@ -536,7 +543,7 @@ class PlanningCLIIntegrationTests(unittest.TestCase):
         self.assertIn("HTTP 429", stderr)
 
     def test_invalid_input_never_invokes_provider_or_creates_session(self):
-        """The module entry point must stop bad CLI input before any external work.
+        """The module entry point must stop bad terminal interface input before any external work.
 
         Args:
             self: This unittest case instance, holding its isolated fixtures and assertion

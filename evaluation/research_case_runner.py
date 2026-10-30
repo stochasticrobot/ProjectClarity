@@ -1,4 +1,4 @@
-"""Run one dated evaluation question through the normal ProjectClarity CLI.
+"""Run one dated evaluation question through the normal ProjectClarity terminal interface.
 
 `list` and `show` are free, offline preparation commands. `run CASE_ID` deliberately
 starts real research and may spend model credits; it passes only the question and
@@ -77,7 +77,7 @@ def print_reference_validation(suite_or_score):
 
 
 def run_case(suite, case, args):
-    """Save inputs, call the real CLI once, and score its saved output even when partial.
+    """Save inputs, call the real terminal entry point once, and score its saved output even when partial.
 
     No automatic repeat is made after a budget stop or failed model call. Source access
     errors remain source access errors. Each case has its own explicit request cap; no
@@ -91,7 +91,7 @@ def run_case(suite, case, args):
             limit.
 
     Returns:
-        The CLI/evaluation exit code, including failure or incomplete acceptance checks;
+        The terminal interface/evaluation exit code, including failure or incomplete acceptance checks;
         saved artifacts remain available for inspection.
     """
     directory = args.output_dir / case['case_id'] / uuid.uuid4().hex

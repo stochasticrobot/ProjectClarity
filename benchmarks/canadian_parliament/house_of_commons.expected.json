@@ -1,0 +1,3744 @@
+{
+  "benchmark_id": "house_of_commons",
+  "schema_version": 1,
+  "question": "According to this saved page, list all current Members of Parliament and their ridings as of 2026-10-26. Exclude former members.",
+  "as_of": "2026-10-26",
+  "source_file": "house_of_commons.html",
+  "source_url": "https://www.ourcommons.ca/Members/en/search",
+  "source_sha256": "a338ebfd485ef76c27afc654321352527e05f848a8129c9c0d00e501405e5261",
+  "retrieved_at_utc": "2026-10-26T04:04:43.222242+00:00",
+  "reference_basis": "Source-local structured HTML inspection, not a model answer or independent verification of every real-world fact.",
+  "scoring": {
+    "unit": "distinct (mp, riding) pair",
+    "normalization": "Unicode NFC, casefold, collapse whitespace only; no fuzzy matching or cross-page aliases.",
+    "duplicates": "Count each identical pair once.",
+    "metrics": [
+      "precision",
+      "recall",
+      "f1"
+    ],
+    "warning": "Score this page independently. A matching name with the wrong riding is an incorrect pair. Source fidelity does not prove real-world currency."
+  },
+  "expected_pair_count": 337,
+  "expected_pairs": [
+    {
+      "mp": "Aaron Gunn",
+      "riding": "North Island—Powell River",
+      "party": "Conservative",
+      "province": "British Columbia",
+      "member_id": "123586",
+      "provenance": {
+        "tile_selector": "#mp-tile-person-id-123586",
+        "list_selector": "#mp-list-id-123586"
+      }
+    },
+    {
+      "mp": "Abdelhaq Sari",
+      "riding": "Bourassa",
+      "party": "Liberal",
+      "province": "Quebec",
+      "member_id": "122533",
+      "provenance": {
+        "tile_selector": "#mp-tile-person-id-122533",
+        "list_selector": "#mp-list-id-122533"
+      }
+    },
+    {
+      "mp": "Adam Chambers",
+      "riding": "Simcoe North",
+      "party": "Conservative",
+      "province": "Ontario",
+      "member_id": "110649",
+      "provenance": {
+        "tile_selector": "#mp-tile-person-id-110649",
+        "list_selector": "#mp-list-id-110649"
+      }
+    },
+    {
+      "mp": "Adam van Koeverden",
+      "riding": "Burlington North—Milton West",
+      "party": "Liberal",
+      "province": "Ontario",
+      "member_id": "105242",
+      "provenance": {
+        "tile_selector": "#mp-tile-person-id-105242",
+        "list_selector": "#mp-list-id-105242"
+      }
+    },
+    {
+      "mp": "Ahmed Hussen",
+      "riding": "York South—Weston—Etobicoke",
+      "party": "Liberal",
+      "province": "Ontario",
+      "member_id": "89020",
+      "provenance": {
+        "tile_selector": "#mp-tile-person-id-89020",
+        "list_selector": "#mp-list-id-89020"
+      }
+    },
+    {
+      "mp": "Alana Hirtle",
+      "riding": "Cumberland—Colchester",
+      "party": "Liberal",
+      "province": "Nova Scotia",
+      "member_id": "122419",
+      "provenance": {
+        "tile_selector": "#mp-tile-person-id-122419",
+        "list_selector": "#mp-list-id-122419"
+      }
+    },
+    {
+      "mp": "Alex Ruff",
+      "riding": "Bruce—Grey—Owen Sound",
+      "party": "Conservative",
+      "province": "Ontario",
+      "member_id": "105070",
+      "provenance": {
+        "tile_selector": "#mp-tile-person-id-105070",
+        "list_selector": "#mp-list-id-105070"
+      }
+    },
+    {
+      "mp": "Alexandra Mendès",
+      "riding": "Brossard—Saint-Lambert",
+      "party": "Liberal",
+      "province": "Quebec",
+      "member_id": "58621",
+      "provenance": {
+        "tile_selector": "#mp-tile-person-id-58621",
+        "list_selector": "#mp-list-id-58621"
+      }
+    },
+    {
+      "mp": "Alexis Brunelle-Duceppe",
+      "riding": "Lac-Saint-Jean",
+      "party": "Bloc Québécois",
+      "province": "Quebec",
+      "member_id": "104786",
+      "provenance": {
+        "tile_selector": "#mp-tile-person-id-104786",
+        "list_selector": "#mp-list-id-104786"
+      }
+    },
+    {
+      "mp": "Alexis Deschênes",
+      "riding": "Gaspésie—Les Îles-de-la-Madeleine—Listuguj",
+      "party": "Bloc Québécois",
+      "province": "Quebec",
+      "member_id": "122579",
+      "provenance": {
+        "tile_selector": "#mp-tile-person-id-122579",
+        "list_selector": "#mp-list-id-122579"
+      }
+    },
+    {
+      "mp": "Ali Ehsassi",
+      "riding": "Willowdale",
+      "party": "Liberal",
+      "province": "Ontario",
+      "member_id": "89010",
+      "provenance": {
+        "tile_selector": "#mp-tile-person-id-89010",
+        "list_selector": "#mp-list-id-89010"
+      }
+    },
+    {
+      "mp": "Amandeep Sodhi",
+      "riding": "Brampton Centre",
+      "party": "Liberal",
+      "province": "Ontario",
+      "member_id": "122801",
+      "provenance": {
+        "tile_selector": "#mp-tile-person-id-122801",
+        "list_selector": "#mp-list-id-122801"
+      }
+    },
+    {
+      "mp": "Amanpreet S. Gill",
+      "riding": "Calgary Skyview",
+      "party": "Conservative",
+      "province": "Alberta",
+      "member_id": "123418",
+      "provenance": {
+        "tile_selector": "#mp-tile-person-id-123418",
+        "list_selector": "#mp-list-id-123418"
+      }
+    },
+    {
+      "mp": "Amarjeet Gill",
+      "riding": "Brampton West",
+      "party": "Conservative",
+      "province": "Ontario",
+      "member_id": "122825",
+      "provenance": {
+        "tile_selector": "#mp-tile-person-id-122825",
+        "list_selector": "#mp-list-id-122825"
+      }
+    },
+    {
+      "mp": "Andrew Lawton",
+      "riding": "Elgin—St. Thomas—London South",
+      "party": "Conservative",
+      "province": "Ontario",
+      "member_id": "122913",
+      "provenance": {
+        "tile_selector": "#mp-tile-person-id-122913",
+        "list_selector": "#mp-list-id-122913"
+      }
+    },
+    {
+      "mp": "Andrew Scheer",
+      "riding": "Regina—Qu'Appelle",
+      "party": "Conservative",
+      "province": "Saskatchewan",
+      "member_id": "25454",
+      "provenance": {
+        "tile_selector": "#mp-tile-person-id-25454",
+        "list_selector": "#mp-list-id-25454"
+      }
+    },
+    {
+      "mp": "Andréanne Larouche",
+      "riding": "Shefford",
+      "party": "Bloc Québécois",
+      "province": "Quebec",
+      "member_id": "104973",
+      "provenance": {
+        "tile_selector": "#mp-tile-person-id-104973",
+        "list_selector": "#mp-list-id-104973"
+      }
+    },
+    {
+      "mp": "Angelo Iacono",
+      "riding": "Alfred-Pellan",
+      "party": "Liberal",
+      "province": "Quebec",
+      "member_id": "71337",
+      "provenance": {
+        "tile_selector": "#mp-tile-person-id-71337",
+        "list_selector": "#mp-list-id-71337"
+      }
+    },
+    {
+      "mp": "Anita Anand",
+      "riding": "Oakville East",
+      "party": "Liberal",
+      "province": "Ontario",
+      "member_id": "96081",
+      "provenance": {
+        "tile_selector": "#mp-tile-person-id-96081",
+        "list_selector": "#mp-list-id-96081"
+      }
+    },
+    {
+      "mp": "Anita Vandenbeld",
+      "riding": "Ottawa West—Nepean",
+      "party": "Liberal",
+      "province": "Ontario",
+      "member_id": "71738",
+      "provenance": {
+        "tile_selector": "#mp-tile-person-id-71738",
+        "list_selector": "#mp-list-id-71738"
+      }
+    },
+    {
+      "mp": "Anju Dhillon",
+      "riding": "Dorval—Lachine—LaSalle",
+      "party": "Liberal",
+      "province": "Quebec",
+      "member_id": "88453",
+      "provenance": {
+        "tile_selector": "#mp-tile-person-id-88453",
+        "list_selector": "#mp-list-id-88453"
+      }
+    },
+    {
+      "mp": "Anna Gainey",
+      "riding": "Notre-Dame-de-Grâce—Westmount",
+      "party": "Liberal",
+      "province": "Quebec",
+      "member_id": "115736",
+      "provenance": {
+        "tile_selector": "#mp-tile-person-id-115736",
+        "list_selector": "#mp-list-id-115736"
+      }
+    },
+    {
+      "mp": "Anna Roberts",
+      "riding": "King—Vaughan",
+      "party": "Conservative",
+      "province": "Ontario",
+      "member_id": "105191",
+      "provenance": {
+        "tile_selector": "#mp-tile-person-id-105191",
+        "list_selector": "#mp-list-id-105191"
+      }
+    },
+    {
+      "mp": "Annie Koutrakis",
+      "riding": "Vimy",
+      "party": "Liberal",
+      "province": "Quebec",
+      "member_id": "105009",
+      "provenance": {
+        "tile_selector": "#mp-tile-person-id-105009",
+        "list_selector": "#mp-list-id-105009"
+      }
+    },
+    {
+      "mp": "Anthony Housefather",
+      "riding": "Mount Royal",
+      "party": "Liberal",
+      "province": "Quebec",
+      "member_id": "88558",
+      "provenance": {
+        "tile_selector": "#mp-tile-person-id-88558",
+        "list_selector": "#mp-list-id-88558"
+      }
+    },
+    {
+      "mp": "Arielle Kayabaga",
+      "riding": "London West",
+      "party": "Liberal",
+      "province": "Ontario",
+      "member_id": "110502",
+      "provenance": {
+        "tile_selector": "#mp-tile-person-id-110502",
+        "list_selector": "#mp-list-id-110502"
+      }
+    },
+    {
+      "mp": "Arnold Viersen",
+      "riding": "Peace River—Westlock",
+      "party": "Conservative",
+      "province": "Alberta",
+      "member_id": "89211",
+      "provenance": {
+        "tile_selector": "#mp-tile-person-id-89211",
+        "list_selector": "#mp-list-id-89211"
+      }
+    },
+    {
+      "mp": "Arpan Khanna",
+      "riding": "Oxford",
+      "party": "Conservative",
+      "province": "Ontario",
+      "member_id": "105052",
+      "provenance": {
+        "tile_selector": "#mp-tile-person-id-105052",
+        "list_selector": "#mp-list-id-105052"
+      }
+    },
+    {
+      "mp": "Aslam Rana",
+      "riding": "Hamilton Centre",
+      "party": "Liberal",
+      "province": "Ontario",
+      "member_id": "122946",
+      "provenance": {
+        "tile_selector": "#mp-tile-person-id-122946",
+        "list_selector": "#mp-list-id-122946"
+      }
+    },
+    {
+      "mp": "Bardish Chagger",
+      "riding": "Waterloo",
+      "party": "Liberal",
+      "province": "Ontario",
+      "member_id": "89000",
+      "provenance": {
+        "tile_selector": "#mp-tile-person-id-89000",
+        "list_selector": "#mp-list-id-89000"
+      }
+    },
+    {
+      "mp": "Ben Carr",
+      "riding": "Winnipeg South Centre",
+      "party": "Liberal",
+      "province": "Manitoba",
+      "member_id": "115744",
+      "provenance": {
+        "tile_selector": "#mp-tile-person-id-115744",
+        "list_selector": "#mp-list-id-115744"
+      }
+    },
+    {
+      "mp": "Ben Lobb",
+      "riding": "Huron—Bruce",
+      "party": "Conservative",
+      "province": "Ontario",
+      "member_id": "35600",
+      "provenance": {
+        "tile_selector": "#mp-tile-person-id-35600",
+        "list_selector": "#mp-list-id-35600"
+      }
+    },
+    {
+      "mp": "Bernard Généreux",
+      "riding": "Côte-du-Sud—Rivière-du-Loup—Kataskomiq—Témiscouata",
+      "party": "Conservative",
+      "province": "Quebec",
+      "member_id": "63908",
+      "provenance": {
+        "tile_selector": "#mp-tile-person-id-63908",
+        "list_selector": "#mp-list-id-63908"
+      }
+    },
+    {
+      "mp": "Bienvenu-Olivier Ntumba",
+      "riding": "Mont-Saint-Bruno—L'Acadie",
+      "party": "Liberal",
+      "province": "Quebec",
+      "member_id": "122668",
+      "provenance": {
+        "tile_selector": "#mp-tile-person-id-122668",
+        "list_selector": "#mp-list-id-122668"
+      }
+    },
+    {
+      "mp": "Billy Morin",
+      "riding": "Edmonton Northwest",
+      "party": "Conservative",
+      "province": "Alberta",
+      "member_id": "123447",
+      "provenance": {
+        "tile_selector": "#mp-tile-person-id-123447",
+        "list_selector": "#mp-list-id-123447"
+      }
+    },
+    {
+      "mp": "Blaine Calkins",
+      "riding": "Ponoka—Didsbury",
+      "party": "Conservative",
+      "province": "Alberta",
+      "member_id": "35897",
+      "provenance": {
+        "tile_selector": "#mp-tile-person-id-35897",
+        "list_selector": "#mp-list-id-35897"
+      }
+    },
+    {
+      "mp": "Blake Richards",
+      "riding": "Airdrie—Cochrane",
+      "party": "Conservative",
+      "province": "Alberta",
+      "member_id": "59235",
+      "provenance": {
+        "tile_selector": "#mp-tile-person-id-59235",
+        "list_selector": "#mp-list-id-59235"
+      }
+    },
+    {
+      "mp": "Bob Zimmer",
+      "riding": "Prince George—Peace River—Northern Rockies",
+      "party": "Conservative",
+      "province": "British Columbia",
+      "member_id": "72035",
+      "provenance": {
+        "tile_selector": "#mp-tile-person-id-72035",
+        "list_selector": "#mp-list-id-72035"
+      }
+    },
+    {
+      "mp": "Brad Redekopp",
+      "riding": "Saskatoon West",
+      "party": "Conservative",
+      "province": "Saskatchewan",
+      "member_id": "105598",
+      "provenance": {
+        "tile_selector": "#mp-tile-person-id-105598",
+        "list_selector": "#mp-list-id-105598"
+      }
+    },
+    {
+      "mp": "Brad Vis",
+      "riding": "Mission—Matsqui—Abbotsford",
+      "party": "Conservative",
+      "province": "British Columbia",
+      "member_id": "89289",
+      "provenance": {
+        "tile_selector": "#mp-tile-person-id-89289",
+        "list_selector": "#mp-list-id-89289"
+      }
+    },
+    {
+      "mp": "Braeden Caley",
+      "riding": "North Vancouver—Capilano",
+      "party": "Liberal",
+      "province": "British Columbia",
+      "member_id": "142764",
+      "provenance": {
+        "tile_selector": "#mp-tile-person-id-142764",
+        "list_selector": "#mp-list-id-142764"
+      }
+    },
+    {
+      "mp": "Braedon Clark",
+      "riding": "Sackville—Bedford—Preston",
+      "party": "Liberal",
+      "province": "Nova Scotia",
+      "member_id": "122437",
+      "provenance": {
+        "tile_selector": "#mp-tile-person-id-122437",
+        "list_selector": "#mp-list-id-122437"
+      }
+    },
+    {
+      "mp": "Branden Leslie",
+      "riding": "Portage—Lisgar",
+      "party": "Conservative",
+      "province": "Manitoba",
+      "member_id": "108395",
+      "provenance": {
+        "tile_selector": "#mp-tile-person-id-108395",
+        "list_selector": "#mp-list-id-108395"
+      }
+    },
+    {
+      "mp": "Brendan Hanley",
+      "riding": "Yukon",
+      "party": "Liberal",
+      "province": "Yukon",
+      "member_id": "111109",
+      "provenance": {
+        "tile_selector": "#mp-tile-person-id-111109",
+        "list_selector": "#mp-list-id-111109"
+      }
+    },
+    {
+      "mp": "Bruce Fanjoy",
+      "riding": "Carleton",
+      "party": "Liberal",
+      "province": "Ontario",
+      "member_id": "122850",
+      "provenance": {
+        "tile_selector": "#mp-tile-person-id-122850",
+        "list_selector": "#mp-list-id-122850"
+      }
+    },
+    {
+      "mp": "Buckley Belanger",
+      "riding": "Desnethé—Missinippi—Churchill River",
+      "party": "Liberal",
+      "province": "Saskatchewan",
+      "member_id": "110791",
+      "provenance": {
+        "tile_selector": "#mp-tile-person-id-110791",
+        "list_selector": "#mp-list-id-110791"
+      }
+    },
+    {
+      "mp": "Burton Bailey",
+      "riding": "Red Deer",
+      "party": "Conservative",
+      "province": "Alberta",
+      "member_id": "123500",
+      "provenance": {
+        "tile_selector": "#mp-tile-person-id-123500",
+        "list_selector": "#mp-list-id-123500"
+      }
+    },
+    {
+      "mp": "Carlos Leitão",
+      "riding": "Marc-Aurèle-Fortin",
+      "party": "Liberal",
+      "province": "Quebec",
+      "member_id": "122656",
+      "provenance": {
+        "tile_selector": "#mp-tile-person-id-122656",
+        "list_selector": "#mp-list-id-122656"
+      }
+    },
+    {
+      "mp": "Carol Anstey",
+      "riding": "Long Range Mountains",
+      "party": "Conservative",
+      "province": "Newfoundland and Labrador",
+      "member_id": "109872",
+      "provenance": {
+        "tile_selector": "#mp-tile-person-id-109872",
+        "list_selector": "#mp-list-id-109872"
+      }
+    },
+    {
+      "mp": "Caroline Desrochers",
+      "riding": "Trois-Rivières",
+      "party": "Liberal",
+      "province": "Quebec",
+      "member_id": "110124",
+      "provenance": {
+        "tile_selector": "#mp-tile-person-id-110124",
+        "list_selector": "#mp-list-id-110124"
+      }
+    },
+    {
+      "mp": "Chak Au",
+      "riding": "Richmond Centre—Marpole",
+      "party": "Conservative",
+      "province": "British Columbia",
+      "member_id": "123608",
+      "provenance": {
+        "tile_selector": "#mp-tile-person-id-123608",
+        "list_selector": "#mp-list-id-123608"
+      }
+    },
+    {
+      "mp": "Charles Sousa",
+      "riding": "Mississauga—Lakeshore",
+      "party": "Liberal",
+      "province": "Ontario",
+      "member_id": "114349",
+      "provenance": {
+        "tile_selector": "#mp-tile-person-id-114349",
+        "list_selector": "#mp-list-id-114349"
+      }
+    },
+    {
+      "mp": "Cheryl Gallant",
+      "riding": "Algonquin—Renfrew—Pembroke",
+      "party": "Conservative",
+      "province": "Ontario",
+      "member_id": "1809",
+      "provenance": {
+        "tile_selector": "#mp-tile-person-id-1809",
+        "list_selector": "#mp-list-id-1809"
+      }
+    },
+    {
+      "mp": "Chi Nguyen",
+      "riding": "Spadina—Harbourfront",
+      "party": "Liberal",
+      "province": "Ontario",
+      "member_id": "123192",
+      "provenance": {
+        "tile_selector": "#mp-tile-person-id-123192",
+        "list_selector": "#mp-list-id-123192"
+      }
+    },
+    {
+      "mp": "Chris Bittle",
+      "riding": "St. Catharines",
+      "party": "Liberal",
+      "province": "Ontario",
+      "member_id": "88934",
+      "provenance": {
+        "tile_selector": "#mp-tile-person-id-88934",
+        "list_selector": "#mp-list-id-88934"
+      }
+    },
+    {
+      "mp": "Chris d'Entremont",
+      "riding": "Acadie—Annapolis",
+      "party": "Liberal",
+      "province": "Nova Scotia",
+      "member_id": "49344",
+      "provenance": {
+        "tile_selector": "#mp-tile-person-id-49344",
+        "list_selector": "#mp-list-id-49344"
+      }
+    },
+    {
+      "mp": "Chris Lewis",
+      "riding": "Essex",
+      "party": "Conservative",
+      "province": "Ontario",
+      "member_id": "105120",
+      "provenance": {
+        "tile_selector": "#mp-tile-person-id-105120",
+        "list_selector": "#mp-list-id-105120"
+      }
+    },
+    {
+      "mp": "Chris Malette",
+      "riding": "Bay of Quinte",
+      "party": "Liberal",
+      "province": "Ontario",
+      "member_id": "122788",
+      "provenance": {
+        "tile_selector": "#mp-tile-person-id-122788",
+        "list_selector": "#mp-list-id-122788"
+      }
+    },
+    {
+      "mp": "Chris Warkentin",
+      "riding": "Grande Prairie",
+      "party": "Conservative",
+      "province": "Alberta",
+      "member_id": "35886",
+      "provenance": {
+        "tile_selector": "#mp-tile-person-id-35886",
+        "list_selector": "#mp-list-id-35886"
+      }
+    },
+    {
+      "mp": "Christine Normandin",
+      "riding": "Saint-Jean",
+      "party": "Bloc Québécois",
+      "province": "Quebec",
+      "member_id": "104947",
+      "provenance": {
+        "tile_selector": "#mp-tile-person-id-104947",
+        "list_selector": "#mp-list-id-104947"
+      }
+    },
+    {
+      "mp": "Claude DeBellefeuille",
+      "riding": "Vallée-du-Haut-Saint-Laurent",
+      "party": "Bloc Québécois",
+      "province": "Quebec",
+      "member_id": "35315",
+      "provenance": {
+        "tile_selector": "#mp-tile-person-id-35315",
+        "list_selector": "#mp-list-id-35315"
+      }
+    },
+    {
+      "mp": "Claude Guay",
+      "riding": "LaSalle—Émard—Verdun",
+      "party": "Liberal",
+      "province": "Quebec",
+      "member_id": "122615",
+      "provenance": {
+        "tile_selector": "#mp-tile-person-id-122615",
+        "list_selector": "#mp-list-id-122615"
+      }
+    },
+    {
+      "mp": "Clifford Small",
+      "riding": "Coast of Bays—Central—Notre Dame",
+      "party": "Conservative",
+      "province": "Newfoundland and Labrador",
+      "member_id": "109867",
+      "provenance": {
+        "tile_selector": "#mp-tile-person-id-109867",
+        "list_selector": "#mp-list-id-109867"
+      }
+    },
+    {
+      "mp": "Colin Reynolds",
+      "riding": "Elmwood—Transcona",
+      "party": "Conservative",
+      "province": "Manitoba",
+      "member_id": "119991",
+      "provenance": {
+        "tile_selector": "#mp-tile-person-id-119991",
+        "list_selector": "#mp-list-id-119991"
+      }
+    },
+    {
+      "mp": "Connie Cody",
+      "riding": "Cambridge",
+      "party": "Conservative",
+      "province": "Ontario",
+      "member_id": "110365",
+      "provenance": {
+        "tile_selector": "#mp-tile-person-id-110365",
+        "list_selector": "#mp-list-id-110365"
+      }
+    },
+    {
+      "mp": "Corey Hogan",
+      "riding": "Calgary Confederation",
+      "party": "Liberal",
+      "province": "Alberta",
+      "member_id": "123382",
+      "provenance": {
+        "tile_selector": "#mp-tile-person-id-123382",
+        "list_selector": "#mp-list-id-123382"
+      }
+    },
+    {
+      "mp": "Corey Tochor",
+      "riding": "Saskatoon East",
+      "party": "Conservative",
+      "province": "Saskatchewan",
+      "member_id": "84882",
+      "provenance": {
+        "tile_selector": "#mp-tile-person-id-84882",
+        "list_selector": "#mp-list-id-84882"
+      }
+    },
+    {
+      "mp": "Costas Menegakis",
+      "riding": "Aurora—Oak Ridges—Richmond Hill",
+      "party": "Conservative",
+      "province": "Ontario",
+      "member_id": "71762",
+      "provenance": {
+        "tile_selector": "#mp-tile-person-id-71762",
+        "list_selector": "#mp-list-id-71762"
+      }
+    },
+    {
+      "mp": "Dalwinder Gill",
+      "riding": "Calgary McKnight",
+      "party": "Conservative",
+      "province": "Alberta",
+      "member_id": "123401",
+      "provenance": {
+        "tile_selector": "#mp-tile-person-id-123401",
+        "list_selector": "#mp-list-id-123401"
+      }
+    },
+    {
+      "mp": "Dan Albas",
+      "riding": "Okanagan Lake West—South Kelowna",
+      "party": "Conservative",
+      "province": "British Columbia",
+      "member_id": "72029",
+      "provenance": {
+        "tile_selector": "#mp-tile-person-id-72029",
+        "list_selector": "#mp-list-id-72029"
+      }
+    },
+    {
+      "mp": "Dan Mazier",
+      "riding": "Riding Mountain",
+      "party": "Conservative",
+      "province": "Manitoba",
+      "member_id": "3306",
+      "provenance": {
+        "tile_selector": "#mp-tile-person-id-3306",
+        "list_selector": "#mp-list-id-3306"
+      }
+    },
+    {
+      "mp": "Dan Muys",
+      "riding": "Flamborough—Glanbrook—Brant North",
+      "party": "Conservative",
+      "province": "Ontario",
+      "member_id": "110415",
+      "provenance": {
+        "tile_selector": "#mp-tile-person-id-110415",
+        "list_selector": "#mp-list-id-110415"
+      }
+    },
+    {
+      "mp": "Dane Lloyd",
+      "riding": "Parkland",
+      "party": "Conservative",
+      "province": "Alberta",
+      "member_id": "98079",
+      "provenance": {
+        "tile_selector": "#mp-tile-person-id-98079",
+        "list_selector": "#mp-list-id-98079"
+      }
+    },
+    {
+      "mp": "Daniel Gobeil",
+      "riding": "Chicoutimi—Le Fjord",
+      "party": "Liberal",
+      "province": "Quebec",
+      "member_id": "107294",
+      "provenance": {
+        "tile_selector": "#mp-tile-person-id-107294",
+        "list_selector": "#mp-list-id-107294"
+      }
+    },
+    {
+      "mp": "Danielle Martin",
+      "riding": "University—Rosedale",
+      "party": "Liberal",
+      "province": "Ontario",
+      "member_id": "90964",
+      "provenance": {
+        "tile_selector": "#mp-tile-person-id-90964",
+        "list_selector": "#mp-list-id-90964"
+      }
+    },
+    {
+      "mp": "Darren Fisher",
+      "riding": "Dartmouth—Cole Harbour",
+      "party": "Liberal",
+      "province": "Nova Scotia",
+      "member_id": "88323",
+      "provenance": {
+        "tile_selector": "#mp-tile-person-id-88323",
+        "list_selector": "#mp-list-id-88323"
+      }
+    },
+    {
+      "mp": "Dave Epp",
+      "riding": "Chatham-Kent—Leamington",
+      "party": "Conservative",
+      "province": "Ontario",
+      "member_id": "105082",
+      "provenance": {
+        "tile_selector": "#mp-tile-person-id-105082",
+        "list_selector": "#mp-list-id-105082"
+      }
+    },
+    {
+      "mp": "David Bexte",
+      "riding": "Bow River",
+      "party": "Conservative",
+      "province": "Alberta",
+      "member_id": "123372",
+      "provenance": {
+        "tile_selector": "#mp-tile-person-id-123372",
+        "list_selector": "#mp-list-id-123372"
+      }
+    },
+    {
+      "mp": "David J. McGuinty",
+      "riding": "Ottawa South",
+      "party": "Liberal",
+      "province": "Ontario",
+      "member_id": "9486",
+      "provenance": {
+        "tile_selector": "#mp-tile-person-id-9486",
+        "list_selector": "#mp-list-id-9486"
+      }
+    },
+    {
+      "mp": "David McKenzie",
+      "riding": "Calgary Signal Hill",
+      "party": "Conservative",
+      "province": "Alberta",
+      "member_id": "123415",
+      "provenance": {
+        "tile_selector": "#mp-tile-person-id-123415",
+        "list_selector": "#mp-list-id-123415"
+      }
+    },
+    {
+      "mp": "David Myles",
+      "riding": "Fredericton—Oromocto",
+      "party": "Liberal",
+      "province": "New Brunswick",
+      "member_id": "122462",
+      "provenance": {
+        "tile_selector": "#mp-tile-person-id-122462",
+        "list_selector": "#mp-list-id-122462"
+      }
+    },
+    {
+      "mp": "Dean Allison",
+      "riding": "Niagara West",
+      "party": "Conservative",
+      "province": "Ontario",
+      "member_id": "25446",
+      "provenance": {
+        "tile_selector": "#mp-tile-person-id-25446",
+        "list_selector": "#mp-list-id-25446"
+      }
+    },
+    {
+      "mp": "Doly Begum",
+      "riding": "Scarborough Southwest",
+      "party": "Liberal",
+      "province": "Ontario",
+      "member_id": "141713",
+      "provenance": {
+        "tile_selector": "#mp-tile-person-id-141713",
+        "list_selector": "#mp-list-id-141713"
+      }
+    },
+    {
+      "mp": "Dominic LeBlanc",
+      "riding": "Beauséjour",
+      "party": "Liberal",
+      "province": "New Brunswick",
+      "member_id": "1813",
+      "provenance": {
+        "tile_selector": "#mp-tile-person-id-1813",
+        "list_selector": "#mp-list-id-1813"
+      }
+    },
+    {
+      "mp": "Dominique O'Rourke",
+      "riding": "Guelph",
+      "party": "Liberal",
+      "province": "Ontario",
+      "member_id": "122933",
+      "provenance": {
+        "tile_selector": "#mp-tile-person-id-122933",
+        "list_selector": "#mp-list-id-122933"
+      }
+    },
+    {
+      "mp": "Dominique Vien",
+      "riding": "Bellechasse—Les Etchemins—Lévis",
+      "party": "Conservative",
+      "province": "Quebec",
+      "member_id": "110009",
+      "provenance": {
+        "tile_selector": "#mp-tile-person-id-110009",
+        "list_selector": "#mp-list-id-110009"
+      }
+    },
+    {
+      "mp": "Don Davies",
+      "riding": "Vancouver Kingsway",
+      "party": "NDP",
+      "province": "British Columbia",
+      "member_id": "59325",
+      "provenance": {
+        "tile_selector": "#mp-tile-person-id-59325",
+        "list_selector": "#mp-list-id-59325"
+      }
+    },
+    {
+      "mp": "Doug Eyolfson",
+      "riding": "Winnipeg West",
+      "party": "Liberal",
+      "province": "Manitoba",
+      "member_id": "89027",
+      "provenance": {
+        "tile_selector": "#mp-tile-person-id-89027",
+        "list_selector": "#mp-list-id-89027"
+      }
+    },
+    {
+      "mp": "Doug Shipley",
+      "riding": "Barrie—Springwater—Oro-Medonte",
+      "party": "Conservative",
+      "province": "Ontario",
+      "member_id": "105031",
+      "provenance": {
+        "tile_selector": "#mp-tile-person-id-105031",
+        "list_selector": "#mp-list-id-105031"
+      }
+    },
+    {
+      "mp": "Eleanor Olszewski",
+      "riding": "Edmonton Centre",
+      "party": "Liberal",
+      "province": "Alberta",
+      "member_id": "89171",
+      "provenance": {
+        "tile_selector": "#mp-tile-person-id-89171",
+        "list_selector": "#mp-list-id-89171"
+      }
+    },
+    {
+      "mp": "Elizabeth May",
+      "riding": "Saanich—Gulf Islands",
+      "party": "Green Party",
+      "province": "British Columbia",
+      "member_id": "2897",
+      "provenance": {
+        "tile_selector": "#mp-tile-person-id-2897",
+        "list_selector": "#mp-list-id-2897"
+      }
+    },
+    {
+      "mp": "Ellis Ross",
+      "riding": "Skeena—Bulkley Valley",
+      "party": "Conservative",
+      "province": "British Columbia",
+      "member_id": "123622",
+      "provenance": {
+        "tile_selector": "#mp-tile-person-id-123622",
+        "list_selector": "#mp-list-id-123622"
+      }
+    },
+    {
+      "mp": "Emma Harrison",
+      "riding": "Peterborough",
+      "party": "Liberal",
+      "province": "Ontario",
+      "member_id": "123133",
+      "provenance": {
+        "tile_selector": "#mp-tile-person-id-123133",
+        "list_selector": "#mp-list-id-123133"
+      }
+    },
+    {
+      "mp": "Emmanuella Lambropoulos",
+      "riding": "Saint-Laurent",
+      "party": "Liberal",
+      "province": "Quebec",
+      "member_id": "96350",
+      "provenance": {
+        "tile_selector": "#mp-tile-person-id-96350",
+        "list_selector": "#mp-list-id-96350"
+      }
+    },
+    {
+      "mp": "Eric Duncan",
+      "riding": "Stormont—Dundas—Glengarry",
+      "party": "Conservative",
+      "province": "Ontario",
+      "member_id": "105422",
+      "provenance": {
+        "tile_selector": "#mp-tile-person-id-105422",
+        "list_selector": "#mp-list-id-105422"
+      }
+    },
+    {
+      "mp": "Eric Lefebvre",
+      "riding": "Richmond—Arthabaska—des-Sources",
+      "party": "Conservative",
+      "province": "Quebec",
+      "member_id": "58757",
+      "provenance": {
+        "tile_selector": "#mp-tile-person-id-58757",
+        "list_selector": "#mp-list-id-58757"
+      }
+    },
+    {
+      "mp": "Eric Melillo",
+      "riding": "Kenora—Kiiwetinoong",
+      "party": "Conservative",
+      "province": "Ontario",
+      "member_id": "105186",
+      "provenance": {
+        "tile_selector": "#mp-tile-person-id-105186",
+        "list_selector": "#mp-list-id-105186"
+      }
+    },
+    {
+      "mp": "Eric St-Pierre",
+      "riding": "Honoré-Mercier",
+      "party": "Liberal",
+      "province": "Quebec",
+      "member_id": "122589",
+      "provenance": {
+        "tile_selector": "#mp-tile-person-id-122589",
+        "list_selector": "#mp-list-id-122589"
+      }
+    },
+    {
+      "mp": "Ernie Klassen",
+      "riding": "South Surrey—White Rock",
+      "party": "Liberal",
+      "province": "British Columbia",
+      "member_id": "123625",
+      "provenance": {
+        "tile_selector": "#mp-tile-person-id-123625",
+        "list_selector": "#mp-list-id-123625"
+      }
+    },
+    {
+      "mp": "Evan Solomon",
+      "riding": "Toronto Centre",
+      "party": "Liberal",
+      "province": "Ontario",
+      "member_id": "123229",
+      "provenance": {
+        "tile_selector": "#mp-tile-person-id-123229",
+        "list_selector": "#mp-list-id-123229"
+      }
+    },
+    {
+      "mp": "Fares Al Soud",
+      "riding": "Mississauga Centre",
+      "party": "Liberal",
+      "province": "Ontario",
+      "member_id": "123033",
+      "provenance": {
+        "tile_selector": "#mp-tile-person-id-123033",
+        "list_selector": "#mp-list-id-123033"
+      }
+    },
+    {
+      "mp": "Fayçal El-Khoury",
+      "riding": "Laval—Les Îles",
+      "party": "Liberal",
+      "province": "Quebec",
+      "member_id": "88515",
+      "provenance": {
+        "tile_selector": "#mp-tile-person-id-88515",
+        "list_selector": "#mp-list-id-88515"
+      }
+    },
+    {
+      "mp": "Francis Scarpaleggia",
+      "riding": "Lac-Saint-Louis",
+      "party": "Liberal",
+      "province": "Quebec",
+      "member_id": "25453",
+      "provenance": {
+        "tile_selector": "#mp-tile-person-id-25453",
+        "list_selector": "#mp-list-id-25453"
+      }
+    },
+    {
+      "mp": "Frank Caputo",
+      "riding": "Kamloops—Thompson—Nicola",
+      "party": "Conservative",
+      "province": "British Columbia",
+      "member_id": "111007",
+      "provenance": {
+        "tile_selector": "#mp-tile-person-id-111007",
+        "list_selector": "#mp-list-id-111007"
+      }
+    },
+    {
+      "mp": "François-Philippe Champagne",
+      "riding": "Saint-Maurice—Champlain",
+      "party": "Liberal",
+      "province": "Quebec",
+      "member_id": "88633",
+      "provenance": {
+        "tile_selector": "#mp-tile-person-id-88633",
+        "list_selector": "#mp-list-id-88633"
+      }
+    },
+    {
+      "mp": "Fraser Tolmie",
+      "riding": "Moose Jaw—Lake Centre—Lanigan",
+      "party": "Conservative",
+      "province": "Saskatchewan",
+      "member_id": "110800",
+      "provenance": {
+        "tile_selector": "#mp-tile-person-id-110800",
+        "list_selector": "#mp-list-id-110800"
+      }
+    },
+    {
+      "mp": "Fred Davies",
+      "riding": "Niagara South",
+      "party": "Conservative",
+      "province": "Ontario",
+      "member_id": "123073",
+      "provenance": {
+        "tile_selector": "#mp-tile-person-id-123073",
+        "list_selector": "#mp-list-id-123073"
+      }
+    },
+    {
+      "mp": "Gabriel Hardy",
+      "riding": "Montmorency—Charlevoix",
+      "party": "Conservative",
+      "province": "Quebec",
+      "member_id": "122678",
+      "provenance": {
+        "tile_selector": "#mp-tile-person-id-122678",
+        "list_selector": "#mp-list-id-122678"
+      }
+    },
+    {
+      "mp": "Gabriel Ste-Marie",
+      "riding": "Joliette—Manawan",
+      "party": "Bloc Québécois",
+      "province": "Quebec",
+      "member_id": "88485",
+      "provenance": {
+        "tile_selector": "#mp-tile-person-id-88485",
+        "list_selector": "#mp-list-id-88485"
+      }
+    },
+    {
+      "mp": "Garnett Genuis",
+      "riding": "Sherwood Park—Fort Saskatchewan",
+      "party": "Conservative",
+      "province": "Alberta",
+      "member_id": "89226",
+      "provenance": {
+        "tile_selector": "#mp-tile-person-id-89226",
+        "list_selector": "#mp-list-id-89226"
+      }
+    },
+    {
+      "mp": "Gary Anandasangaree",
+      "riding": "Scarborough—Guildwood—Rouge Park",
+      "party": "Liberal",
+      "province": "Ontario",
+      "member_id": "89449",
+      "provenance": {
+        "tile_selector": "#mp-tile-person-id-89449",
+        "list_selector": "#mp-list-id-89449"
+      }
+    },
+    {
+      "mp": "Gaétan Malette",
+      "riding": "Kapuskasing—Timmins—Mushkegowuk",
+      "party": "Conservative",
+      "province": "Ontario",
+      "member_id": "122975",
+      "provenance": {
+        "tile_selector": "#mp-tile-person-id-122975",
+        "list_selector": "#mp-list-id-122975"
+      }
+    },
+    {
+      "mp": "Ginette Lavack",
+      "riding": "St. Boniface—St. Vital",
+      "party": "Liberal",
+      "province": "Manitoba",
+      "member_id": "123305",
+      "provenance": {
+        "tile_selector": "#mp-tile-person-id-123305",
+        "list_selector": "#mp-list-id-123305"
+      }
+    },
+    {
+      "mp": "Ginette Petitpas Taylor",
+      "riding": "Moncton—Dieppe",
+      "party": "Liberal",
+      "province": "New Brunswick",
+      "member_id": "88364",
+      "provenance": {
+        "tile_selector": "#mp-tile-person-id-88364",
+        "list_selector": "#mp-list-id-88364"
+      }
+    },
+    {
+      "mp": "Giovanna Mingarelli",
+      "riding": "Prescott—Russell—Cumberland",
+      "party": "Liberal",
+      "province": "Ontario",
+      "member_id": "123144",
+      "provenance": {
+        "tile_selector": "#mp-tile-person-id-123144",
+        "list_selector": "#mp-list-id-123144"
+      }
+    },
+    {
+      "mp": "Glen Motz",
+      "riding": "Medicine Hat—Cardston—Warner",
+      "party": "Conservative",
+      "province": "Alberta",
+      "member_id": "94305",
+      "provenance": {
+        "tile_selector": "#mp-tile-person-id-94305",
+        "list_selector": "#mp-list-id-94305"
+      }
+    },
+    {
+      "mp": "Gord Johns",
+      "riding": "Courtenay—Alberni",
+      "party": "NDP",
+      "province": "British Columbia",
+      "member_id": "89263",
+      "provenance": {
+        "tile_selector": "#mp-tile-person-id-89263",
+        "list_selector": "#mp-list-id-89263"
+      }
+    },
+    {
+      "mp": "Grant Jackson",
+      "riding": "Brandon—Souris",
+      "party": "Conservative",
+      "province": "Manitoba",
+      "member_id": "123287",
+      "provenance": {
+        "tile_selector": "#mp-tile-person-id-123287",
+        "list_selector": "#mp-list-id-123287"
+      }
+    },
+    {
+      "mp": "Greg Fergus",
+      "riding": "Hull—Aylmer",
+      "party": "Liberal",
+      "province": "Quebec",
+      "member_id": "88478",
+      "provenance": {
+        "tile_selector": "#mp-tile-person-id-88478",
+        "list_selector": "#mp-list-id-88478"
+      }
+    },
+    {
+      "mp": "Greg McLean",
+      "riding": "Calgary Centre",
+      "party": "Conservative",
+      "province": "Alberta",
+      "member_id": "105623",
+      "provenance": {
+        "tile_selector": "#mp-tile-person-id-105623",
+        "list_selector": "#mp-list-id-105623"
+      }
+    },
+    {
+      "mp": "Gregor Robertson",
+      "riding": "Vancouver Fraserview—South Burnaby",
+      "party": "Liberal",
+      "province": "British Columbia",
+      "member_id": "123644",
+      "provenance": {
+        "tile_selector": "#mp-tile-person-id-123644",
+        "list_selector": "#mp-list-id-123644"
+      }
+    },
+    {
+      "mp": "Guillaume Deschênes-Thériault",
+      "riding": "Madawaska—Restigouche",
+      "party": "Liberal",
+      "province": "New Brunswick",
+      "member_id": "122473",
+      "provenance": {
+        "tile_selector": "#mp-tile-person-id-122473",
+        "list_selector": "#mp-list-id-122473"
+      }
+    },
+    {
+      "mp": "Gurbux Saini",
+      "riding": "Fleetwood—Port Kells",
+      "party": "Liberal",
+      "province": "British Columbia",
+      "member_id": "1422",
+      "provenance": {
+        "tile_selector": "#mp-tile-person-id-1422",
+        "list_selector": "#mp-list-id-1422"
+      }
+    },
+    {
+      "mp": "Gérard Deltell",
+      "riding": "Louis-Saint-Laurent—Akiawenhrahk",
+      "party": "Conservative",
+      "province": "Quebec",
+      "member_id": "88535",
+      "provenance": {
+        "tile_selector": "#mp-tile-person-id-88535",
+        "list_selector": "#mp-list-id-88535"
+      }
+    },
+    {
+      "mp": "Harb Gill",
+      "riding": "Windsor West",
+      "party": "Conservative",
+      "province": "Ontario",
+      "member_id": "123272",
+      "provenance": {
+        "tile_selector": "#mp-tile-person-id-123272",
+        "list_selector": "#mp-list-id-123272"
+      }
+    },
+    {
+      "mp": "Heath MacDonald",
+      "riding": "Malpeque",
+      "party": "Liberal",
+      "province": "Prince Edward Island",
+      "member_id": "109891",
+      "provenance": {
+        "tile_selector": "#mp-tile-person-id-109891",
+        "list_selector": "#mp-list-id-109891"
+      }
+    },
+    {
+      "mp": "Heather McPherson",
+      "riding": "Edmonton Strathcona",
+      "party": "NDP",
+      "province": "Alberta",
+      "member_id": "105689",
+      "provenance": {
+        "tile_selector": "#mp-tile-person-id-105689",
+        "list_selector": "#mp-list-id-105689"
+      }
+    },
+    {
+      "mp": "Hedy Fry",
+      "riding": "Vancouver Centre",
+      "party": "Liberal",
+      "province": "British Columbia",
+      "member_id": "1589",
+      "provenance": {
+        "tile_selector": "#mp-tile-person-id-1589",
+        "list_selector": "#mp-list-id-1589"
+      }
+    },
+    {
+      "mp": "Helena Jaczek",
+      "riding": "Markham—Stouffville",
+      "party": "Liberal",
+      "province": "Ontario",
+      "member_id": "105229",
+      "provenance": {
+        "tile_selector": "#mp-tile-person-id-105229",
+        "list_selector": "#mp-list-id-105229"
+      }
+    },
+    {
+      "mp": "Helena Konanz",
+      "riding": "Similkameen—South Okanagan—West Kootenay",
+      "party": "Conservative",
+      "province": "British Columbia",
+      "member_id": "105863",
+      "provenance": {
+        "tile_selector": "#mp-tile-person-id-105863",
+        "list_selector": "#mp-list-id-105863"
+      }
+    },
+    {
+      "mp": "Iqra Khalid",
+      "riding": "Mississauga—Erin Mills",
+      "party": "Liberal",
+      "province": "Ontario",
+      "member_id": "88849",
+      "provenance": {
+        "tile_selector": "#mp-tile-person-id-88849",
+        "list_selector": "#mp-list-id-88849"
+      }
+    },
+    {
+      "mp": "Iqwinder Gaheer",
+      "riding": "Mississauga—Malton",
+      "party": "Liberal",
+      "province": "Ontario",
+      "member_id": "110534",
+      "provenance": {
+        "tile_selector": "#mp-tile-person-id-110534",
+        "list_selector": "#mp-list-id-110534"
+      }
+    },
+    {
+      "mp": "Jacob Mantle",
+      "riding": "York—Durham",
+      "party": "Conservative",
+      "province": "Ontario",
+      "member_id": "123282",
+      "provenance": {
+        "tile_selector": "#mp-tile-person-id-123282",
+        "list_selector": "#mp-list-id-123282"
+      }
+    },
+    {
+      "mp": "Jacques Gourde",
+      "riding": "Lévis—Lotbinière",
+      "party": "Conservative",
+      "province": "Quebec",
+      "member_id": "35397",
+      "provenance": {
+        "tile_selector": "#mp-tile-person-id-35397",
+        "list_selector": "#mp-list-id-35397"
+      }
+    },
+    {
+      "mp": "Jacques Ramsay",
+      "riding": "La Prairie—Atateken",
+      "party": "Liberal",
+      "province": "Quebec",
+      "member_id": "122606",
+      "provenance": {
+        "tile_selector": "#mp-tile-person-id-122606",
+        "list_selector": "#mp-list-id-122606"
+      }
+    },
+    {
+      "mp": "Jagsharan Singh Mahal",
+      "riding": "Edmonton Southeast",
+      "party": "Conservative",
+      "province": "Alberta",
+      "member_id": "123455",
+      "provenance": {
+        "tile_selector": "#mp-tile-person-id-123455",
+        "list_selector": "#mp-list-id-123455"
+      }
+    },
+    {
+      "mp": "Jaime Battiste",
+      "riding": "Cape Breton—Canso—Antigonish",
+      "party": "Liberal",
+      "province": "Nova Scotia",
+      "member_id": "104571",
+      "provenance": {
+        "tile_selector": "#mp-tile-person-id-104571",
+        "list_selector": "#mp-list-id-104571"
+      }
+    },
+    {
+      "mp": "Jake Sawatzky",
+      "riding": "New Westminster—Burnaby—Maillardville",
+      "party": "Liberal",
+      "province": "British Columbia",
+      "member_id": "123583",
+      "provenance": {
+        "tile_selector": "#mp-tile-person-id-123583",
+        "list_selector": "#mp-list-id-123583"
+      }
+    },
+    {
+      "mp": "James Bezan",
+      "riding": "Selkirk—Interlake—Eastman",
+      "party": "Conservative",
+      "province": "Manitoba",
+      "member_id": "25475",
+      "provenance": {
+        "tile_selector": "#mp-tile-person-id-25475",
+        "list_selector": "#mp-list-id-25475"
+      }
+    },
+    {
+      "mp": "James Maloney",
+      "riding": "Etobicoke—Lakeshore",
+      "party": "Liberal",
+      "province": "Ontario",
+      "member_id": "88748",
+      "provenance": {
+        "tile_selector": "#mp-tile-person-id-88748",
+        "list_selector": "#mp-list-id-88748"
+      }
+    },
+    {
+      "mp": "Jamie Schmale",
+      "riding": "Haliburton—Kawartha Lakes",
+      "party": "Conservative",
+      "province": "Ontario",
+      "member_id": "88770",
+      "provenance": {
+        "tile_selector": "#mp-tile-person-id-88770",
+        "list_selector": "#mp-list-id-88770"
+      }
+    },
+    {
+      "mp": "Jamil Jivani",
+      "riding": "Bowmanville—Oshawa North",
+      "party": "Conservative",
+      "province": "Ontario",
+      "member_id": "118689",
+      "provenance": {
+        "tile_selector": "#mp-tile-person-id-118689",
+        "list_selector": "#mp-list-id-118689"
+      }
+    },
+    {
+      "mp": "Jason Groleau",
+      "riding": "Beauce",
+      "party": "Conservative",
+      "province": "Quebec",
+      "member_id": "122507",
+      "provenance": {
+        "tile_selector": "#mp-tile-person-id-122507",
+        "list_selector": "#mp-list-id-122507"
+      }
+    },
+    {
+      "mp": "Jasraj Hallan",
+      "riding": "Calgary East",
+      "party": "Conservative",
+      "province": "Alberta",
+      "member_id": "105630",
+      "provenance": {
+        "tile_selector": "#mp-tile-person-id-105630",
+        "list_selector": "#mp-list-id-105630"
+      }
+    },
+    {
+      "mp": "Jean Yip",
+      "riding": "Scarborough—Agincourt",
+      "party": "Liberal",
+      "province": "Ontario",
+      "member_id": "98747",
+      "provenance": {
+        "tile_selector": "#mp-tile-person-id-98747",
+        "list_selector": "#mp-list-id-98747"
+      }
+    },
+    {
+      "mp": "Jean-Denis Garon",
+      "riding": "Mirabel",
+      "party": "Bloc Québécois",
+      "province": "Quebec",
+      "member_id": "110189",
+      "provenance": {
+        "tile_selector": "#mp-tile-person-id-110189",
+        "list_selector": "#mp-list-id-110189"
+      }
+    },
+    {
+      "mp": "Jean-Yves Duclos",
+      "riding": "Québec Centre",
+      "party": "Liberal",
+      "province": "Quebec",
+      "member_id": "89408",
+      "provenance": {
+        "tile_selector": "#mp-tile-person-id-89408",
+        "list_selector": "#mp-list-id-89408"
+      }
+    },
+    {
+      "mp": "Jeff Kibble",
+      "riding": "Cowichan—Malahat—Langford",
+      "party": "Conservative",
+      "province": "British Columbia",
+      "member_id": "123552",
+      "provenance": {
+        "tile_selector": "#mp-tile-person-id-123552",
+        "list_selector": "#mp-list-id-123552"
+      }
+    },
+    {
+      "mp": "Jenna Sudds",
+      "riding": "Kanata",
+      "party": "Liberal",
+      "province": "Ontario",
+      "member_id": "110459",
+      "provenance": {
+        "tile_selector": "#mp-tile-person-id-110459",
+        "list_selector": "#mp-list-id-110459"
+      }
+    },
+    {
+      "mp": "Jennifer McKelvie",
+      "riding": "Ajax",
+      "party": "Liberal",
+      "province": "Ontario",
+      "member_id": "122773",
+      "provenance": {
+        "tile_selector": "#mp-tile-person-id-122773",
+        "list_selector": "#mp-list-id-122773"
+      }
+    },
+    {
+      "mp": "Jenny Kwan",
+      "riding": "Vancouver East",
+      "party": "NDP",
+      "province": "British Columbia",
+      "member_id": "89346",
+      "provenance": {
+        "tile_selector": "#mp-tile-person-id-89346",
+        "list_selector": "#mp-list-id-89346"
+      }
+    },
+    {
+      "mp": "Jeremy Patzer",
+      "riding": "Swift Current—Grasslands—Kindersley",
+      "party": "Conservative",
+      "province": "Saskatchewan",
+      "member_id": "105559",
+      "provenance": {
+        "tile_selector": "#mp-tile-person-id-105559",
+        "list_selector": "#mp-list-id-105559"
+      }
+    },
+    {
+      "mp": "Jessica Fancy",
+      "riding": "South Shore—St. Margarets",
+      "party": "Liberal",
+      "province": "Nova Scotia",
+      "member_id": "122443",
+      "provenance": {
+        "tile_selector": "#mp-tile-person-id-122443",
+        "list_selector": "#mp-list-id-122443"
+      }
+    },
+    {
+      "mp": "Jill McKnight",
+      "riding": "Delta",
+      "party": "Liberal",
+      "province": "British Columbia",
+      "member_id": "123556",
+      "provenance": {
+        "tile_selector": "#mp-tile-person-id-123556",
+        "list_selector": "#mp-list-id-123556"
+      }
+    },
+    {
+      "mp": "Jim Bélanger",
+      "riding": "Sudbury East—Manitoulin—Nickel Belt",
+      "party": "Conservative",
+      "province": "Ontario",
+      "member_id": "123208",
+      "provenance": {
+        "tile_selector": "#mp-tile-person-id-123208",
+        "list_selector": "#mp-list-id-123208"
+      }
+    },
+    {
+      "mp": "Joanne Thompson",
+      "riding": "St. John's East",
+      "party": "Liberal",
+      "province": "Newfoundland and Labrador",
+      "member_id": "109877",
+      "provenance": {
+        "tile_selector": "#mp-tile-person-id-109877",
+        "list_selector": "#mp-list-id-109877"
+      }
+    },
+    {
+      "mp": "John Barlow",
+      "riding": "Foothills",
+      "party": "Conservative",
+      "province": "Alberta",
+      "member_id": "86261",
+      "provenance": {
+        "tile_selector": "#mp-tile-person-id-86261",
+        "list_selector": "#mp-list-id-86261"
+      }
+    },
+    {
+      "mp": "John Brassard",
+      "riding": "Barrie South—Innisfil",
+      "party": "Conservative",
+      "province": "Ontario",
+      "member_id": "88674",
+      "provenance": {
+        "tile_selector": "#mp-tile-person-id-88674",
+        "list_selector": "#mp-list-id-88674"
+      }
+    },
+    {
+      "mp": "John Nater",
+      "riding": "Perth—Wellington",
+      "party": "Conservative",
+      "province": "Ontario",
+      "member_id": "88917",
+      "provenance": {
+        "tile_selector": "#mp-tile-person-id-88917",
+        "list_selector": "#mp-list-id-88917"
+      }
+    },
+    {
+      "mp": "John Williamson",
+      "riding": "New Brunswick Southwest",
+      "party": "Conservative",
+      "province": "New Brunswick",
+      "member_id": "71323",
+      "provenance": {
+        "tile_selector": "#mp-tile-person-id-71323",
+        "list_selector": "#mp-list-id-71323"
+      }
+    },
+    {
+      "mp": "John Zerucelli",
+      "riding": "Etobicoke North",
+      "party": "Liberal",
+      "province": "Ontario",
+      "member_id": "122925",
+      "provenance": {
+        "tile_selector": "#mp-tile-person-id-122925",
+        "list_selector": "#mp-list-id-122925"
+      }
+    },
+    {
+      "mp": "John-Paul Danko",
+      "riding": "Hamilton West—Ancaster—Dundas",
+      "party": "Liberal",
+      "province": "Ontario",
+      "member_id": "122959",
+      "provenance": {
+        "tile_selector": "#mp-tile-person-id-122959",
+        "list_selector": "#mp-list-id-122959"
+      }
+    },
+    {
+      "mp": "Jonathan Rowe",
+      "riding": "The Eastern Peninsulas",
+      "party": "Conservative",
+      "province": "Newfoundland and Labrador",
+      "member_id": "122389",
+      "provenance": {
+        "tile_selector": "#mp-tile-person-id-122389",
+        "list_selector": "#mp-list-id-122389"
+      }
+    },
+    {
+      "mp": "Joël Godin",
+      "riding": "Saint-Augustin—Portneuf—Jacques-Cartier",
+      "party": "Conservative",
+      "province": "Quebec",
+      "member_id": "89407",
+      "provenance": {
+        "tile_selector": "#mp-tile-person-id-89407",
+        "list_selector": "#mp-list-id-89407"
+      }
+    },
+    {
+      "mp": "Joël Lightbound",
+      "riding": "Louis-Hébert",
+      "party": "Liberal",
+      "province": "Quebec",
+      "member_id": "88532",
+      "provenance": {
+        "tile_selector": "#mp-tile-person-id-88532",
+        "list_selector": "#mp-list-id-88532"
+      }
+    },
+    {
+      "mp": "Juanita Nathan",
+      "riding": "Pickering—Brooklin",
+      "party": "Liberal",
+      "province": "Ontario",
+      "member_id": "123141",
+      "provenance": {
+        "tile_selector": "#mp-tile-person-id-123141",
+        "list_selector": "#mp-list-id-123141"
+      }
+    },
+    {
+      "mp": "Judy A. Sgro",
+      "riding": "Humber River—Black Creek",
+      "party": "Liberal",
+      "province": "Ontario",
+      "member_id": "1787",
+      "provenance": {
+        "tile_selector": "#mp-tile-person-id-1787",
+        "list_selector": "#mp-list-id-1787"
+      }
+    },
+    {
+      "mp": "Julie Dabrusin",
+      "riding": "Toronto—Danforth",
+      "party": "Liberal",
+      "province": "Ontario",
+      "member_id": "88994",
+      "provenance": {
+        "tile_selector": "#mp-tile-person-id-88994",
+        "list_selector": "#mp-list-id-88994"
+      }
+    },
+    {
+      "mp": "Julie Dzerowicz",
+      "riding": "Davenport",
+      "party": "Liberal",
+      "province": "Ontario",
+      "member_id": "88721",
+      "provenance": {
+        "tile_selector": "#mp-tile-person-id-88721",
+        "list_selector": "#mp-list-id-88721"
+      }
+    },
+    {
+      "mp": "Karim Bardeesy",
+      "riding": "Taiaiako'n—Parkdale—High Park",
+      "party": "Liberal",
+      "province": "Ontario",
+      "member_id": "123214",
+      "provenance": {
+        "tile_selector": "#mp-tile-person-id-123214",
+        "list_selector": "#mp-list-id-123214"
+      }
+    },
+    {
+      "mp": "Karina Gould",
+      "riding": "Burlington",
+      "party": "Liberal",
+      "province": "Ontario",
+      "member_id": "88715",
+      "provenance": {
+        "tile_selector": "#mp-tile-person-id-88715",
+        "list_selector": "#mp-list-id-88715"
+      }
+    },
+    {
+      "mp": "Kathy Borrelli",
+      "riding": "Windsor—Tecumseh—Lakeshore",
+      "party": "Conservative",
+      "province": "Ontario",
+      "member_id": "110706",
+      "provenance": {
+        "tile_selector": "#mp-tile-person-id-110706",
+        "list_selector": "#mp-list-id-110706"
+      }
+    },
+    {
+      "mp": "Kelly Block",
+      "riding": "Carlton Trail—Eagle Creek",
+      "party": "Conservative",
+      "province": "Saskatchewan",
+      "member_id": "59156",
+      "provenance": {
+        "tile_selector": "#mp-tile-person-id-59156",
+        "list_selector": "#mp-list-id-59156"
+      }
+    },
+    {
+      "mp": "Kelly DeRidder",
+      "riding": "Kitchener Centre",
+      "party": "Conservative",
+      "province": "Ontario",
+      "member_id": "122988",
+      "provenance": {
+        "tile_selector": "#mp-tile-person-id-122988",
+        "list_selector": "#mp-list-id-122988"
+      }
+    },
+    {
+      "mp": "Kelly McCauley",
+      "riding": "Edmonton West",
+      "party": "Conservative",
+      "province": "Alberta",
+      "member_id": "89179",
+      "provenance": {
+        "tile_selector": "#mp-tile-person-id-89179",
+        "list_selector": "#mp-list-id-89179"
+      }
+    },
+    {
+      "mp": "Kent MacDonald",
+      "riding": "Cardigan",
+      "party": "Liberal",
+      "province": "Prince Edward Island",
+      "member_id": "122394",
+      "provenance": {
+        "tile_selector": "#mp-tile-person-id-122394",
+        "list_selector": "#mp-list-id-122394"
+      }
+    },
+    {
+      "mp": "Kerry Diotte",
+      "riding": "Edmonton Griesbach",
+      "party": "Conservative",
+      "province": "Alberta",
+      "member_id": "89150",
+      "provenance": {
+        "tile_selector": "#mp-tile-person-id-89150",
+        "list_selector": "#mp-list-id-89150"
+      }
+    },
+    {
+      "mp": "Kevin Lamoureux",
+      "riding": "Winnipeg North",
+      "party": "Liberal",
+      "province": "Manitoba",
+      "member_id": "30552",
+      "provenance": {
+        "tile_selector": "#mp-tile-person-id-30552",
+        "list_selector": "#mp-list-id-30552"
+      }
+    },
+    {
+      "mp": "Kevin Waugh",
+      "riding": "Saskatoon South",
+      "party": "Conservative",
+      "province": "Saskatchewan",
+      "member_id": "89084",
+      "provenance": {
+        "tile_selector": "#mp-tile-person-id-89084",
+        "list_selector": "#mp-list-id-89084"
+      }
+    },
+    {
+      "mp": "Kody Blois",
+      "riding": "Kings—Hants",
+      "party": "Liberal",
+      "province": "Nova Scotia",
+      "member_id": "104555",
+      "provenance": {
+        "tile_selector": "#mp-tile-person-id-104555",
+        "list_selector": "#mp-list-id-104555"
+      }
+    },
+    {
+      "mp": "Kristina Tesser Derksen",
+      "riding": "Milton East—Halton Hills South",
+      "party": "Liberal",
+      "province": "Ontario",
+      "member_id": "123027",
+      "provenance": {
+        "tile_selector": "#mp-tile-person-id-123027",
+        "list_selector": "#mp-list-id-123027"
+      }
+    },
+    {
+      "mp": "Kurt Holman",
+      "riding": "London—Fanshawe",
+      "party": "Conservative",
+      "province": "Ontario",
+      "member_id": "123006",
+      "provenance": {
+        "tile_selector": "#mp-tile-person-id-123006",
+        "list_selector": "#mp-list-id-123006"
+      }
+    },
+    {
+      "mp": "Kyle Seeback",
+      "riding": "Dufferin—Caledon",
+      "party": "Conservative",
+      "province": "Ontario",
+      "member_id": "58841",
+      "provenance": {
+        "tile_selector": "#mp-tile-person-id-58841",
+        "list_selector": "#mp-list-id-58841"
+      }
+    },
+    {
+      "mp": "Laila Goodridge",
+      "riding": "Fort McMurray—Cold Lake",
+      "party": "Conservative",
+      "province": "Alberta",
+      "member_id": "110918",
+      "provenance": {
+        "tile_selector": "#mp-tile-person-id-110918",
+        "list_selector": "#mp-list-id-110918"
+      }
+    },
+    {
+      "mp": "Leah Gazan",
+      "riding": "Winnipeg Centre",
+      "party": "NDP",
+      "province": "Manitoba",
+      "member_id": "87121",
+      "provenance": {
+        "tile_selector": "#mp-tile-person-id-87121",
+        "list_selector": "#mp-list-id-87121"
+      }
+    },
+    {
+      "mp": "Lena Metlege Diab",
+      "riding": "Halifax West—Peggy's Cove",
+      "party": "Liberal",
+      "province": "Nova Scotia",
+      "member_id": "109915",
+      "provenance": {
+        "tile_selector": "#mp-tile-person-id-109915",
+        "list_selector": "#mp-list-id-109915"
+      }
+    },
+    {
+      "mp": "Leslie Church",
+      "riding": "Toronto—St. Paul's",
+      "party": "Liberal",
+      "province": "Ontario",
+      "member_id": "119705",
+      "provenance": {
+        "tile_selector": "#mp-tile-person-id-119705",
+        "list_selector": "#mp-list-id-119705"
+      }
+    },
+    {
+      "mp": "Leslyn Lewis",
+      "riding": "Haldimand—Norfolk",
+      "party": "Conservative",
+      "province": "Ontario",
+      "member_id": "88958",
+      "provenance": {
+        "tile_selector": "#mp-tile-person-id-88958",
+        "list_selector": "#mp-list-id-88958"
+      }
+    },
+    {
+      "mp": "Lianne Rood",
+      "riding": "Middlesex—London",
+      "party": "Conservative",
+      "province": "Ontario",
+      "member_id": "105210",
+      "provenance": {
+        "tile_selector": "#mp-tile-person-id-105210",
+        "list_selector": "#mp-list-id-105210"
+      }
+    },
+    {
+      "mp": "Linda Lapointe",
+      "riding": "Rivière-des-Mille-Îles",
+      "party": "Liberal",
+      "province": "Quebec",
+      "member_id": "88601",
+      "provenance": {
+        "tile_selector": "#mp-tile-person-id-88601",
+        "list_selector": "#mp-list-id-88601"
+      }
+    },
+    {
+      "mp": "Lisa Hepfner",
+      "riding": "Hamilton Mountain",
+      "party": "Liberal",
+      "province": "Ontario",
+      "member_id": "110446",
+      "provenance": {
+        "tile_selector": "#mp-tile-person-id-110446",
+        "list_selector": "#mp-list-id-110446"
+      }
+    },
+    {
+      "mp": "Lori Idlout",
+      "riding": "Nunavut",
+      "party": "Liberal",
+      "province": "Nunavut",
+      "member_id": "111116",
+      "provenance": {
+        "tile_selector": "#mp-tile-person-id-111116",
+        "list_selector": "#mp-list-id-111116"
+      }
+    },
+    {
+      "mp": "Louis Plamondon",
+      "riding": "Bécancour—Nicolet—Saurel—Alnôbak",
+      "party": "Bloc Québécois",
+      "province": "Quebec",
+      "member_id": "413",
+      "provenance": {
+        "tile_selector": "#mp-tile-person-id-413",
+        "list_selector": "#mp-list-id-413"
+      }
+    },
+    {
+      "mp": "Louis Villeneuve",
+      "riding": "Brome—Missisquoi",
+      "party": "Liberal",
+      "province": "Quebec",
+      "member_id": "122539",
+      "provenance": {
+        "tile_selector": "#mp-tile-person-id-122539",
+        "list_selector": "#mp-list-id-122539"
+      }
+    },
+    {
+      "mp": "Luc Berthold",
+      "riding": "Mégantic—L'Érable—Lotbinière",
+      "party": "Conservative",
+      "province": "Quebec",
+      "member_id": "88541",
+      "provenance": {
+        "tile_selector": "#mp-tile-person-id-88541",
+        "list_selector": "#mp-list-id-88541"
+      }
+    },
+    {
+      "mp": "Luc Thériault",
+      "riding": "Montcalm",
+      "party": "Bloc Québécois",
+      "province": "Quebec",
+      "member_id": "88552",
+      "provenance": {
+        "tile_selector": "#mp-tile-person-id-88552",
+        "list_selector": "#mp-list-id-88552"
+      }
+    },
+    {
+      "mp": "Madeleine Chenette",
+      "riding": "Thérèse-De Blainville",
+      "party": "Liberal",
+      "province": "Quebec",
+      "member_id": "122756",
+      "provenance": {
+        "tile_selector": "#mp-tile-person-id-122756",
+        "list_selector": "#mp-list-id-122756"
+      }
+    },
+    {
+      "mp": "Maggie Chi",
+      "riding": "Don Valley North",
+      "party": "Liberal",
+      "province": "Ontario",
+      "member_id": "122899",
+      "provenance": {
+        "tile_selector": "#mp-tile-person-id-122899",
+        "list_selector": "#mp-list-id-122899"
+      }
+    },
+    {
+      "mp": "Mandy Gull-Masty",
+      "riding": "Abitibi—Baie-James—Nunavik—Eeyou",
+      "party": "Liberal",
+      "province": "Quebec",
+      "member_id": "122492",
+      "provenance": {
+        "tile_selector": "#mp-tile-person-id-122492",
+        "list_selector": "#mp-list-id-122492"
+      }
+    },
+    {
+      "mp": "Maninder Sidhu",
+      "riding": "Brampton East",
+      "party": "Liberal",
+      "province": "Ontario",
+      "member_id": "105045",
+      "provenance": {
+        "tile_selector": "#mp-tile-person-id-105045",
+        "list_selector": "#mp-list-id-105045"
+      }
+    },
+    {
+      "mp": "Marc Dalton",
+      "riding": "Pitt Meadows—Maple Ridge",
+      "party": "Conservative",
+      "province": "British Columbia",
+      "member_id": "35909",
+      "provenance": {
+        "tile_selector": "#mp-tile-person-id-35909",
+        "list_selector": "#mp-list-id-35909"
+      }
+    },
+    {
+      "mp": "Marc Miller",
+      "riding": "Ville-Marie—Le Sud-Ouest—Île-des-Soeurs",
+      "party": "Liberal",
+      "province": "Quebec",
+      "member_id": "88660",
+      "provenance": {
+        "tile_selector": "#mp-tile-person-id-88660",
+        "list_selector": "#mp-list-id-88660"
+      }
+    },
+    {
+      "mp": "Marcus Powlowski",
+      "riding": "Thunder Bay—Rainy River",
+      "party": "Liberal",
+      "province": "Ontario",
+      "member_id": "105437",
+      "provenance": {
+        "tile_selector": "#mp-tile-person-id-105437",
+        "list_selector": "#mp-list-id-105437"
+      }
+    },
+    {
+      "mp": "Marianne Dandurand",
+      "riding": "Compton—Stanstead",
+      "party": "Liberal",
+      "province": "Quebec",
+      "member_id": "122559",
+      "provenance": {
+        "tile_selector": "#mp-tile-person-id-122559",
+        "list_selector": "#mp-list-id-122559"
+      }
+    },
+    {
+      "mp": "Marie-France Lalonde",
+      "riding": "Orléans",
+      "party": "Liberal",
+      "province": "Ontario",
+      "member_id": "92209",
+      "provenance": {
+        "tile_selector": "#mp-tile-person-id-92209",
+        "list_selector": "#mp-list-id-92209"
+      }
+    },
+    {
+      "mp": "Marie-Gabrielle Ménard",
+      "riding": "Hochelaga—Rosemont-Est",
+      "party": "Liberal",
+      "province": "Quebec",
+      "member_id": "122587",
+      "provenance": {
+        "tile_selector": "#mp-tile-person-id-122587",
+        "list_selector": "#mp-list-id-122587"
+      }
+    },
+    {
+      "mp": "Marie-Hélène Gaudreau",
+      "riding": "Laurentides—Labelle",
+      "party": "Bloc Québécois",
+      "province": "Quebec",
+      "member_id": "104806",
+      "provenance": {
+        "tile_selector": "#mp-tile-person-id-104806",
+        "list_selector": "#mp-list-id-104806"
+      }
+    },
+    {
+      "mp": "Marilyn Gladu",
+      "riding": "Sarnia—Lambton—Bkejwanong",
+      "party": "Liberal",
+      "province": "Ontario",
+      "member_id": "88938",
+      "provenance": {
+        "tile_selector": "#mp-tile-person-id-88938",
+        "list_selector": "#mp-list-id-88938"
+      }
+    },
+    {
+      "mp": "Marilène Gill",
+      "riding": "Côte-Nord—Kawawachikamach—Nitassinan",
+      "party": "Bloc Québécois",
+      "province": "Quebec",
+      "member_id": "88538",
+      "provenance": {
+        "tile_selector": "#mp-tile-person-id-88538",
+        "list_selector": "#mp-list-id-88538"
+      }
+    },
+    {
+      "mp": "Mario Beaulieu",
+      "riding": "La Pointe-de-l'Île",
+      "party": "Bloc Québécois",
+      "province": "Quebec",
+      "member_id": "376",
+      "provenance": {
+        "tile_selector": "#mp-tile-person-id-376",
+        "list_selector": "#mp-list-id-376"
+      }
+    },
+    {
+      "mp": "Mario Simard",
+      "riding": "Jonquière—Hébertville—Pays-des-Bleuets",
+      "party": "Bloc Québécois",
+      "province": "Quebec",
+      "member_id": "104773",
+      "provenance": {
+        "tile_selector": "#mp-tile-person-id-104773",
+        "list_selector": "#mp-list-id-104773"
+      }
+    },
+    {
+      "mp": "Marjorie Michel",
+      "riding": "Papineau",
+      "party": "Liberal",
+      "province": "Quebec",
+      "member_id": "122684",
+      "provenance": {
+        "tile_selector": "#mp-tile-person-id-122684",
+        "list_selector": "#mp-list-id-122684"
+      }
+    },
+    {
+      "mp": "Mark Carney",
+      "riding": "Nepean",
+      "party": "Liberal",
+      "province": "Ontario",
+      "member_id": "28286",
+      "provenance": {
+        "tile_selector": "#mp-tile-person-id-28286",
+        "list_selector": "#mp-list-id-28286"
+      }
+    },
+    {
+      "mp": "Mark Gerretsen",
+      "riding": "Kingston and the Islands",
+      "party": "Liberal",
+      "province": "Ontario",
+      "member_id": "88802",
+      "provenance": {
+        "tile_selector": "#mp-tile-person-id-88802",
+        "list_selector": "#mp-list-id-88802"
+      }
+    },
+    {
+      "mp": "Mark Strahl",
+      "riding": "Chilliwack—Hope",
+      "party": "Conservative",
+      "province": "British Columbia",
+      "member_id": "71986",
+      "provenance": {
+        "tile_selector": "#mp-tile-person-id-71986",
+        "list_selector": "#mp-list-id-71986"
+      }
+    },
+    {
+      "mp": "Martin Champoux",
+      "riding": "Drummond",
+      "party": "Bloc Québécois",
+      "province": "Quebec",
+      "member_id": "104741",
+      "provenance": {
+        "tile_selector": "#mp-tile-person-id-104741",
+        "list_selector": "#mp-list-id-104741"
+      }
+    },
+    {
+      "mp": "Matt Jeneroux",
+      "riding": "Edmonton Riverbend",
+      "party": "Liberal",
+      "province": "Alberta",
+      "member_id": "89167",
+      "provenance": {
+        "tile_selector": "#mp-tile-person-id-89167",
+        "list_selector": "#mp-list-id-89167"
+      }
+    },
+    {
+      "mp": "Matt Strauss",
+      "riding": "Kitchener South—Hespeler",
+      "party": "Conservative",
+      "province": "Ontario",
+      "member_id": "122994",
+      "provenance": {
+        "tile_selector": "#mp-tile-person-id-122994",
+        "list_selector": "#mp-list-id-122994"
+      }
+    },
+    {
+      "mp": "Maxime Blanchette-Joncas",
+      "riding": "Rimouski-Neigette—Mitis—Matapédia—Les Basques",
+      "party": "Bloc Québécois",
+      "province": "Quebec",
+      "member_id": "104705",
+      "provenance": {
+        "tile_selector": "#mp-tile-person-id-104705",
+        "list_selector": "#mp-list-id-104705"
+      }
+    },
+    {
+      "mp": "Mel Arnold",
+      "riding": "Kamloops—Shuswap—Central Rockies",
+      "party": "Conservative",
+      "province": "British Columbia",
+      "member_id": "89294",
+      "provenance": {
+        "tile_selector": "#mp-tile-person-id-89294",
+        "list_selector": "#mp-list-id-89294"
+      }
+    },
+    {
+      "mp": "Melissa Lantsman",
+      "riding": "Thornhill",
+      "party": "Conservative",
+      "province": "Ontario",
+      "member_id": "110665",
+      "provenance": {
+        "tile_selector": "#mp-tile-person-id-110665",
+        "list_selector": "#mp-list-id-110665"
+      }
+    },
+    {
+      "mp": "Michael Barrett",
+      "riding": "Leeds—Grenville—Thousand Islands—Rideau Lakes",
+      "party": "Conservative",
+      "province": "Ontario",
+      "member_id": "102275",
+      "provenance": {
+        "tile_selector": "#mp-tile-person-id-102275",
+        "list_selector": "#mp-list-id-102275"
+      }
+    },
+    {
+      "mp": "Michael Cooper",
+      "riding": "St. Albert—Sturgeon River",
+      "party": "Conservative",
+      "province": "Alberta",
+      "member_id": "89219",
+      "provenance": {
+        "tile_selector": "#mp-tile-person-id-89219",
+        "list_selector": "#mp-list-id-89219"
+      }
+    },
+    {
+      "mp": "Michael Coteau",
+      "riding": "Scarborough—Woburn",
+      "party": "Liberal",
+      "province": "Ontario",
+      "member_id": "110373",
+      "provenance": {
+        "tile_selector": "#mp-tile-person-id-110373",
+        "list_selector": "#mp-list-id-110373"
+      }
+    },
+    {
+      "mp": "Michael D. Chong",
+      "riding": "Wellington—Halton Hills North",
+      "party": "Conservative",
+      "province": "Ontario",
+      "member_id": "25488",
+      "provenance": {
+        "tile_selector": "#mp-tile-person-id-25488",
+        "list_selector": "#mp-list-id-25488"
+      }
+    },
+    {
+      "mp": "Michael Guglielmin",
+      "riding": "Vaughan—Woodbridge",
+      "party": "Conservative",
+      "province": "Ontario",
+      "member_id": "123248",
+      "provenance": {
+        "tile_selector": "#mp-tile-person-id-123248",
+        "list_selector": "#mp-list-id-123248"
+      }
+    },
+    {
+      "mp": "Michael Kram",
+      "riding": "Regina—Wascana",
+      "party": "Conservative",
+      "province": "Saskatchewan",
+      "member_id": "89080",
+      "provenance": {
+        "tile_selector": "#mp-tile-person-id-89080",
+        "list_selector": "#mp-list-id-89080"
+      }
+    },
+    {
+      "mp": "Michael Ma",
+      "riding": "Markham—Unionville",
+      "party": "Liberal",
+      "province": "Ontario",
+      "member_id": "105088",
+      "provenance": {
+        "tile_selector": "#mp-tile-person-id-105088",
+        "list_selector": "#mp-list-id-105088"
+      }
+    },
+    {
+      "mp": "Michelle Rempel Garner",
+      "riding": "Calgary Nose Hill",
+      "party": "Conservative",
+      "province": "Alberta",
+      "member_id": "71902",
+      "provenance": {
+        "tile_selector": "#mp-tile-person-id-71902",
+        "list_selector": "#mp-list-id-71902"
+      }
+    },
+    {
+      "mp": "Mike Dawson",
+      "riding": "Miramichi—Grand Lake",
+      "party": "Conservative",
+      "province": "New Brunswick",
+      "member_id": "122476",
+      "provenance": {
+        "tile_selector": "#mp-tile-person-id-122476",
+        "list_selector": "#mp-list-id-122476"
+      }
+    },
+    {
+      "mp": "Mike Kelloway",
+      "riding": "Sydney—Glace Bay",
+      "party": "Liberal",
+      "province": "Nova Scotia",
+      "member_id": "104531",
+      "provenance": {
+        "tile_selector": "#mp-tile-person-id-104531",
+        "list_selector": "#mp-list-id-104531"
+      }
+    },
+    {
+      "mp": "Mike Lake",
+      "riding": "Leduc—Wetaskiwin",
+      "party": "Conservative",
+      "province": "Alberta",
+      "member_id": "35857",
+      "provenance": {
+        "tile_selector": "#mp-tile-person-id-35857",
+        "list_selector": "#mp-list-id-35857"
+      }
+    },
+    {
+      "mp": "Mona Fortier",
+      "riding": "Ottawa—Vanier—Gloucester",
+      "party": "Liberal",
+      "province": "Ontario",
+      "member_id": "96356",
+      "provenance": {
+        "tile_selector": "#mp-tile-person-id-96356",
+        "list_selector": "#mp-list-id-96356"
+      }
+    },
+    {
+      "mp": "Mélanie Joly",
+      "riding": "Ahuntsic-Cartierville",
+      "party": "Liberal",
+      "province": "Quebec",
+      "member_id": "88384",
+      "provenance": {
+        "tile_selector": "#mp-tile-person-id-88384",
+        "list_selector": "#mp-list-id-88384"
+      }
+    },
+    {
+      "mp": "Nathalie Provost",
+      "riding": "Châteauguay—Les Jardins-de-Napierville",
+      "party": "Liberal",
+      "province": "Quebec",
+      "member_id": "122552",
+      "provenance": {
+        "tile_selector": "#mp-tile-person-id-122552",
+        "list_selector": "#mp-list-id-122552"
+      }
+    },
+    {
+      "mp": "Natilien Joseph",
+      "riding": "Longueuil—Saint-Hubert",
+      "party": "Liberal",
+      "province": "Quebec",
+      "member_id": "122646",
+      "provenance": {
+        "tile_selector": "#mp-tile-person-id-122646",
+        "list_selector": "#mp-list-id-122646"
+      }
+    },
+    {
+      "mp": "Ned Kuruc",
+      "riding": "Hamilton East—Stoney Creek",
+      "party": "Conservative",
+      "province": "Ontario",
+      "member_id": "110441",
+      "provenance": {
+        "tile_selector": "#mp-tile-person-id-110441",
+        "list_selector": "#mp-list-id-110441"
+      }
+    },
+    {
+      "mp": "Parm Bains",
+      "riding": "Richmond East—Steveston",
+      "party": "Liberal",
+      "province": "British Columbia",
+      "member_id": "111067",
+      "provenance": {
+        "tile_selector": "#mp-tile-person-id-111067",
+        "list_selector": "#mp-list-id-111067"
+      }
+    },
+    {
+      "mp": "Pat Kelly",
+      "riding": "Calgary Crowfoot",
+      "party": "Conservative",
+      "province": "Alberta",
+      "member_id": "89130",
+      "provenance": {
+        "tile_selector": "#mp-tile-person-id-89130",
+        "list_selector": "#mp-list-id-89130"
+      }
+    },
+    {
+      "mp": "Patricia Lattanzio",
+      "riding": "Saint-Léonard—Saint-Michel",
+      "party": "Liberal",
+      "province": "Quebec",
+      "member_id": "104957",
+      "provenance": {
+        "tile_selector": "#mp-tile-person-id-104957",
+        "list_selector": "#mp-list-id-104957"
+      }
+    },
+    {
+      "mp": "Patrick Bonin",
+      "riding": "Repentigny",
+      "party": "Bloc Québécois",
+      "province": "Quebec",
+      "member_id": "122709",
+      "provenance": {
+        "tile_selector": "#mp-tile-person-id-122709",
+        "list_selector": "#mp-list-id-122709"
+      }
+    },
+    {
+      "mp": "Patrick Weiler",
+      "riding": "West Vancouver—Sunshine Coast—Sea to Sky Country",
+      "party": "Liberal",
+      "province": "British Columbia",
+      "member_id": "105918",
+      "provenance": {
+        "tile_selector": "#mp-tile-person-id-105918",
+        "list_selector": "#mp-list-id-105918"
+      }
+    },
+    {
+      "mp": "Patty Hajdu",
+      "riding": "Thunder Bay—Superior North",
+      "party": "Liberal",
+      "province": "Ontario",
+      "member_id": "88984",
+      "provenance": {
+        "tile_selector": "#mp-tile-person-id-88984",
+        "list_selector": "#mp-list-id-88984"
+      }
+    },
+    {
+      "mp": "Paul Connors",
+      "riding": "Avalon",
+      "party": "Liberal",
+      "province": "Newfoundland and Labrador",
+      "member_id": "122369",
+      "provenance": {
+        "tile_selector": "#mp-tile-person-id-122369",
+        "list_selector": "#mp-list-id-122369"
+      }
+    },
+    {
+      "mp": "Pauline Rochefort",
+      "riding": "Nipissing—Timiskaming",
+      "party": "Liberal",
+      "province": "Ontario",
+      "member_id": "123081",
+      "provenance": {
+        "tile_selector": "#mp-tile-person-id-123081",
+        "list_selector": "#mp-list-id-123081"
+      }
+    },
+    {
+      "mp": "Peter Fonseca",
+      "riding": "Mississauga East—Cooksville",
+      "party": "Liberal",
+      "province": "Ontario",
+      "member_id": "71692",
+      "provenance": {
+        "tile_selector": "#mp-tile-person-id-71692",
+        "list_selector": "#mp-list-id-71692"
+      }
+    },
+    {
+      "mp": "Peter Fragiskatos",
+      "riding": "London Centre",
+      "party": "Liberal",
+      "province": "Ontario",
+      "member_id": "88827",
+      "provenance": {
+        "tile_selector": "#mp-tile-person-id-88827",
+        "list_selector": "#mp-list-id-88827"
+      }
+    },
+    {
+      "mp": "Peter Schiefke",
+      "riding": "Vaudreuil",
+      "party": "Liberal",
+      "province": "Quebec",
+      "member_id": "88649",
+      "provenance": {
+        "tile_selector": "#mp-tile-person-id-88649",
+        "list_selector": "#mp-list-id-88649"
+      }
+    },
+    {
+      "mp": "Philip Earle",
+      "riding": "Labrador",
+      "party": "Liberal",
+      "province": "Newfoundland and Labrador",
+      "member_id": "122380",
+      "provenance": {
+        "tile_selector": "#mp-tile-person-id-122380",
+        "list_selector": "#mp-list-id-122380"
+      }
+    },
+    {
+      "mp": "Philip Lawrence",
+      "riding": "Northumberland—Clarke",
+      "party": "Conservative",
+      "province": "Ontario",
+      "member_id": "105291",
+      "provenance": {
+        "tile_selector": "#mp-tile-person-id-105291",
+        "list_selector": "#mp-list-id-105291"
+      }
+    },
+    {
+      "mp": "Pierre Paul-Hus",
+      "riding": "Charlesbourg—Haute-Saint-Charles",
+      "party": "Conservative",
+      "province": "Quebec",
+      "member_id": "71454",
+      "provenance": {
+        "tile_selector": "#mp-tile-person-id-71454",
+        "list_selector": "#mp-list-id-71454"
+      }
+    },
+    {
+      "mp": "Pierre Poilievre",
+      "riding": "Battle River—Crowfoot",
+      "party": "Conservative",
+      "province": "Alberta",
+      "member_id": "25524",
+      "provenance": {
+        "tile_selector": "#mp-tile-person-id-25524",
+        "list_selector": "#mp-list-id-25524"
+      }
+    },
+    {
+      "mp": "Rachael Thomas",
+      "riding": "Lethbridge",
+      "party": "Conservative",
+      "province": "Alberta",
+      "member_id": "89200",
+      "provenance": {
+        "tile_selector": "#mp-tile-person-id-89200",
+        "list_selector": "#mp-list-id-89200"
+      }
+    },
+    {
+      "mp": "Rachel Bendayan",
+      "riding": "Outremont",
+      "party": "Liberal",
+      "province": "Quebec",
+      "member_id": "88567",
+      "provenance": {
+        "tile_selector": "#mp-tile-person-id-88567",
+        "list_selector": "#mp-list-id-88567"
+      }
+    },
+    {
+      "mp": "Randeep Sarai",
+      "riding": "Surrey Centre",
+      "party": "Liberal",
+      "province": "British Columbia",
+      "member_id": "89339",
+      "provenance": {
+        "tile_selector": "#mp-tile-person-id-89339",
+        "list_selector": "#mp-list-id-89339"
+      }
+    },
+    {
+      "mp": "Randy Hoback",
+      "riding": "Prince Albert",
+      "party": "Conservative",
+      "province": "Saskatchewan",
+      "member_id": "59148",
+      "provenance": {
+        "tile_selector": "#mp-tile-person-id-59148",
+        "list_selector": "#mp-list-id-59148"
+      }
+    },
+    {
+      "mp": "Raquel Dancho",
+      "riding": "Kildonan—St. Paul",
+      "party": "Conservative",
+      "province": "Manitoba",
+      "member_id": "105521",
+      "provenance": {
+        "tile_selector": "#mp-tile-person-id-105521",
+        "list_selector": "#mp-list-id-105521"
+      }
+    },
+    {
+      "mp": "Rebecca Alty",
+      "riding": "Northwest Territories",
+      "party": "Liberal",
+      "province": "Northwest Territories",
+      "member_id": "123675",
+      "provenance": {
+        "tile_selector": "#mp-tile-person-id-123675",
+        "list_selector": "#mp-list-id-123675"
+      }
+    },
+    {
+      "mp": "Rebecca Chartrand",
+      "riding": "Churchill—Keewatinook Aski",
+      "party": "Liberal",
+      "province": "Manitoba",
+      "member_id": "89464",
+      "provenance": {
+        "tile_selector": "#mp-tile-person-id-89464",
+        "list_selector": "#mp-list-id-89464"
+      }
+    },
+    {
+      "mp": "Rechie Valdez",
+      "riding": "Mississauga—Streetsville",
+      "party": "Liberal",
+      "province": "Ontario",
+      "member_id": "110538",
+      "provenance": {
+        "tile_selector": "#mp-tile-person-id-110538",
+        "list_selector": "#mp-list-id-110538"
+      }
+    },
+    {
+      "mp": "Rhonda Kirkland",
+      "riding": "Oshawa",
+      "party": "Conservative",
+      "province": "Ontario",
+      "member_id": "123104",
+      "provenance": {
+        "tile_selector": "#mp-tile-person-id-123104",
+        "list_selector": "#mp-list-id-123104"
+      }
+    },
+    {
+      "mp": "Rhéal Éloi Fortin",
+      "riding": "Rivière-du-Nord",
+      "party": "Bloc Québécois",
+      "province": "Quebec",
+      "member_id": "88605",
+      "provenance": {
+        "tile_selector": "#mp-tile-person-id-88605",
+        "list_selector": "#mp-list-id-88605"
+      }
+    },
+    {
+      "mp": "Richard Bragdon",
+      "riding": "Tobique—Mactaquac",
+      "party": "Conservative",
+      "province": "New Brunswick",
+      "member_id": "88369",
+      "provenance": {
+        "tile_selector": "#mp-tile-person-id-88369",
+        "list_selector": "#mp-list-id-88369"
+      }
+    },
+    {
+      "mp": "Rob Moore",
+      "riding": "Fundy Royal",
+      "party": "Conservative",
+      "province": "New Brunswick",
+      "member_id": "17210",
+      "provenance": {
+        "tile_selector": "#mp-tile-person-id-17210",
+        "list_selector": "#mp-list-id-17210"
+      }
+    },
+    {
+      "mp": "Rob Morrison",
+      "riding": "Columbia—Kootenay—Southern Rockies",
+      "party": "Conservative",
+      "province": "British Columbia",
+      "member_id": "105807",
+      "provenance": {
+        "tile_selector": "#mp-tile-person-id-105807",
+        "list_selector": "#mp-list-id-105807"
+      }
+    },
+    {
+      "mp": "Robert Morrissey",
+      "riding": "Egmont",
+      "party": "Liberal",
+      "province": "Prince Edward Island",
+      "member_id": "88308",
+      "provenance": {
+        "tile_selector": "#mp-tile-person-id-88308",
+        "list_selector": "#mp-list-id-88308"
+      }
+    },
+    {
+      "mp": "Robert Oliphant",
+      "riding": "Don Valley West",
+      "party": "Liberal",
+      "province": "Ontario",
+      "member_id": "58858",
+      "provenance": {
+        "tile_selector": "#mp-tile-person-id-58858",
+        "list_selector": "#mp-list-id-58858"
+      }
+    },
+    {
+      "mp": "Roman Baber",
+      "riding": "North York",
+      "party": "Conservative",
+      "province": "Ontario",
+      "member_id": "123276",
+      "provenance": {
+        "tile_selector": "#mp-tile-person-id-123276",
+        "list_selector": "#mp-list-id-123276"
+      }
+    },
+    {
+      "mp": "Ron McKinnon",
+      "riding": "Coquitlam—Port Coquitlam",
+      "party": "Liberal",
+      "province": "British Columbia",
+      "member_id": "59293",
+      "provenance": {
+        "tile_selector": "#mp-tile-person-id-59293",
+        "list_selector": "#mp-list-id-59293"
+      }
+    },
+    {
+      "mp": "Rosemarie Falk",
+      "riding": "Battlefords—Lloydminster—Meadow Lake",
+      "party": "Conservative",
+      "province": "Saskatchewan",
+      "member_id": "98749",
+      "provenance": {
+        "tile_selector": "#mp-tile-person-id-98749",
+        "list_selector": "#mp-list-id-98749"
+      }
+    },
+    {
+      "mp": "Ruby Sahota",
+      "riding": "Brampton North—Caledon",
+      "party": "Liberal",
+      "province": "Ontario",
+      "member_id": "88698",
+      "provenance": {
+        "tile_selector": "#mp-tile-person-id-88698",
+        "list_selector": "#mp-list-id-88698"
+      }
+    },
+    {
+      "mp": "Ryan Turnbull",
+      "riding": "Whitby",
+      "party": "Liberal",
+      "province": "Ontario",
+      "member_id": "105480",
+      "provenance": {
+        "tile_selector": "#mp-tile-person-id-105480",
+        "list_selector": "#mp-list-id-105480"
+      }
+    },
+    {
+      "mp": "Salma Zahid",
+      "riding": "Scarborough Centre—Don Valley East",
+      "party": "Liberal",
+      "province": "Ontario",
+      "member_id": "88950",
+      "provenance": {
+        "tile_selector": "#mp-tile-person-id-88950",
+        "list_selector": "#mp-list-id-88950"
+      }
+    },
+    {
+      "mp": "Sameer Zuberi",
+      "riding": "Pierrefonds—Dollard",
+      "party": "Liberal",
+      "province": "Quebec",
+      "member_id": "54157",
+      "provenance": {
+        "tile_selector": "#mp-tile-person-id-54157",
+        "list_selector": "#mp-list-id-54157"
+      }
+    },
+    {
+      "mp": "Sandra Cobena",
+      "riding": "Newmarket—Aurora",
+      "party": "Conservative",
+      "province": "Ontario",
+      "member_id": "123060",
+      "provenance": {
+        "tile_selector": "#mp-tile-person-id-123060",
+        "list_selector": "#mp-list-id-123060"
+      }
+    },
+    {
+      "mp": "Scot Davidson",
+      "riding": "York—South Simcoe",
+      "party": "Conservative",
+      "province": "Ontario",
+      "member_id": "102653",
+      "provenance": {
+        "tile_selector": "#mp-tile-person-id-102653",
+        "list_selector": "#mp-list-id-102653"
+      }
+    },
+    {
+      "mp": "Scott Aitchison",
+      "riding": "Parry Sound—Muskoka",
+      "party": "Conservative",
+      "province": "Ontario",
+      "member_id": "105340",
+      "provenance": {
+        "tile_selector": "#mp-tile-person-id-105340",
+        "list_selector": "#mp-list-id-105340"
+      }
+    },
+    {
+      "mp": "Scott Anderson",
+      "riding": "Vernon—Lake Country—Monashee",
+      "party": "Conservative",
+      "province": "British Columbia",
+      "member_id": "89259",
+      "provenance": {
+        "tile_selector": "#mp-tile-person-id-89259",
+        "list_selector": "#mp-list-id-89259"
+      }
+    },
+    {
+      "mp": "Scott Reid",
+      "riding": "Lanark—Frontenac",
+      "party": "Conservative",
+      "province": "Ontario",
+      "member_id": "1827",
+      "provenance": {
+        "tile_selector": "#mp-tile-person-id-1827",
+        "list_selector": "#mp-list-id-1827"
+      }
+    },
+    {
+      "mp": "Sean Casey",
+      "riding": "Charlottetown",
+      "party": "Liberal",
+      "province": "Prince Edward Island",
+      "member_id": "71270",
+      "provenance": {
+        "tile_selector": "#mp-tile-person-id-71270",
+        "list_selector": "#mp-list-id-71270"
+      }
+    },
+    {
+      "mp": "Sean Fraser",
+      "riding": "Central Nova",
+      "party": "Liberal",
+      "province": "Nova Scotia",
+      "member_id": "88316",
+      "provenance": {
+        "tile_selector": "#mp-tile-person-id-88316",
+        "list_selector": "#mp-list-id-88316"
+      }
+    },
+    {
+      "mp": "Serge Cormier",
+      "riding": "Acadie—Bathurst",
+      "party": "Liberal",
+      "province": "New Brunswick",
+      "member_id": "88350",
+      "provenance": {
+        "tile_selector": "#mp-tile-person-id-88350",
+        "list_selector": "#mp-list-id-88350"
+      }
+    },
+    {
+      "mp": "Shafqat Ali",
+      "riding": "Brampton—Chinguacousy Park",
+      "party": "Liberal",
+      "province": "Ontario",
+      "member_id": "110339",
+      "provenance": {
+        "tile_selector": "#mp-tile-person-id-110339",
+        "list_selector": "#mp-list-id-110339"
+      }
+    },
+    {
+      "mp": "Shannon Miedema",
+      "riding": "Halifax",
+      "party": "Liberal",
+      "province": "Nova Scotia",
+      "member_id": "122428",
+      "provenance": {
+        "tile_selector": "#mp-tile-person-id-122428",
+        "list_selector": "#mp-list-id-122428"
+      }
+    },
+    {
+      "mp": "Shannon Stubbs",
+      "riding": "Lakeland",
+      "party": "Conservative",
+      "province": "Alberta",
+      "member_id": "89198",
+      "provenance": {
+        "tile_selector": "#mp-tile-person-id-89198",
+        "list_selector": "#mp-list-id-89198"
+      }
+    },
+    {
+      "mp": "Shelby Kramp-Neuman",
+      "riding": "Hastings—Lennox and Addington—Tyendinaga",
+      "party": "Conservative",
+      "province": "Ontario",
+      "member_id": "110454",
+      "provenance": {
+        "tile_selector": "#mp-tile-person-id-110454",
+        "list_selector": "#mp-list-id-110454"
+      }
+    },
+    {
+      "mp": "Sherry Romanado",
+      "riding": "Longueuil—Charles-LeMoyne—Greenfield Park",
+      "party": "Liberal",
+      "province": "Quebec",
+      "member_id": "88521",
+      "provenance": {
+        "tile_selector": "#mp-tile-person-id-88521",
+        "list_selector": "#mp-list-id-88521"
+      }
+    },
+    {
+      "mp": "Shuvaloy Majumdar",
+      "riding": "Calgary Heritage",
+      "party": "Conservative",
+      "province": "Alberta",
+      "member_id": "116022",
+      "provenance": {
+        "tile_selector": "#mp-tile-person-id-116022",
+        "list_selector": "#mp-list-id-116022"
+      }
+    },
+    {
+      "mp": "Sima Acan",
+      "riding": "Oakville West",
+      "party": "Liberal",
+      "province": "Ontario",
+      "member_id": "123092",
+      "provenance": {
+        "tile_selector": "#mp-tile-person-id-123092",
+        "list_selector": "#mp-list-id-123092"
+      }
+    },
+    {
+      "mp": "Sonia Sidhu",
+      "riding": "Brampton South",
+      "party": "Liberal",
+      "province": "Ontario",
+      "member_id": "88703",
+      "provenance": {
+        "tile_selector": "#mp-tile-person-id-88703",
+        "list_selector": "#mp-list-id-88703"
+      }
+    },
+    {
+      "mp": "Sophie Chatel",
+      "riding": "Pontiac—Kitigan Zibi",
+      "party": "Liberal",
+      "province": "Quebec",
+      "member_id": "110225",
+      "provenance": {
+        "tile_selector": "#mp-tile-person-id-110225",
+        "list_selector": "#mp-list-id-110225"
+      }
+    },
+    {
+      "mp": "Steeve Lavoie",
+      "riding": "Beauport—Limoilou",
+      "party": "Liberal",
+      "province": "Quebec",
+      "member_id": "122518",
+      "provenance": {
+        "tile_selector": "#mp-tile-person-id-122518",
+        "list_selector": "#mp-list-id-122518"
+      }
+    },
+    {
+      "mp": "Stephanie Kusie",
+      "riding": "Calgary Midnapore",
+      "party": "Conservative",
+      "province": "Alberta",
+      "member_id": "96367",
+      "provenance": {
+        "tile_selector": "#mp-tile-person-id-96367",
+        "list_selector": "#mp-list-id-96367"
+      }
+    },
+    {
+      "mp": "Stephanie McLean",
+      "riding": "Esquimalt—Saanich—Sooke",
+      "party": "Liberal",
+      "province": "British Columbia",
+      "member_id": "123563",
+      "provenance": {
+        "tile_selector": "#mp-tile-person-id-123563",
+        "list_selector": "#mp-list-id-123563"
+      }
+    },
+    {
+      "mp": "Stephen Fuhr",
+      "riding": "Kelowna",
+      "party": "Liberal",
+      "province": "British Columbia",
+      "member_id": "89279",
+      "provenance": {
+        "tile_selector": "#mp-tile-person-id-89279",
+        "list_selector": "#mp-list-id-89279"
+      }
+    },
+    {
+      "mp": "Steven Bonk",
+      "riding": "Souris—Moose Mountain",
+      "party": "Conservative",
+      "province": "Saskatchewan",
+      "member_id": "123361",
+      "provenance": {
+        "tile_selector": "#mp-tile-person-id-123361",
+        "list_selector": "#mp-list-id-123361"
+      }
+    },
+    {
+      "mp": "Steven MacKinnon",
+      "riding": "Gatineau",
+      "party": "Liberal",
+      "province": "Quebec",
+      "member_id": "88468",
+      "provenance": {
+        "tile_selector": "#mp-tile-person-id-88468",
+        "list_selector": "#mp-list-id-88468"
+      }
+    },
+    {
+      "mp": "Stéphane Lauzon",
+      "riding": "Argenteuil—Papineau—Des Collines",
+      "party": "Liberal",
+      "province": "Quebec",
+      "member_id": "88394",
+      "provenance": {
+        "tile_selector": "#mp-tile-person-id-88394",
+        "list_selector": "#mp-list-id-88394"
+      }
+    },
+    {
+      "mp": "Sukh Dhaliwal",
+      "riding": "Surrey Newton",
+      "party": "Liberal",
+      "province": "British Columbia",
+      "member_id": "31098",
+      "provenance": {
+        "tile_selector": "#mp-tile-person-id-31098",
+        "list_selector": "#mp-list-id-31098"
+      }
+    },
+    {
+      "mp": "Sukhman Gill",
+      "riding": "Abbotsford—South Langley",
+      "party": "Conservative",
+      "province": "British Columbia",
+      "member_id": "123517",
+      "provenance": {
+        "tile_selector": "#mp-tile-person-id-123517",
+        "list_selector": "#mp-list-id-123517"
+      }
+    },
+    {
+      "mp": "Sébastien Lemire",
+      "riding": "Abitibi—Témiscamingue",
+      "party": "Bloc Québécois",
+      "province": "Quebec",
+      "member_id": "104630",
+      "provenance": {
+        "tile_selector": "#mp-tile-person-id-104630",
+        "list_selector": "#mp-list-id-104630"
+      }
+    },
+    {
+      "mp": "Tako Van Popta",
+      "riding": "Langley Township—Fraser Heights",
+      "party": "Conservative",
+      "province": "British Columbia",
+      "member_id": "105811",
+      "provenance": {
+        "tile_selector": "#mp-tile-person-id-105811",
+        "list_selector": "#mp-list-id-105811"
+      }
+    },
+    {
+      "mp": "Taleeb Noormohamed",
+      "riding": "Vancouver Granville",
+      "party": "Liberal",
+      "province": "British Columbia",
+      "member_id": "72023",
+      "provenance": {
+        "tile_selector": "#mp-tile-person-id-72023",
+        "list_selector": "#mp-list-id-72023"
+      }
+    },
+    {
+      "mp": "Tamara Jansen",
+      "riding": "Cloverdale—Langley City",
+      "party": "Conservative",
+      "province": "British Columbia",
+      "member_id": "105774",
+      "provenance": {
+        "tile_selector": "#mp-tile-person-id-105774",
+        "list_selector": "#mp-list-id-105774"
+      }
+    },
+    {
+      "mp": "Tamara Kronis",
+      "riding": "Nanaimo—Ladysmith",
+      "party": "Conservative",
+      "province": "British Columbia",
+      "member_id": "111025",
+      "provenance": {
+        "tile_selector": "#mp-tile-person-id-111025",
+        "list_selector": "#mp-list-id-111025"
+      }
+    },
+    {
+      "mp": "Tanveer Shahnawaz",
+      "riding": "Beaches—East York",
+      "party": "Liberal",
+      "province": "Ontario",
+      "member_id": "142763",
+      "provenance": {
+        "tile_selector": "#mp-tile-person-id-142763",
+        "list_selector": "#mp-list-id-142763"
+      }
+    },
+    {
+      "mp": "Tatiana Auguste",
+      "riding": "Terrebonne",
+      "party": "Liberal",
+      "province": "Quebec",
+      "member_id": "122753",
+      "provenance": {
+        "tile_selector": "#mp-tile-person-id-122753",
+        "list_selector": "#mp-list-id-122753"
+      }
+    },
+    {
+      "mp": "Ted Falk",
+      "riding": "Provencher",
+      "party": "Conservative",
+      "province": "Manitoba",
+      "member_id": "84672",
+      "provenance": {
+        "tile_selector": "#mp-tile-person-id-84672",
+        "list_selector": "#mp-list-id-84672"
+      }
+    },
+    {
+      "mp": "Terry Beech",
+      "riding": "Burnaby North—Seymour",
+      "party": "Liberal",
+      "province": "British Columbia",
+      "member_id": "89236",
+      "provenance": {
+        "tile_selector": "#mp-tile-person-id-89236",
+        "list_selector": "#mp-list-id-89236"
+      }
+    },
+    {
+      "mp": "Terry Dowdall",
+      "riding": "Simcoe—Grey",
+      "party": "Conservative",
+      "province": "Ontario",
+      "member_id": "105410",
+      "provenance": {
+        "tile_selector": "#mp-tile-person-id-105410",
+        "list_selector": "#mp-list-id-105410"
+      }
+    },
+    {
+      "mp": "Terry Duguid",
+      "riding": "Winnipeg South",
+      "party": "Liberal",
+      "province": "Manitoba",
+      "member_id": "31119",
+      "provenance": {
+        "tile_selector": "#mp-tile-person-id-31119",
+        "list_selector": "#mp-list-id-31119"
+      }
+    },
+    {
+      "mp": "Terry Sheehan",
+      "riding": "Sault Ste. Marie—Algoma",
+      "party": "Liberal",
+      "province": "Ontario",
+      "member_id": "88944",
+      "provenance": {
+        "tile_selector": "#mp-tile-person-id-88944",
+        "list_selector": "#mp-list-id-88944"
+      }
+    },
+    {
+      "mp": "Tim Hodgson",
+      "riding": "Markham—Thornhill",
+      "party": "Liberal",
+      "province": "Ontario",
+      "member_id": "123019",
+      "provenance": {
+        "tile_selector": "#mp-tile-person-id-123019",
+        "list_selector": "#mp-list-id-123019"
+      }
+    },
+    {
+      "mp": "Tim Louis",
+      "riding": "Kitchener—Conestoga",
+      "party": "Liberal",
+      "province": "Ontario",
+      "member_id": "88810",
+      "provenance": {
+        "tile_selector": "#mp-tile-person-id-88810",
+        "list_selector": "#mp-list-id-88810"
+      }
+    },
+    {
+      "mp": "Tim Uppal",
+      "riding": "Edmonton Gateway",
+      "party": "Conservative",
+      "province": "Alberta",
+      "member_id": "30645",
+      "provenance": {
+        "tile_selector": "#mp-tile-person-id-30645",
+        "list_selector": "#mp-list-id-30645"
+      }
+    },
+    {
+      "mp": "Tim Watchorn",
+      "riding": "Les Pays-d'en-Haut",
+      "party": "Liberal",
+      "province": "Quebec",
+      "member_id": "122637",
+      "provenance": {
+        "tile_selector": "#mp-tile-person-id-122637",
+        "list_selector": "#mp-list-id-122637"
+      }
+    },
+    {
+      "mp": "Todd Doherty",
+      "riding": "Cariboo—Prince George—Omineca",
+      "party": "Conservative",
+      "province": "British Columbia",
+      "member_id": "89249",
+      "provenance": {
+        "tile_selector": "#mp-tile-person-id-89249",
+        "list_selector": "#mp-list-id-89249"
+      }
+    },
+    {
+      "mp": "Tom Kmiec",
+      "riding": "Calgary Shepard",
+      "party": "Conservative",
+      "province": "Alberta",
+      "member_id": "89136",
+      "provenance": {
+        "tile_selector": "#mp-tile-person-id-89136",
+        "list_selector": "#mp-list-id-89136"
+      }
+    },
+    {
+      "mp": "Tom Osborne",
+      "riding": "Cape Spear—Mount Pearl—Paradise",
+      "party": "Liberal",
+      "province": "Newfoundland and Labrador",
+      "member_id": "122375",
+      "provenance": {
+        "tile_selector": "#mp-tile-person-id-122375",
+        "list_selector": "#mp-list-id-122375"
+      }
+    },
+    {
+      "mp": "Tony Baldinelli",
+      "riding": "Niagara Falls—Niagara-on-the-Lake",
+      "party": "Conservative",
+      "province": "Ontario",
+      "member_id": "30330",
+      "provenance": {
+        "tile_selector": "#mp-tile-person-id-30330",
+        "list_selector": "#mp-list-id-30330"
+      }
+    },
+    {
+      "mp": "Vince Gasparro",
+      "riding": "Eglinton—Lawrence",
+      "party": "Liberal",
+      "province": "Ontario",
+      "member_id": "122911",
+      "provenance": {
+        "tile_selector": "#mp-tile-person-id-122911",
+        "list_selector": "#mp-list-id-122911"
+      }
+    },
+    {
+      "mp": "Vincent Neil Ho",
+      "riding": "Richmond Hill South",
+      "party": "Conservative",
+      "province": "Ontario",
+      "member_id": "123153",
+      "provenance": {
+        "tile_selector": "#mp-tile-person-id-123153",
+        "list_selector": "#mp-list-id-123153"
+      }
+    },
+    {
+      "mp": "Viviane Lapointe",
+      "riding": "Sudbury",
+      "party": "Liberal",
+      "province": "Ontario",
+      "member_id": "110663",
+      "provenance": {
+        "tile_selector": "#mp-tile-person-id-110663",
+        "list_selector": "#mp-list-id-110663"
+      }
+    },
+    {
+      "mp": "Wade Chang",
+      "riding": "Burnaby Central",
+      "party": "Liberal",
+      "province": "British Columbia",
+      "member_id": "123520",
+      "provenance": {
+        "tile_selector": "#mp-tile-person-id-123520",
+        "list_selector": "#mp-list-id-123520"
+      }
+    },
+    {
+      "mp": "Wade Grant",
+      "riding": "Vancouver Quadra",
+      "party": "Liberal",
+      "province": "British Columbia",
+      "member_id": "123653",
+      "provenance": {
+        "tile_selector": "#mp-tile-person-id-123653",
+        "list_selector": "#mp-list-id-123653"
+      }
+    },
+    {
+      "mp": "Warren Steinley",
+      "riding": "Regina—Lewvan",
+      "party": "Conservative",
+      "province": "Saskatchewan",
+      "member_id": "105581",
+      "provenance": {
+        "tile_selector": "#mp-tile-person-id-105581",
+        "list_selector": "#mp-list-id-105581"
+      }
+    },
+    {
+      "mp": "Wayne Long",
+      "riding": "Saint John—Kennebecasis",
+      "party": "Liberal",
+      "province": "New Brunswick",
+      "member_id": "88368",
+      "provenance": {
+        "tile_selector": "#mp-tile-person-id-88368",
+        "list_selector": "#mp-list-id-88368"
+      }
+    },
+    {
+      "mp": "Will Greaves",
+      "riding": "Victoria",
+      "party": "Liberal",
+      "province": "British Columbia",
+      "member_id": "123665",
+      "provenance": {
+        "tile_selector": "#mp-tile-person-id-123665",
+        "list_selector": "#mp-list-id-123665"
+      }
+    },
+    {
+      "mp": "William Stevenson",
+      "riding": "Yellowhead",
+      "party": "Conservative",
+      "province": "Alberta",
+      "member_id": "123513",
+      "provenance": {
+        "tile_selector": "#mp-tile-person-id-123513",
+        "list_selector": "#mp-list-id-123513"
+      }
+    },
+    {
+      "mp": "Xavier Barsalou-Duval",
+      "riding": "Pierre-Boucher—Les Patriotes—Verchères",
+      "party": "Bloc Québécois",
+      "province": "Quebec",
+      "member_id": "88422",
+      "provenance": {
+        "tile_selector": "#mp-tile-person-id-88422",
+        "list_selector": "#mp-list-id-88422"
+      }
+    },
+    {
+      "mp": "Yasir Naqvi",
+      "riding": "Ottawa Centre",
+      "party": "Liberal",
+      "province": "Ontario",
+      "member_id": "110572",
+      "provenance": {
+        "tile_selector": "#mp-tile-person-id-110572",
+        "list_selector": "#mp-list-id-110572"
+      }
+    },
+    {
+      "mp": "Yvan Baker",
+      "riding": "Etobicoke Centre",
+      "party": "Liberal",
+      "province": "Ontario",
+      "member_id": "105121",
+      "provenance": {
+        "tile_selector": "#mp-tile-person-id-105121",
+        "list_selector": "#mp-list-id-105121"
+      }
+    },
+    {
+      "mp": "Yves Perron",
+      "riding": "Berthier—Maskinongé",
+      "party": "Bloc Québécois",
+      "province": "Quebec",
+      "member_id": "88418",
+      "provenance": {
+        "tile_selector": "#mp-tile-person-id-88418",
+        "list_selector": "#mp-list-id-88418"
+      }
+    },
+    {
+      "mp": "Yves-François Blanchet",
+      "riding": "Beloeil—Chambly",
+      "party": "Bloc Québécois",
+      "province": "Quebec",
+      "member_id": "104669",
+      "provenance": {
+        "tile_selector": "#mp-tile-person-id-104669",
+        "list_selector": "#mp-list-id-104669"
+      }
+    },
+    {
+      "mp": "Ziad Aboultaif",
+      "riding": "Edmonton Manning",
+      "party": "Conservative",
+      "province": "Alberta",
+      "member_id": "89156",
+      "provenance": {
+        "tile_selector": "#mp-tile-person-id-89156",
+        "list_selector": "#mp-list-id-89156"
+      }
+    },
+    {
+      "mp": "Zoe Royer",
+      "riding": "Port Moody—Coquitlam",
+      "party": "Liberal",
+      "province": "British Columbia",
+      "member_id": "59294",
+      "provenance": {
+        "tile_selector": "#mp-tile-person-id-59294",
+        "list_selector": "#mp-list-id-59294"
+      }
+    },
+    {
+      "mp": "Élisabeth Brière",
+      "riding": "Sherbrooke",
+      "party": "Liberal",
+      "province": "Quebec",
+      "member_id": "104977",
+      "provenance": {
+        "tile_selector": "#mp-tile-person-id-104977",
+        "list_selector": "#mp-list-id-104977"
+      }
+    }
+  ],
+  "excluded_historical_pairs": [],
+  "notes": {
+    "member_tiles": 337,
+    "independently_checked_list_rows": 337,
+    "deduplication": "The tile and list layouts repeat the same people; they are not 674 members.",
+    "cross_page_conflict": {
+      "riding": "Sudbury East—Manitoulin—Nickel Belt",
+      "this_page_mp": "Jim Bélanger",
+      "other_page_mp": "Marc Serré",
+      "policy": "Preserve each page independently; do not alias these different people."
+    }
+  }
+}

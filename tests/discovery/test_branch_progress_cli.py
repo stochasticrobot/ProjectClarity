@@ -1,4 +1,12 @@
-"""Exercise branch pruning with the real CLI/graph and synthetic transports only."""
+"""Check when research stops extending an unproductive chain of linked pages.
+
+The command-line workflow reads synthetic pages and model replies while retaining
+actual link selection, evidence processing and scheduler decisions. Cases cover
+repeated claims, useful evidence upgrades, unfinished or failed analysis, alternate
+paths and restart. A page reached through a blocked route must remain available
+through a productive alternative. These checks do not measure live discovery quality.
+"""
+from tests.claim_review.mapping_fixtures import fixture_mappings
 import json
 import re
 import unittest
@@ -66,6 +74,8 @@ class BranchProgressCLITests(unittest.TestCase):
 
         Returns:
             Provider-shaped reply or one deliberate interrupted model call for restart.
+        Review replies include authored report-mapping judgments; these do not
+        establish live semantic recognition accuracy.
         """
         body = json.loads(request.content)
         title = body['output_config']['format']['schema']['title']
@@ -77,6 +87,16 @@ class BranchProgressCLITests(unittest.TestCase):
             _, saved = self.flow.cli.saved_session()
             self.branch_snapshots.append(self.decisions(saved))
             return self.base_provider(request)
+        if title == 'ClaimReviewBatch' and 'passages' in payload:
+            self.flow.tasks.append((title, None, None))
+            assessments = []
+            for candidate in payload['candidates']:
+                page = self.pages[self.source_names[candidate['source_id']]]
+                assessments.append({'candidate_id': candidate['candidate_id'],
+                    'verdict': 'supported' if page['verdict'] == 'out_of_scope' else page['verdict'],
+                    'in_scope': page['verdict'] != 'out_of_scope', 'rationale': 'Synthetic passage assessment.',
+                    'report_mappings': fixture_mappings(candidate, payload), 'evidence_quotes': [page['quote']]})
+            return self.flow.cli.response(text=json.dumps({'assessments': assessments}))
         sid = payload['source_id']
         match = re.search(r'Page (\w+)\.', payload['passage']['text'])
         if match:
@@ -100,18 +120,18 @@ class BranchProgressCLITests(unittest.TestCase):
             answer = {'assessments': [{'candidate_id': c['candidate_id'],
                 'verdict': 'supported' if page['verdict'] == 'out_of_scope' else page['verdict'],
                 'in_scope': page['verdict'] != 'out_of_scope', 'rationale': 'Synthetic passage assessment.',
-                'evidence_quotes': [page['quote']]} for c in payload['candidates']]}
+                'report_mappings': fixture_mappings(c, payload), 'evidence_quotes': [page['quote']]} for c in payload['candidates']]}
         return self.flow.cli.response(text=json.dumps(answer))
 
     def run_case(self, *flags):
-        """Run normal CLI traversal with bounded synthetic calls and no pacing delay.
+        """Run normal terminal interface traversal with bounded synthetic calls and no pacing delay.
 
         Args:
             self: Fixture whose HTML determines the available crawl graph.
             *flags: Actual operator flags; default branch limit is not overridden.
 
         Returns:
-            CLI result, persisted session and progress text from the existing harness.
+            terminal interface result, persisted session and progress text from the existing harness.
         """
         with patch('projectclarity.retrieval.retrieval_limits.time.sleep'):
             return self.flow.run_workflow('--max-requests', '100', *flags)

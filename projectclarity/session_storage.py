@@ -46,6 +46,14 @@ def save_session(session: ResearchSession, output_root: Path) -> None:
 
     Returns:
         None. Replace this run's session.json with the model's JSON-compatible projection.
+        Append changed dashboard measurements after the save. Optional chart I/O
+        failure is warned about but cannot discard or stop authoritative research.
     """
     path = output_root / session.session_id / "session.json"
     write_text(path, session.model_dump_json(indent=2) + "\n")
+    from projectclarity.dashboard.metrics import record_measurement
+    try:
+        record_measurement(session.model_dump(mode='json'), path.parent)
+    except OSError:
+        import warnings
+        warnings.warn('Dashboard chart history could not be saved; research snapshot is intact.', RuntimeWarning)

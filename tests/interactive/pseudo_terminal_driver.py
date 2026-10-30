@@ -15,10 +15,10 @@ import time
 
 
 class TerminalProcess:
-    """A bounded terminal conversation with one actual Python CLI process."""
+    """A bounded terminal conversation with one actual Python terminal interface process."""
 
     def __init__(self, command, *, cwd, env):
-        """Start one owned CLI process attached to a pseudo-terminal, preserving real input
+        """Start one owned terminal interface process attached to a pseudo-terminal, preserving real input
         behavior.
 
         Args:
@@ -29,7 +29,7 @@ class TerminalProcess:
             env: Environment-variable mapping passed to the owned test subprocess.
 
         Returns:
-            None. Spawn and retain the owned CLI subprocess and pseudo-terminal file
+            None. Spawn and retain the owned terminal interface subprocess and pseudo-terminal file
             descriptors.
         """
         self.master, slave = pty.openpty()

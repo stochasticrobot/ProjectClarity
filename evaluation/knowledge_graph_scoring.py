@@ -186,7 +186,7 @@ def score_experiment(directory, *, policy_path=None):
     Returns:
         A JSON-compatible PASS/FAIL/INCOMPLETE result. Missing execution, altered frozen
         inputs, truncated inventories or incomplete capture cannot pass. No model is called.
-        Malformed artifact structures raise an input error to the CLI instead of passing.
+        Malformed artifact structures raise an input error to the terminal interface instead of passing.
     """
     manifest = json.loads((directory / 'manifest.json').read_text())
     source = (directory / 'source.txt').read_bytes()

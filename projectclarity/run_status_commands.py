@@ -137,7 +137,7 @@ def show_status(output_root: Path, run_id: str, *, watch=False, json_output=Fals
 
     Returns:
         Exit code 0 after status display/watch finishes; input or I/O failures may raise to
-        the CLI.
+        the terminal interface.
     """
     directory = run_directory(output_root, run_id)
     while True:

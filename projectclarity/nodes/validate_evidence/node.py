@@ -57,6 +57,8 @@ def validate_batch(attempt, text: str | None, known_goals: set[str], source_erro
             errors.append("duplicate_entity_id")
         if set(claim.goal_ids) - known_goals:
             errors.append("unknown_goal_id")
+        if any(r.goal_id not in known_goals or r.goal_id not in claim.goal_ids for r in claim.result_records):
+            errors.append("unknown_or_unlinked_result_goal")
         referenced = set(claim.entity_ids)
         if claim.relationship:
             endpoints = {claim.relationship.subject_id, claim.relationship.object_id}
@@ -115,7 +117,7 @@ def validate_evidence(state: dict, output_root: Path, monitor=None) -> dict:
     session = state["session"]
     session.visited_nodes.append("validate_evidence")
     record = ExtractionRecord.model_validate(session.extraction)
-    record.schema_version = "1.3"  # This pass uses source-mapped whitespace matching.
+    record.schema_version = "1.4"  # Preserve goal-linked records as well as mapped quotes.
     prior_candidates = {c.candidate_id: c for c in record.candidates}
     record.candidates = []
     documents = {document.source_id: document for document in session.documents}

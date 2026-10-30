@@ -1,8 +1,10 @@
-"""Persist and display early scope hypotheses separately from verified completion targets.
+"""Keep a history of estimates about how much material a research question may cover.
 
-Planning supplies the initial estimate without a new model call. Coverage may revise
-it using intact candidates; the original plan never changes. References are checked,
-but the model's estimate and confidence are not calibrated statistical measurements.
+Planning may estimate a range, such as how many researchers a list could contain.
+Later coverage assessments can propose revisions supported by retained evidence.
+These helpers initialize the estimate, validate revision references, keep earlier
+values and format the history for display. The original plan is not rewritten.
+An estimated range is not an exact completion target, even when it has source links.
 """
 
 

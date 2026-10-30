@@ -3,7 +3,7 @@
 For example, Ctrl-C after one retrieved source must keep its receipt and stop
 before the next source. These tests call nodes directly, substitute only model
 or source operations, and inspect real temporary snapshots. A failure here points
-to workflow state handling; separate CLI integration tests check LangGraph wiring.
+to workflow state handling; separate terminal interface integration tests check LangGraph wiring.
 Saved snapshots are diagnostic records, not proof that resumable jobs exist.
 """
 

@@ -1,13 +1,26 @@
-"""Define the reviewer's answer form, separate from the extraction answer form.
+"""Define the structured reply expected when a model reviews proposed source claims.
 
-A reviewer must assess every requested candidate against its original passage,
-not vote on how confident the extractor sounded. Verdicts describe support in
-that passage, not universal truth. Python separately checks ID coverage and
-applies policy; these models perform no calls, file writes or publication.
+For each offered candidate statement, the reviewer reports whether its assigned
+passage supports it and provides the corresponding evidence and report-field
+assessment. A candidate is a proposed claim, not already accepted knowledge.
+These Pydantic models check the reply's shape; later Python checks verify that IDs
+and quotations belong to the offered material and apply support statuses.
+No calls or file writes happen here. Class and field descriptions are included
+in the JSON schema sent to the reviewing model.
 """
 from typing import Literal
 from pydantic import Field
 from projectclarity.research_schemas import Contract, Text
+
+
+class ReportMappingAssessment(Contract):
+    """Assess whether this claim's contribution to one requested result shape is
+    represented in its supplied records, independently of factual support.
+    """
+    goal_id: str
+    status: Literal["mapped", "needs_mapping", "identity_unresolved", "not_applicable"]
+    field_names: list[str]
+    rationale: Text
 
 
 class ClaimAssessment(Contract):
@@ -20,6 +33,7 @@ class ClaimAssessment(Contract):
     # original-text anchors. Words/punctuation must still match.
     # Insufficient evidence may have no quotation: absence is not a quote.
     evidence_quotes: list[str] = Field(max_length=4)
+    report_mappings: list[ReportMappingAssessment]
 
 
 class ClaimReviewBatch(Contract):

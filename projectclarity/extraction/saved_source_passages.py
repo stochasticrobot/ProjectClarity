@@ -6,20 +6,26 @@ a time. Offsets refer to that normalized text, not HTML bytes or PDF pages.
 Both extraction and evidence validation use the same reader so edited text
 cannot quietly become the evidence for an earlier model response.
 
-Passages are non-overlapping, at most 12,000 characters, preferring newline
-boundaries. Long paragraphs can be split; this simple first version does not
-solve cross-passage reasoning. No text is silently truncated or ranked away:
+Passages are non-overlapping, at most 12,000 characters. Parser-labelled HTML
+records stay intact within that ceiling and use smaller groups; ordinary prose
+prefers newline boundaries. Oversized records and long paragraphs can still split.
+No text is silently truncated or ranked away:
 unattempted passages remain visible in the extraction receipts.
 This coverage guarantee applies to saved normalized text, not everything in the
 original HTML/PDF: retrieval's parser may have removed navigation or lost layout.
 """
 
 import hashlib
+import re
+from bisect import bisect_left, bisect_right
 from pathlib import Path
 
 
 MAX_PASSAGE_CHARACTERS = 12_000
 MAX_SAVED_TEXT_BYTES = 8 * 1024 * 1024
+MAX_RECORDS_PER_PASSAGE = 8
+RECORD_PASSAGE_CHARACTERS = 3000
+RECORD_START = re.compile(r'^\[Record (?:T\d+R\d+|C\d+)\]\n', re.MULTILINE)
 
 
 class EvidenceInputError(ValueError):
@@ -67,13 +73,38 @@ def iter_passages(text: str):
         text: Complete normalized source text to divide into bounded extraction passages.
 
     Returns:
-        Successive (passage ID, start, end) tuples covering the text. Offsets are Python
-        character indices with an exclusive end.
+        Successive (passage ID, start, end) tuples covering every character once.
+        Parser-labelled records are grouped up to eight at a time, aiming for 3,000
+        characters; a single larger record stays intact up to the hard 12,000 cap.
+        This is input accounting, not a claim that a model extracted every fact.
     """
+    # Record boundaries are structural formatting, never instructions or evidence
+    # of relevance. Old saved inventories retain their original offsets on restart.
+    records = list(RECORD_START.finditer(text))
+    record_starts = [match.start() for match in records]
+    boundaries = {match.start() for match in records}
+    for match in records:
+        end = text.find('\n\n', match.end())
+        boundaries.add(len(text) if end < 0 else end + 2)
+    boundaries = sorted(boundaries)
     start, number = 0, 1
     while start < len(text):
         end = min(len(text), start + MAX_PASSAGE_CHARACTERS)
-        if end < len(text):
+        upcoming = records[bisect_left(record_starts, start):bisect_left(record_starts, end)]
+        if upcoming:
+            if upcoming[0].start() > start:
+                # Do not pack a large prose prefix with the first dense record.
+                end = upcoming[0].start()
+            else:
+                target = min(end, start + RECORD_PASSAGE_CHARACTERS,
+                             upcoming[MAX_RECORDS_PER_PASSAGE].start() if len(upcoming) > MAX_RECORDS_PER_PASSAGE else end)
+                first = bisect_right(boundaries, start)
+                after = bisect_right(boundaries, target)
+                if after > first:
+                    end = boundaries[after - 1]
+                else:
+                    end = min(end, boundaries[first]) if first < len(boundaries) else end
+        elif end < len(text):
             boundary = text.rfind("\n", start + MAX_PASSAGE_CHARACTERS // 2, end)
             if boundary >= 0:
                 end = boundary + 1

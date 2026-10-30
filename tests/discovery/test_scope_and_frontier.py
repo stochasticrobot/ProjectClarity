@@ -1,4 +1,4 @@
-"""Exercise early estimates and non-prefix discovery through normal CLI/graph paths.
+"""Exercise early estimates and non-prefix discovery through normal terminal interface/graph paths.
 
 Only model/search/source transports are fixtures. These tests prove data flow and
 budget behavior, not live model relevance, population calibration or researcher recall.
@@ -24,7 +24,7 @@ class ScopeAndFrontierTests(unittest.TestCase):
         """Keep a late qualification and third quotation visible in the real coverage call.
 
         Args:
-            self: Test case using the normal CLI, parser and model request serialization.
+            self: Test case using the normal terminal interface, parser and model request serialization.
 
         Returns:
             None. Fail if payload construction silently removes a decisive suffix or quote.
@@ -85,7 +85,7 @@ class ScopeAndFrontierTests(unittest.TestCase):
         """Follow evidence-driven searches past both historical hidden partitions.
 
         Args:
-            self: Test owner of the actual CLI with fake search/model/source transports.
+            self: Test owner of the actual terminal interface with fake search/model/source transports.
 
         Returns:
             None. Assert three search rounds and seven retrieved sources within the
@@ -239,7 +239,7 @@ class ScopeAndFrontierTests(unittest.TestCase):
             ScopeEstimate(**bad)
 
     def test_large_first_page_and_empty_context_batches_do_not_hide_other_leads(self):
-        """Retain all anchors and reach a later source plus a deferred tail link through the CLI.
+        """Retain all anchors and reach a later source plus a deferred tail link through the terminal interface.
 
         Args:
             self: Test owner of source/model HTTP fixtures; the selector is not mocked.
@@ -300,7 +300,7 @@ class ScopeAndFrontierTests(unittest.TestCase):
         Repeated fixture statements test evidence visibility, not unique-person recall.
 
         Args:
-            self: Test case using the production CLI and transport-only synthetic replies.
+            self: Test case using the production terminal entry point and transport-only synthetic replies.
 
         Returns:
             None. Assert later-source evidence is offered and a query referencing it is

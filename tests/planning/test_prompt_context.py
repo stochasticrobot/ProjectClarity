@@ -1,4 +1,10 @@
-"""Check that guidance remains interpretable across current and legacy review records."""
+"""Check that clarification answers remain paired with the questions the user answered.
+
+Small session fixtures cover old saved reviews without question text and reviews
+that replace the plan. The real context builder must not attach an old answer to
+a new plan's unrelated question, and must retain current assumptions and user notes.
+No workflow or model request is run.
+"""
 import unittest
 
 from projectclarity.prompt_context import research_context

@@ -1,10 +1,11 @@
-"""Turn observed HTML anchors into an inspectable, bounded recursive frontier.
+"""Record hyperlinks found in acquired HTML so later research can choose among them.
 
-An anchor's existence is not evidence that its destination supports a claim.
-Python resolves relative hrefs against the fetched final URL, records the parent
-source/version, and rejects disallowed/duplicate targets before any model chooses.
-Domain deny/allow rules apply before selection. Seed-origin confinement and depth
-caps are optional operator settings; the CLI defaults to cross-site recursion.
+An observed link is a destination and label actually present in a downloaded page,
+not a URL invented by the model. Helpers normalize HTTP URLs, apply access and
+scope rules, and retain the pages and paths from which each link was found.
+This set of possible next destinations is the link frontier. A destination can
+have several incoming paths without becoming several independent sources.
+Recording a link does not fetch it or establish that it contains useful evidence.
 """
 import ipaddress
 from urllib.parse import urljoin, urlsplit, urlunsplit
@@ -12,20 +13,23 @@ from projectclarity.discovery.url_policy import url_denial
 
 
 def canonical_url(value):
-    """Normalize scheme/host/default port and remove fragments without guessing query
-    semantics.
+    """Trim surrounding whitespace, normalize the host and remove URL fragments.
 
     This is conservative URL deduplication, not semantic page identity: alternate query
     strings and server aliases can still identify the same content.
 
     Args:
-        value: Observed link or search-result URL to normalize conservatively.
+        value: Observed link or search-result string, possibly padded with Unicode
+            whitespace by its source. Internal characters and escapes are preserved.
 
     Returns:
         A normalized HTTP(S) URL, or None for a value outside the accepted public-URL shape.
-        This does not resolve DNS or grant fetch permission.
+        Embedded whitespace and non-printable characters remain invalid after boundary
+        trimming. This does not resolve DNS or grant fetch permission; callers retain
+        the original URL separately where provenance is required.
     """
     try:
+        value = value.strip()
         parsed = urlsplit(value)
         if (parsed.scheme not in {"http", "https"} or not parsed.hostname or parsed.username is not None
                 or parsed.password is not None or len(value) > 2048
@@ -65,7 +69,7 @@ def seed_origins(session):
 
     Include supplied, catalogue and search-selected seeds, not arbitrary model
     URLs or redirect destinations. The caller applies this set only when
-    same_origin_links is enabled; the normal CLI permits cross-origin links.
+    same_origin_links is enabled; the normal terminal interface permits cross-origin links.
 
     Args:
         session: ResearchSession containing this run's request, plan, source records,

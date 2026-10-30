@@ -1,10 +1,15 @@
-"""Capture optional source observations in scheduled quanta, committing each batch.
+"""Read saved source text with a model and store optional broad knowledge observations.
 
-The scheduler calls this node for retrieved text within the auxiliary allowance. It does not receive the research scope
-as a filter: a source-supported entity remains useful with unknown answer relevance.
-Overlapping text windows keep nearby names/affiliations together where possible;
-this is not a general DOM/table parser. Continuation and pending windows are explicit,
-but model-declared completion is not independently verified extraction recall.
+The scheduler calls this step only when the run has a remaining allowance for
+broad knowledge capture. The task seeks source-linked entities, relationships and
+attributes, including material unrelated to the current research question. It
+checks quotations, commits usable observations to SQLite, and saves progress after
+each batch so unfinished reading remains visible.
+
+Long text is read in overlapping windows to keep nearby information together.
+Those windows are not a guarantee of complete table interpretation or extraction.
+A model's claim that it finished reading is not independently measured recall.
+Answer-focused extraction and review are separate steps.
 """
 import json
 from collections import Counter
@@ -145,7 +150,11 @@ def save_capture(session, output_root):
 
 
 def accumulate_knowledge(state, output_root, key_reader=read_api_key, monitor=None, *, final_pass=False, max_calls=None):
-    """Capture and commit graph observations before selecting claims for the current answer.
+    """Extract broad source observations and commit them to the shared knowledge database.
+
+    This optional task records entities, relationships and attributes even when they
+    are not relevant to the current answer. Scheduling determines when capture runs;
+    finishing capture is not a prerequisite for answer extraction.
 
     Args:
         state: Graph state containing a typed ResearchSession and retrieved source receipts.
@@ -154,10 +163,11 @@ def accumulate_knowledge(state, output_root, key_reader=read_api_key, monitor=No
         monitor: Optional progress/cancellation monitor shared by the graph invocation.
             After each saved batch, emit its committed cursor range for private console
             display; graph names, values and quotes do not enter operational events.
-        max_calls: Optional scheduler quantum overriding per-round capture calls;
-            final_pass can remove research reservation without removing this quantum.
-        final_pass: Drain pending windows after discovery ends instead of reserving calls
-            for discovery/extraction. Both modes obey the auxiliary capture allowance
+        max_calls: Optional maximum calls for this invocation, overriding the per-round setting;
+            final_pass can remove research reservation without removing this per-invocation limit.
+        final_pass: Process pending windows without setting aside this function's local
+            allowance for discovery/extraction. The scheduler can use this mode during
+            ordinary work; it does not mean discovery has finished. Both modes obey the auxiliary capture allowance
             and the unchanged shared model request ceiling.
 
     Returns:

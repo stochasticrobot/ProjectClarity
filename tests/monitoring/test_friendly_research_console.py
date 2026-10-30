@@ -1,7 +1,7 @@
-"""Verify human CLI explanations and private prompt display through real production entry points.
+"""Verify human terminal interface explanations and private prompt display through real production entry points.
 
 The existing integration harness substitutes only source/provider HTTP and DNS;
-our CLI, graph, message builders, SDK serialization, parser and persistence run.
+our terminal interface, graph, message builders, SDK serialization, parser and persistence run.
 Tests compare displayed input with the actual provider request and ensure JSON
 telemetry never receives source text. No live services or real credentials are used.
 """
@@ -50,7 +50,7 @@ class FriendlyConsoleTests(unittest.TestCase):
                 invocation.
 
         Returns:
-            A tuple of CLI exit code, captured stdout and captured stderr for the
+            A tuple of terminal interface exit code, captured stdout and captured stderr for the
             extraction/review/discovery fixture.
         """
         return self.flow.cli.run_cli(provider or self.flow.provider, "--extract", "--review-claims", "--follow-links",
@@ -72,10 +72,18 @@ class FriendlyConsoleTests(unittest.TestCase):
         self.assertEqual(code, 0, err)
         for message in ["Plan the research [plan_research]", "Retrieve sources [retrieve_sources]",
                 "Downloading S1 (1/1): https://example.org/research", "Extract candidate knowledge [extract_knowledge]",
-                "Review claim support [review_claims]", "Assign claim statuses [adjudicate_claims]",
+                "Review claim support [review_claims]", "Review changes: 1 supported",
                 "Consider follow-up sources [select_followup_sources]", "Next: https://example.org/team",
-                "2 supported by review", "configured link-depth limit was reached"]:
+                "2 supported answer facts", "configured link-depth limit was reached",
+                "Discovered candidate: Alice works at Lab X.", "Supported finding: Alice works at Lab X.",
+                "Next: inventory passages and begin reading newly retrieved sources: S1"]:
             self.assertIn(message, err)
+        self.assertNotIn('Assign claim statuses [adjudicate_claims]', err)
+        self.assertNotIn('Choose remaining work', err)
+        self.assertNotIn('Review: no new verdict changes.', err)
+        self.assertEqual(err.count('Discovered candidate: Alice works at Lab X.'), 1)
+        self.assertEqual(err.count('Supported finding: Alice works at Lab X.'), 1)
+        self.assertEqual(err.count('Budget · retrieval wall time:'), 2)
         self.assertIn("Follow-up links: 1 selected; 1 downloaded.", out)
         self.assertIn("Model requests: 6/8", out)
         self.assertNotIn("Recorded route", out)
@@ -86,7 +94,7 @@ class FriendlyConsoleTests(unittest.TestCase):
         directory, session = self.flow.cli.saved_session()
         self.assertEqual(len(self.flow.cli.requests), 6)
         self.assertEqual(session["visited_nodes"].count("retrieve_sources"), 2)
-        # Verify delivery through the actual CLI, including both retrieval rounds.
+        # Verify delivery through the actual terminal interface, including both retrieval rounds.
         self.assertIn("retrieval wall time: not started", err)
         self.assertIn("model requests: 6/8 (2 left)", err)
         self.assertIn("Pages/documents registered: 2/250 (248 slots left)", err)
@@ -103,7 +111,7 @@ class FriendlyConsoleTests(unittest.TestCase):
     def test_budget_clock_includes_model_time_without_restarting_each_round(self):
         """Check clock semantics and missing token honesty with controlled event timing.
 
-        This supplements the real-CLI check above; it does not claim live-network
+        This supplements the real-terminal interface check above; it does not claim live-network
         timing accuracy or exercise the retrieval enforcement mechanism.
 
         Args:
@@ -131,6 +139,40 @@ class FriendlyConsoleTests(unittest.TestCase):
         display = "\n".join(lines)
         self.assertIn("30/20s (0s left)", display)
         self.assertIn("Reported tokens: unknown/incomplete", display)
+
+    def test_budget_updates_are_throttled_except_new_resource_thresholds(self):
+        """Suppress per-call budget spam without hiding elapsed time or approaching limits.
+
+        Args:
+            self: Test fixture supplying a deterministic clock and saved usage counters.
+        Returns:
+            None; ordinary events within a minute stay quiet, new bands and periodic
+            updates print, and each threshold is reported only once per run.
+        """
+        request = ResearchRequest(question='Compare items.').model_dump(mode='json')
+        request['budget']['max_requests'] = 100
+        session = {'request': request, 'usage': {'requests_attempted': 1}}
+        console = ResearchConsole(self.flow.cli.directory / 'missing-output')
+        lines = []
+        with (patch.object(console, 'session', return_value=session),
+              patch.object(console, 'say', side_effect=lines.append),
+              patch('projectclarity.terminal_run_progress.time.monotonic') as now):
+            now.return_value = 100
+            console.maybe_budget()
+            for calls in range(2, 80):
+                session['usage']['requests_attempted'] = calls
+                now.return_value = 101
+                console.maybe_budget()
+            self.assertEqual(len(lines), 1)
+            for calls in (80, 81, 90, 91, 100, 100):
+                session['usage']['requests_attempted'] = calls
+                now.return_value = 102
+                console.maybe_budget()
+            self.assertEqual(len(lines), 4)
+            self.assertEqual(sum('limit warning: model calls' in line for line in lines), 3)
+            now.return_value = 163
+            console.maybe_budget()
+            self.assertEqual(len(lines), 5)
 
     def test_prompts_are_shown_before_actual_requests_and_replies_afterward_for_all_tasks(self):
         """Compare the human display with serialized provider input, keeping call counts unchanged.

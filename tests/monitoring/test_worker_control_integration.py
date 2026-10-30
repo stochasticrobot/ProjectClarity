@@ -2,7 +2,7 @@
 
 For example, the first document must remain readable after a second terminal
 cancels the slow second download. The worker fixture uses the actual research
-CLI and substitutes only external HTTP/DNS. Status and cancel run as unmodified
+terminal interface and substitutes only external HTTP/DNS. Status and cancel run as unmodified
 `python -m projectclarity` commands. Temporary folders isolate every run.
 These tests prove local process/file control, not remote/cloud orchestration.
 """
@@ -20,7 +20,7 @@ from projectclarity.run_status_commands import read_status
 
 
 class WorkerControlIntegrationTests(unittest.TestCase):
-    """A real worker lock and separate CLI process prevent in-process-only false proofs."""
+    """A real worker lock and separate terminal interface process prevent in-process-only false proofs."""
 
     def setUp(self):
         """Launch one owned slow-source worker in temporary storage so other processes can control
@@ -85,12 +85,12 @@ class WorkerControlIntegrationTests(unittest.TestCase):
         self.fail("Worker did not reach its slow second download")
 
     def command(self, command, *options):
-        """Use the production CLI in another process, not an in-memory control helper.
+        """Use the production terminal entry point in another process, not an in-memory control helper.
 
         Args:
             self: This unittest case instance, holding its isolated fixtures and assertion
                 methods.
-            command: Production CLI subcommand, such as status or cancel, to run against this
+            command: Production terminal interface subcommand, such as status or cancel, to run against this
                 fixture's saved run.
             *options: Additional command-line argument strings appended to this helper's base
                 invocation.

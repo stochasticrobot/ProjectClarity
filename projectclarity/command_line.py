@@ -79,7 +79,7 @@ def argument_parser() -> argparse.ArgumentParser:
         An ArgumentParser describing the supported commands and flags; no arguments have
         been parsed yet.
     """
-    parser = argparse.ArgumentParser(prog="projectclarity", description="Research questions with saved evidence, optional search/link exploration, and a provisional answer at completion.",
+    parser = argparse.ArgumentParser(prog="projectclarity", description="An agentic research tool with saved evidence, optional search/link exploration, and a provisional answer at completion.",
         epilog='Quick start: projectclarity --question "Your research question" --urls source_urls.txt. '
                'Add --document PATH for local sources (repeat as needed). '
                'No arguments opens the menu. Use research --help for all research options.')
@@ -103,6 +103,7 @@ def argument_parser() -> argparse.ArgumentParser:
     call_inspection = commands.add_parser("inspect-calls", help="Read saved claim-review/discovery calls; no model request")
     call_inspection.add_argument("run_id")
     call_inspection.add_argument("--call", dest="call_id", help="For example review_S1_P1 or discovery_hop1")
+    call_inspection.add_argument('--attempt', dest='attempt_id', help='Inspect safe transport diagnostics for an attempt such as M1; cannot combine with --call')
     call_inspection.add_argument("--output-dir", type=Path, default=Path(".projectclarity/runs"))
     resume = commands.add_parser('resume', help='Continue remaining journaled work without replanning or resetting budgets')
     resume.add_argument('run_id')
@@ -127,7 +128,7 @@ def argument_parser() -> argparse.ArgumentParser:
     research.add_argument("--max-followup-sources", type=int, default=5, help="New pages per expansion round (positive integer; default 5); shares all run budgets")
     research.add_argument("--max-link-depth", type=int, default=None, help="Optional link-depth cap; omitted means no depth cap within run budgets")
     research.add_argument("--max-unproductive-depth", type=int, default=3, help="Stop a branch after N fully analyzed pages without new goal-relevant progress (default 3; 0 disables; seeds are neutral)")
-    research.add_argument("--explore-before-search-depth", type=int, default=2, help="Explore N relative link levels before releasing search (default 2; 0 disables); blocked/empty frontiers release earlier. Depth does not cap breadth/calls or guarantee search before budget exhaustion")
+    research.add_argument("--explore-before-search-depth", type=int, default=2, help="Legacy scheduling: explore N relative link levels before search (default 2; 0 disables). New designed-answer runs use a persisted read/review/assess/discover cycle instead")
     research.add_argument("--same-origin-links", action="store_true", help="Restrict followed links to seed origins; off by default")
     research.add_argument("--max-sources", "--max-pages", dest="max_sources", type=int, default=250, help="Registered page/document ceiling, NOT websites (1–1000; default 250)")
     research.add_argument("--blacklist", type=Path, default=CONFIG_DIRECTORY / "blacklist.txt", help="Blocked domain file; deny overrides allow")
@@ -142,14 +143,26 @@ def argument_parser() -> argparse.ArgumentParser:
     research.add_argument("--search-min-interval-seconds", type=float, default=3.0, help="Minimum pause after a provider attempt before another (default 3 seconds)")
     research.add_argument("--search-retries", type=int, default=1, help="Immediate transient retries in single-engine mode (0–3, default 1); multi-engine mode tries the next engine")
     research.add_argument("--search", action="store_true", help="Permit real web search and source selection, including without supplied URLs; requires --max-requests >= 2")
-    research.add_argument("--assess-coverage", action="store_true", help="Assess plan criteria against gathered evidence; requires --extract; also enabled by --search with --extract")
+    research.add_argument("--assess-coverage", action="store_true", help="Check coverage during long reads and reserve a final assessment call, independently of automatic stopping; requires --extract; also enabled by --search or --coverage-study with --extract")
+    research.add_argument('--coverage-study', action=argparse.BooleanOptionalAction, default=False,
+        help='Run an early coverage-study node before recursive research (default off); at most 2 queries, 4 pages and 9 model attempts for planning, selection and assessment, sharing run budgets; --search still controls search permission')
+    research.add_argument('--coverage-estimate-fallback', action=argparse.BooleanOptionalAction, default=False,
+        help='Allow provisional model estimates in the early study when search is unavailable (default off); requires --coverage-study; never enables stopping')
+    research.add_argument('--stop-when-satisfied', action=argparse.BooleanOptionalAction, default=False,
+        help='Stop when all plan and scope-study checks pass on fresh supported evidence (default off); requires --extract and --review-claims; checks long reads at 12-call checkpoints; estimates never trigger stopping')
     research.add_argument("--max-search-queries", type=int, default=None, help="Optional cumulative query-attempt cap; omitted uses remaining proposals and shared run budgets (two queries per round)")
     research.add_argument("--max-search-sources", type=int, default=None, help="Optional cumulative search-selected-page cap (1–1000); omitted shares --max-sources")
     research.add_argument("--search-results-per-query", type=int, default=5, help="Search results retained per query (1–10; default 5)")
     research.add_argument("--non-interactive", action="store_true", help="Do not prompt for plan review, even in a terminal")
     research.add_argument("--model", default=DEFAULT_MODEL, help="Anthropic model ID; no automatic fallback")
-    research.add_argument("--max-requests", type=int, default=None, help="Total model-request ceiling (0–1000; default 100 with --extract or --search, otherwise 1)")
-    research.add_argument("--max-output-tokens", type=int, default=None, help="Output cap per request (128–8192; default 8192 with --extract, otherwise 2048)")
+    research.add_argument("--model-concurrency", type=int, default=3, help="Maximum simultaneous passage-extraction model requests (1–16; default 3); 1 runs sequentially; shared budgets still apply")
+    research.add_argument("--max-no-gain-passages", type=int, default=3, help="Pause document focus after N completed passages without new goal records or useful evidence upgrades (default 3; 0 disables); unread passages remain queued")
+    research.add_argument("--official-domain", action="append", default=[], help="Additional official institution domain to prioritize (repeatable); scheduling hint, not evidence approval or access permission")
+    research.add_argument("--model-retries", type=int, default=2, help="Additional attempts for transient model failures (0–2; default 2); each uses the shared request budget; 0 disables retries")
+    research.add_argument("--model-timeout-seconds", type=float, default=60.0, help="Per-attempt model timeout (>0 to 300 seconds; default 60), shortened by remaining acquisition time")
+    research.add_argument('--design-answer', action='store_true', help='Design an answer schema before planning (one shared-budget call, plus at most one correction if needed and budget allows); old runs are unchanged')
+    research.add_argument("--max-requests", type=int, default=None, help="Total model-request ceiling (0–1000; default 100 with --extract, --search or --coverage-study outside plan-only, otherwise 2 with --design-answer or 1 without)")
+    research.add_argument("--max-output-tokens", type=int, default=None, help="Output cap per request (128–8192; default 8192 with --extract or --coverage-study, otherwise 2048)")
     research.add_argument("--output-dir", type=Path, default=Path(".projectclarity/runs"), help="Local session directory (default: .projectclarity/runs)")
     research.add_argument("--max-fetch-seconds", type=float, default=1800.0, help="Shared acquisition wall time from first search/retrieval, including intervening model work (>0 to 7200 seconds; default 1800)")
     research.add_argument("--fetch-timeout-seconds", type=float, default=10.0, help="Per-HTTP connect/read timeout (greater than 0, at most 10 seconds)")
@@ -212,7 +225,7 @@ def main(argv: list[str] | None = None) -> int:
             print(json.dumps(read_knowledge(args.output_dir / "knowledge.sqlite3", since=args.since, limit=args.limit), indent=2, ensure_ascii=True))
             return 0
         if args.command == "inspect-calls":
-            print(terminal_text(inspect_calls(args.output_dir, args.run_id, args.call_id)))
+            print(terminal_text(inspect_calls(args.output_dir, args.run_id, args.call_id, attempt_id=args.attempt_id)))
             return 0
         if args.command == "inspect-extraction":
             output, destination = inspect_extraction(args.output_dir, args.run_id, args.call_id)
@@ -240,7 +253,7 @@ def main(argv: list[str] | None = None) -> int:
         if args.command == "review":
             session = run_review_command(args, on_event=progress_sink(args))
             return display_session_result(session, args.output_dir, details=args.details) if session is not None else 0
-        # Convert untrusted CLI input to the typed request before entering the
+        # Convert untrusted terminal interface input to the typed request before entering the
         # graph. The original question remains separate from the LLM's objective.
         try:
             policy, catalogue = load_url_configuration(args.blacklist, args.whitelist, whitelist_only=args.whitelist_only)
@@ -271,6 +284,7 @@ def main(argv: list[str] | None = None) -> int:
             urls_file=args.urls,
             document_paths=args.document,
             plan_only=args.plan_only,
+            design_answer=args.design_answer,
             extract_knowledge=args.extract,
             accumulate_knowledge=args.extract and args.knowledge_max_requests > 0,
             knowledge_max_requests=args.knowledge_max_requests,
@@ -288,15 +302,20 @@ def main(argv: list[str] | None = None) -> int:
             search_retries=args.search_retries,
             default_source_urls=catalogue['default_sources'] if args.use_default_sources else [],
             web_search=args.search,
-            assess_coverage=args.assess_coverage or (args.search and args.extract),
+            assess_coverage=args.assess_coverage or args.stop_when_satisfied or ((args.search or args.coverage_study) and args.extract),
+            stop_when_satisfied=args.stop_when_satisfied,
+            coverage_study=args.coverage_study, coverage_estimate_fallback=args.coverage_estimate_fallback,
             max_search_queries=args.max_search_queries,
             max_search_sources=args.max_search_sources,
             search_results_per_query=args.search_results_per_query,
             model=args.model,
+            model_retries=args.model_retries, model_timeout_seconds=args.model_timeout_seconds,
+            model_concurrency=args.model_concurrency, official_domains=args.official_domain,
+            max_no_gain_passages=args.max_no_gain_passages or None,
             budget=Budget(max_requests=args.max_requests if args.max_requests is not None else
-                          (100 if (args.extract or args.search) and not args.plan_only else 1),
+                          (100 if (args.extract or args.search or args.coverage_study) and not args.plan_only else 2 if args.design_answer else 1),
                           max_output_tokens=args.max_output_tokens if args.max_output_tokens is not None else
-                          (8192 if args.extract else 2048)),
+                          (8192 if args.extract or args.coverage_study else 2048)),
             fetch_limits=FetchLimits(max_run_seconds=args.max_fetch_seconds,
                 request_timeout_seconds=args.fetch_timeout_seconds, max_source_bytes=args.max_source_bytes,
                 max_total_bytes=args.max_total_bytes, max_http_requests=args.max_http_requests),
@@ -317,7 +336,7 @@ def main(argv: list[str] | None = None) -> int:
                 scope = 'seed origins only' if request.same_origin_links else 'public sites subject to URL policy'
                 depth = str(request.max_link_depth) if request.max_link_depth is not None else 'no separate depth cap'
                 print(f"Discovery enabled: up to {request.max_followup_sources} new pages per round, {request.max_sources} total pages/documents (not websites); {scope}; depth: {depth}.", flush=True)
-        print(f"Model: {terminal_text(request.model)} | output cap: {request.budget.max_output_tokens} tokens | retries: 0", flush=True)
+        print(f"Model: {terminal_text(request.model)} | output cap: {request.budget.max_output_tokens} tokens | concurrency: {request.model_concurrency} | retries: {request.model_retries} | timeout: {request.model_timeout_seconds:g}s", flush=True)
         progress_event = progress_sink(args)
 
         session = run_research(request, args.output_dir, on_event=None if args.quiet_progress else progress_event)
@@ -328,10 +347,14 @@ def main(argv: list[str] | None = None) -> int:
         print(str(exc), file=sys.stderr)
         return exc.exit_code
     except ValidationError as exc:
-        # Field names explain bad CLI input without dumping its original values.
+        # Field names explain bad terminal interface input without dumping its original values.
         # Cross-field rules have no field location; explain our two known safe
         # rules rather than printing an empty location or arbitrary error bodies.
         extraction_errors = {"review_budget": "--review-claims requires --extract and --max-requests >= 3.",
+            'answer_design_budget': '--design-answer requires --max-requests >= 2 (design plus planning).',
+            'study_budget': '--coverage-study requires --max-requests >= 3 outside --plan-only.',
+            'study_fallback': '--coverage-estimate-fallback requires --coverage-study.',
+            'stopping_requirements': '--stop-when-satisfied requires --extract and --review-claims.',
             "discovery_budget": "--follow-links requires --review-claims and --max-requests >= 6.","extraction_plan_only": "--extract cannot be combined with --plan-only.",
             "extraction_budget": "--extract needs --max-requests of at least 2 (planning plus extraction)."}
         for error in exc.errors():
@@ -377,9 +400,9 @@ def display_session_result(session, output_root: Path, *, details=False) -> int:
     Distinguish finished, partial, paused and cancelled runs. Both new research and review
     continuation use this display. Candidate summaries are private human-facing output, not
     the content-free event log; a successful exit means the configured work finished, not
-    that claims are true. Print and save an extractive provisional answer even when
-    the budget is exhausted; reporting spends no model calls. Answer write/validation
-    failures are reported separately and do not change the research exit status.
+    that claims are true. Print an extractive provisional answer even when the
+    budget is exhausted; reporting spends no model calls and performs no writes.
+    The workflow owns durable answer exports before announcing terminal status.
 
     Args:
         session: ResearchSession containing this run's request, plan, source records,
@@ -445,32 +468,24 @@ def display_session_result(session, output_root: Path, *, details=False) -> int:
 
 
 def display_provisional_answer(session, output_root: Path) -> None:
-    """Print the current grounded answer and save full evidence-linked artifacts.
+    """Print the grounded answer without modifying the already finalized run.
 
     Args:
         session: Returned run snapshot, including partial, cancelled or empty results.
         output_root: Parent of its existing run directory; no model budget is used.
-
     Returns:
-        None. Print all supported answer statements and counterevidence, save
-        answer.md with full leads and answer.json with evidence spans. A validation
-        failure prints an explicit unavailable notice; an I/O failure still leaves
-        the terminal answer visible. Original source/claim receipts are untouched.
+        None. Prints current supported findings or an explicit validation failure.
+        The workflow, not terminal presentation, owns answer artifact writes. Missing
+        historical exports are reported without silently creating or changing them.
     """
-    import json
-    from projectclarity.session_storage import write_text
-
     try:
         answer = build_provisional_answer(session, output_root)
     except (OSError, ValueError):
         print('\nCurrent answer (provisional): unavailable because saved evidence could not be read or validated.', file=sys.stderr)
         return
     print('\n' + render_provisional_answer(answer), end='')
-    directory = output_root / session.session_id
-    try:
-        write_text(directory / 'answer.md', render_provisional_answer(answer, include_leads=True))
-        write_text(directory / 'answer.json', json.dumps(answer, indent=2, ensure_ascii=False) + '\n')
-    except OSError:
-        print('Could not save answer artifacts; the provisional answer is printed above.', file=sys.stderr)
+    path = output_root / session.session_id / 'answer.md'
+    if path.is_file():
+        print('Saved current answer: ' + terminal_text(str(path)))
     else:
-        print('Saved current answer: ' + terminal_text(str(directory / 'answer.md')))
+        print('Saved answer artifacts are unavailable for this run.', file=sys.stderr)

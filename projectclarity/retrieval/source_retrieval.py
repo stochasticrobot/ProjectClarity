@@ -93,7 +93,8 @@ def retrieve_one(source: Source, run_directory: Path, web: PublicWebReader, *, a
 
     Returns:
         A RetrievedDocument receipt describing successful, failed or cancelled acquisition
-        and any saved artifacts; receipt-write failures can still raise.
+        and any saved artifacts, plus source-stated HTML labels/dates when available.
+        Metadata is not a currentness judgment; receipt-write failures can still raise.
     """
     started = time.monotonic()
     record = RetrievedDocument(source_id=source.source_id, source_kind=source.kind,
@@ -135,6 +136,7 @@ def retrieve_one(source: Source, run_directory: Path, web: PublicWebReader, *, a
         record.text_sha256 = hashlib.sha256(text.encode("utf-8")).hexdigest()
         record.links = inventory.get("links", []) if source.kind == "url" else []
         record.links_truncated = inventory.get("links_truncated", False)
+        record.source_metadata = inventory.get('source_metadata', {})
         record.status = "retrieved"
     except (RunCancelled, KeyboardInterrupt, EOFError):
         # Return a durable cancelled receipt so the graph can retain raw bytes,

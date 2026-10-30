@@ -1,27 +1,13 @@
-"""Application package for ProjectClarity's command-line researcher.
+"""Implement ProjectClarity, a question-driven research application.
 
-Purpose:
-    This folder contains the code that takes your research question and produces
-    a plan for you to review. For example, asking who studies AI security in
-    Canada should produce smaller questions and suggested ways to investigate.
-    Normal runs then collect text from supplied sources. With --extract, the
-    program also proposes entities and claims and checks their quoted evidence.
-    --review-claims adds a separate model assessment and Python adjudication.
-    These remain candidates, not published facts. The CLI prints an extractive
-    provisional answer from reviewed evidence without a new model call. --follow-links
-    permits recursive observed-link exploration across public sites, subject to
-    saved URL policies, branch-progress gates and shared budgets. --search adds web search and
-    source selection; --assess-coverage compares evidence with planned criteria.
-    Without discovery flags, only supplied sources are acquired. --plan-only
-    stops before searching or document retrieval.
-    Broad graph capture is separate and requires an explicit auxiliary allowance
-    in new CLI runs. Relative-depth search gating does not guarantee search gets
-    a turn before a wide frontier exhausts the model budget.
-Responsibilities:
-    Mark this directory as a Python package. This file deliberately starts no
-    workflow, reads no credentials, and performs no network or filesystem work.
-Typical use:
-    Run ``python -m projectclarity research --question "..." --plan-only``.
-    Python enters __main__.py, which delegates to command_line.py. Import individual
-    modules when reusing their contracts or testing their behavior.
+A run turns a question into a plan, reads permitted sources and optionally asks a
+language model to extract and review claims. It retains quotations and unfinished
+work so the terminal or local dashboard can present a provisional answer. Search,
+link following, preliminary scope study and broad knowledge capture are controlled
+by the request's options and allowances.
+
+Run python -m projectclarity for guided terminal setup, or import individual
+modules to reuse their helpers. agentic_workflow.py defines and executes the
+LangGraph workflow, the connected sequence of research steps. This package
+initializer itself starts no workflow and performs no credential or file access.
 """

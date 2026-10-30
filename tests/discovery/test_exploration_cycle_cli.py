@@ -1,4 +1,11 @@
-"""Prove explore-before-search ordering through the production CLI and graph."""
+"""Check how link-following turns alternate with web-search opportunities.
+
+Controlled source trees and model replies drive the public command and actual
+scheduler. Tests inspect acquired pages and request order under depth, request,
+review and restart conditions. They distinguish unfinished source analysis from
+an unproductive completed branch. External services are simulated, so passing
+establishes the asserted ordering and accounting, not live search availability.
+"""
 import json
 import unittest
 from urllib.parse import urlsplit
@@ -103,7 +110,7 @@ class ExplorationCycleCLITests(unittest.TestCase):
 
         Args:
             self: Case with no model/application-node replacements.
-            *flags: Extra real CLI arguments overriding fixture resource limits.
+            *flags: Extra real terminal entry point arguments overriding fixture resource limits.
 
         Returns:
             Exit code, run directory, saved session and console output.
@@ -146,7 +153,7 @@ class ExplorationCycleCLITests(unittest.TestCase):
         self.assertEqual(self.completed_paths(self.snapshots[0]), {'/research', '/a', '/b'})
         self.assertEqual(self.completed_paths(self.snapshots[2]), {'/research', '/a', '/b', '/c', '/d'})
         self.assertIn('/e', self.completed_paths(saved))
-        self.assertEqual(self.flow.queries[0], 'evidence gap 1')
+        self.assertEqual(self.flow.queries[:2], ['initial research', 'next research'])
         self.assertEqual(self.flow.queries[2], 'evidence gap 2')
         first = next(i for i, e in enumerate(self.events) if e.startswith('SEARCH:'))
         self.assertEqual(self.events[:first].count('ClaimReviewBatch'), 3)
@@ -154,6 +161,45 @@ class ExplorationCycleCLITests(unittest.TestCase):
         self.assertEqual(self.snapshots[0]['workflow']['exploration_cycle']['history'][-1]['depths'],
             {'S1': 0, 'S2': 1, 'S3': 2})
         self.assertIn('up to 2 link levels before search', err)
+
+    def test_first_round_preserves_question_led_overview_queries(self):
+        """Prevent fresh narrow gap proposals from displacing the planned overview.
+
+        Args:
+            self: terminal interface fixture using an unrelated subject and supplied seed page.
+
+        Returns:
+            None. Assert actual engine calls use the exact planner text first;
+            this proves routing, not live-model ability to write broad queries.
+        """
+        overview = ['Norway marine biology research', 'Norwegian marine research institutions']
+        self.flow.cli.plan['strategy'][0]['proposed_searches'] = overview
+        self.chain(['research', 'a', 'b', 'c'])
+        self.run_case('--question', 'Which institutions research marine biology in Norway?')
+        self.assertEqual(self.flow.queries[:2], overview)
+        self.assertTrue(any(q.startswith('evidence gap') for q in self.flow.queries[2:]))
+
+    def test_wide_frontier_yields_at_call_checkpoint_with_reviews_flushed(self):
+        """Bound crawl work despite twenty productive first-level siblings.
+
+        Args:
+            self: terminal interface fixture with depth one and a broad source frontier.
+
+        Returns:
+            None. Assert search occurs while crawl work remains, after all queued
+            claims receive reviews, within a bounded number of actual model calls.
+        """
+        names = [f'child{i}' for i in range(20)]
+        self.branch.page('research', names, claim='Root group researches attacks.')
+        for name in names:
+            self.branch.page(name, claim=f'{name} group researches attacks.')
+        self.run_case('--explore-before-search-depth', '1', '--max-followup-sources', '5')
+        first = self.snapshots[0]
+        self.assertLessEqual(first['usage']['requests_attempted'], 18)
+        self.assertLess(len(self.completed_paths(first)), 21)
+        self.assertTrue(all(c['candidate_id'] in first['claim_reviews']
+            for c in first['extraction']['candidates'] if c['evidence_status'] == 'anchored'))
+        self.assertEqual(first['workflow']['exploration_cycle']['history'][-1]['release_reason'], 'crawl_call_quantum')
 
     def test_sibling_batches_finish_the_wave_before_search(self):
         """Do not confuse two selector calls with two analyzed link levels.
@@ -300,7 +346,7 @@ class ExplorationCycleCLITests(unittest.TestCase):
         """An explicit opt-out and old API records do not acquire the new policy.
 
         Args:
-            self: Productive input with a disabled CLI scheduling gate.
+            self: Productive input with a disabled terminal interface scheduling gate.
 
         Returns:
             None. Search runs before extraction; old request fields default to None.
@@ -363,7 +409,7 @@ class ExplorationCycleCLITests(unittest.TestCase):
         self.assertGreaterEqual(calls[2] - calls[1], 600)
         self.assertEqual(len(saved['search']['queries']), 1)
         self.assertEqual(saved['search']['queries'][0]['rounds'], 3)
-        self.assertTrue(saved['coverage']['next_searches'])  # Fresh, but no free logical-query slots.
+        self.assertTrue(saved['coverage']['next_searches'])  # The suggested query is new, but the run has no query slots left.
 
     def test_interrupted_search_resumes_next_wave_without_replaying_query(self):
         """Search reservation commits the next exploration cycle before external I/O.
@@ -388,8 +434,8 @@ class ExplorationCycleCLITests(unittest.TestCase):
         self.assertTrue(any(t['status'] == 'uncertain' and t['action'] == 'web_search'
             for t in after['workflow']['tasks'].values()))
 
-    def test_model_budget_stops_without_bypassing_analysis_gate(self):
-        """The timing policy never buys extra calls to force a full exploration wave.
+    def test_low_budget_preserves_processing_instead_of_unusable_search(self):
+        """Do not search when the remaining allowance cannot process another lead.
 
         Args:
             self: Chain requiring more analysis than the explicit request allowance.
@@ -400,7 +446,9 @@ class ExplorationCycleCLITests(unittest.TestCase):
         self.chain(['research', 'a', 'b', 'c'])
         _, _, saved, _ = self.run_case('--max-requests', '9')
         self.assertLessEqual(saved['usage']['requests_attempted'], 9)
-        self.assertEqual(self.flow.queries, [])
+        self.assertFalse(self.flow.queries)
+        self.assertTrue(any(t['action'] == 'web_search' and t.get('blocked') == 'model_request_limit'
+            for t in saved['workflow']['tasks'].values()))
         self.assertEqual(saved['workflow']['stop_reason'], 'budget_exhausted')
 
     def test_operator_one_level_override_changes_actual_search_boundary(self):

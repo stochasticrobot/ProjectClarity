@@ -1,6 +1,6 @@
 """Give a person a short outcome and useful next commands after research stops.
 
-The saved plan, candidate records and graph remain detailed. This default CLI
+The saved plan, candidate records and graph remain detailed. This default terminal interface
 summary keeps them from burying the live explanation under hundreds of lines.
 It distinguishes downloaded sources, proposed claims, reviewed support and
 unfinished work. --details can still show the original full inspection output.
@@ -13,6 +13,8 @@ from urllib.parse import urlsplit
 from projectclarity.terminal_run_progress import explain_reason, short_text
 from projectclarity.coverage.scope_estimation import scope_lines
 from projectclarity.knowledge.capture_budget import capture_requests
+from projectclarity.coverage.readiness import readiness_lines
+from projectclarity.coverage.freshness import coverage_freshness
 
 
 def render_run_summary(session, output_root):
@@ -27,12 +29,38 @@ def render_run_summary(session, output_root):
     Returns:
         Compact human-readable execution, evidence and coverage summary, distinguishing
         registered pages/documents from URL hostnames and branch-policy stops from
-        research completeness, with commands for inspecting saved artifacts.
+        research completeness, with commands for inspecting saved artifacts. Outdated
+        assessment counts/gaps are not presented as current research conclusions.
+        Explicit answer contracts show required checks, batch progress and blockers
+        from the same source-checked gate used by the production scheduler.
     """
     directory = output_root / session.session_id
+    freshness = coverage_freshness(session)
     lines = ["\nResearch summary", f"Run: {session.session_id}",
         "Outcome: " + session.status.replace("_", " "),
         "Question: " + short_text(session.request.question, 300)]
+    if session.coverage_study:
+        study = session.coverage_study
+        lines.append(f"Early coverage study: {study['status']}; {study.get('model_requests', 0)} model attempts; estimates are preliminary, not reviewed claims.")
+        if freshness['status'] in {'stale', 'freshness_unknown'}:
+            lines.append('  Readiness assessment is outdated or its freshness is unknown; checks below are not current verdicts.')
+        lines.extend('  ' + line for line in readiness_lines(study,
+            session.coverage if freshness['status'] == 'fresh' else {}))
+        if study.get('estimate_outcome') == 'no_numeric_estimate':
+            lines.append('  No numeric coverage estimate established.')
+        if study.get('summary'):
+            lines.append('  Result: ' + short_text(study['summary'], 500))
+        if study.get('coverage_boundary'):
+            lines.append('  Scope: ' + short_text(study['coverage_boundary'], 400))
+        if study.get('error_code'):
+            lines.append('  Study issue: ' + str(study['error_code']))
+        if study.get('acquisition_failures'):
+            lines.append(f"  Probe pages unavailable: {len(study['acquisition_failures'])}.")
+        for estimate in study.get('estimates', []):
+            amount = estimate.get('range')
+            value = f"{amount['lower']}–{amount['upper']}" if amount else 'unknown range'
+            lines.append(f"  {value} {short_text(estimate['unit'])} · {estimate['basis']}.")
+        lines.append(f"  Study details: {output_root / session.session_id / 'coverage_study.json'}")
     if session.workflow:
         lines.append('Workflow stop: ' + str(session.workflow.get('stop_reason') or 'running'))
         branches = session.workflow.get('branch_progress', {})
@@ -87,6 +115,15 @@ def render_run_summary(session, output_root):
         lines.append("Discovery: " + explain_reason(session.discovery.get("stop_reason")))
         lines.append(f"Read selection reasons: {directory / 'discovery.json'}")
     if session.coverage:
+        if (session.answer_schema or {}).get('completion_checks'):
+            from projectclarity.coverage.stopping import completion_status
+            completion = completion_status(session, output_root)
+            lines.append(f"Answer contract: {completion['passed']}/{completion['total']} required checks satisfied.")
+            batch = completion.get('batch_progress')
+            if batch and batch['mode'] == 'incremental':
+                lines.append(f"Evidence batches: {batch['completed']}/{batch['total']} completed; "
+                    f"{batch['pending']} pending, {batch['failed']} failed/uncertain. Batch completion is not answer completion.")
+            lines.extend('  Stopping blocker: ' + text for text in completion['blockers'])
         register = session.coverage.get('goal_register', {})
         if register:
             lines.append(f"Cumulative goal register: {register['total_facts']} candidate facts, not distinct entities.")
@@ -98,8 +135,12 @@ def render_run_summary(session, output_root):
         revision = (session.coverage.get('scope_estimate_history') or [{}])[-1]
         if revision.get('status') in {'not_revised', 'invalid_revision'}:
             lines.append('Scope estimate retained: ' + revision.get('reason', 'revision unavailable'))
-        lines.append("Research coverage: " + session.coverage.get("assessment_status", "not_assessed").replace("_", " ") + ". Execution completion is separate.")
-        if session.coverage.get("assessment_status") == "assessed":
+        label = 'assessed' if freshness['status'] == 'fresh' else freshness['status']
+        lines.append("Research coverage: " + label.replace("_", " ") + ". Execution completion is separate.")
+        if freshness['status'] in {'stale', 'freshness_unknown'}:
+            lines.append(f"  Old assessment: {freshness['assessed_candidate_count']} candidates; "
+                f"current run: {freshness['current_candidate_count']}. Old counts and gaps are historical, not current conclusions.")
+        if freshness['status'] == 'fresh':
             for item in session.coverage.get("criteria_progress", []):
                 target = item.get("target_count")
                 count = f"; {item['observed_count']}/{target if target is not None else 'unknown'} model-grouped items" if item.get("items") or target is not None else ""

@@ -1,6 +1,6 @@
 """Check completion-target rules in the actual provider schema, not just Python.
 
-Synthetic HTTP replies exercise the production CLI, SDK serialization, parser and
+Synthetic HTTP replies exercise the production terminal entry point, SDK serialization, parser and
 saved-plan conversion without paid calls. These tests do not establish live plan quality.
 """
 import json
@@ -21,7 +21,7 @@ class CompletionTargetContractTests(unittest.TestCase):
         """Preserve more than five queued queries instead of rejecting a useful plan.
 
         Args:
-            self: Test case invoking the production planning CLI with synthetic HTTP.
+            self: Test case invoking the production planning terminal interface with synthetic HTTP.
 
         Returns:
             None. Fail if extra proposals are rejected, truncated, or executed in
@@ -45,7 +45,7 @@ class CompletionTargetContractTests(unittest.TestCase):
         """Inspect the schema actually sent by the SDK and persist all valid target forms.
 
         Args:
-            self: Test case with a temporary CLI run and synthetic provider transport.
+            self: Test case with a temporary terminal interface run and synthetic provider transport.
 
         Returns:
             None. Fail if any schema branch permits a non-user count, if requested
@@ -86,7 +86,7 @@ class CompletionTargetContractTests(unittest.TestCase):
         self.assertEqual(requested['required'], ['requested_count'])
         self.assertEqual(requested['properties']['requested_count']['type'], 'integer')
         directory, session = cli.saved_session()
-        self.assertEqual(session['prompt_version'], 'research-plan-v11')
+        self.assertEqual(session['prompt_version'], 'research-plan-v12')
         expected = []
         for item in answer['completion_criteria']:
             stored = dict(item)

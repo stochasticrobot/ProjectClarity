@@ -1,4 +1,11 @@
-"""Share acquisition budgets and web clients across graph nodes without checkpointing clients."""
+"""Share one download budget and web reader throughout a workflow invocation.
+
+Search and source retrieval must count toward the same byte, request and elapsed-
+time limits. retrieval_runtime creates or reuses their live counters and reader,
+restoring saved usage when research resumes. A callback saves charged acquisition
+usage before a network request can leave the process. These runtime objects stay
+outside LangGraph's serialized state; only their usage records are saved.
+"""
 import time
 from projectclarity.retrieval.retrieval_limits import RetrievalBudget, RetrievalLimits
 from projectclarity.retrieval.public_url_fetcher import PublicWebReader

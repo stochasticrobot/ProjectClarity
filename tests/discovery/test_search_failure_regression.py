@@ -1,4 +1,11 @@
-"""Reproduce consecutive-search challenge masking and pacing without live networking."""
+"""Check that search-provider failures remain distinct from valid empty results.
+
+Controlled HTTP responses and clocks reproduce a useful first query followed by
+an access challenge or temporary failure. Component cases exercise the real
+search worker and DDGS parsing; a command-line case checks how the workflow retains
+previous results and handles the later failure. No real engine is queried and no
+challenge-solving behavior is implemented by these tests.
+"""
 import contextlib
 import io
 import json
@@ -17,7 +24,7 @@ class SearchFailureRegressionTests(unittest.TestCase):
     """Keep the real DDGS parser and worker protocol for the observed HTTP-202 failure."""
 
     def test_production_graph_keeps_first_results_and_stops_after_second_query_challenge(self):
-        """Exercise circuit-breaker routing through the CLI, not just a wrapper helper.
+        """Exercise circuit-breaker routing through the terminal interface, not just a wrapper helper.
 
         Args:
             self: Offline graph test replacing external search and source/model HTTP.

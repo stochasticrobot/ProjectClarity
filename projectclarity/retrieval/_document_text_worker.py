@@ -20,6 +20,177 @@ import sys
 import unicodedata
 
 
+def table_span(value: str | None, limit: int, *, allow_zero: bool = False) -> int:
+    """Recover HTML integer prefixes without permitting unbounded grid expansion.
+
+    HTML's non-negative integer parsing accepts leading ASCII whitespace, a sign
+    and decimal digits, ignoring trailing junk (e.g. ``2 style=`` means two).
+    Missing/invalid/negative values default to one, as table processing requires.
+    See https://html.spec.whatwg.org/multipage/common-microsyntaxes.html#rules-for-parsing-non-negative-integers
+    Application resource ceilings remain stricter than browser layout limits.
+
+    Args:
+        value: Raw rowspan/colspan attribute, or None when absent.
+        limit: Maximum accepted positive span for this bounded table grid.
+        allow_zero: Preserve zero for rowspan's downward-growth handling; colspan
+            zero instead defaults to one.
+
+    Returns:
+        Recovered span or one for an invalid attribute. Oversized positive spans
+        raise ValueError before integer conversion or grid allocation; no clipping
+        or field-shifting fallback is performed.
+    """
+    match = re.match(r'[\t\n\f\r ]*([+-]?)([0-9]+)', value or '')
+    if match is None:
+        return 1
+    digits = match.group(2).lstrip('0') or '0'
+    if match.group(1) == '-' and digits != '0':
+        return 1
+    # Comparing digit strings avoids Python's huge-integer conversion limit and
+    # bounds allocation even when a malformed page supplies thousands of digits.
+    ceiling = str(limit)
+    if len(digits) > len(ceiling) or (len(digits) == len(ceiling) and digits > ceiling):
+        raise ValueError('table_span_limit')
+    span = int(digits)
+    return span if span or allow_zero else 1
+
+
+def table_records(table, number: int, max_chars: int, context: str = '') -> str:
+    """Render labelled table records, expanding shared cells without guessing facts.
+
+    Args:
+        table: BeautifulSoup table belonging to the cleaned source DOM.
+        number: Document-local table number used only for structural record IDs.
+        max_chars: Output ceiling; excessive expansion raises ValueError.
+        context: Exact enclosing source-heading text, or empty when unavailable.
+
+    Returns:
+        Text with repeated headers and complete rowspan/colspan values per row.
+        Nested tables remain cell text. Recoverable span syntax is normalized;
+        overlapping or oversized grids still fail explicitly. Source headings
+        repeat inside each record so independently processed passages retain scope.
+    """
+    rows = [row for row in table.find_all('tr') if row.find_parent('table') is table]
+    grid, headers, output = {}, {}, []
+    size = 0
+    caption = table.find('caption', recursive=False)
+    if caption:
+        output.append(caption.get_text(' ', strip=True))
+    for index, row in enumerate(rows):
+        cells = row.find_all(['th', 'td'], recursive=False)
+        column = 0
+        for cell in cells:
+            while (index, column) in grid:
+                column += 1
+            height = table_span(cell.get('rowspan'), len(rows), allow_zero=True)
+            height = len(rows) - index if height == 0 else height
+            width = table_span(cell.get('colspan'), 256)
+            if not 1 <= height <= len(rows) or not 1 <= width <= 256 or column + width > 256:
+                raise ValueError('table_span_limit')
+            value = cell.get_text(' ', strip=True)
+            for dy in range(min(height, len(rows) - index)):
+                for dx in range(width):
+                    position = (index + dy, column + dx)
+                    if position in grid:
+                        raise ValueError('overlapping_table_cells')
+                    grid[position] = value
+                    size += len(value) + 1
+                    if size > max_chars * 4:
+                        raise ValueError('text_size_limit')
+            column += width
+        values = {col: value for (row_index, col), value in grid.items() if row_index == index}
+        # Mixed TH/TD rows are data, including row headers, not column headers.
+        if cells and all(cell.name == 'th' for cell in cells):
+            for col, value in values.items():
+                if value:
+                    headers[col] = value
+            output.append(' | '.join(value for _, value in sorted(values.items()) if value))
+        elif values:
+            fields = [f'{headers[col]}: {value}' if headers.get(col) else value
+                      for col, value in sorted(values.items()) if value]
+            output.append(f'[Record T{number}R{index + 1}]\n' + context + ' | '.join(fields))
+        for position in [position for position in grid if position[0] == index]:
+            del grid[position]
+    result = '\n\n'.join(output)
+    if len(result) > max_chars:
+        raise ValueError('text_size_limit')
+    return result
+
+
+def record_contexts(body, targets, title=''):
+    """Capture document heading scope before replacing tables and cards with text.
+
+    Args:
+        body: Cleaned content DOM in its original source order.
+        targets: Table/card elements that will become independent extraction records.
+        title: Actual HTML document title, or empty when none was supplied.
+    Returns:
+        Element-ID mapping to source-title/heading prefixes. Standard h1–h6 nesting
+        replaces equal/deeper headings; headings inside records do not leak into
+        siblings. Only actual title/heading text is copied, never an inferred date,
+        authority, geography or factual conclusion. No DOM mutation occurs.
+    """
+    ids = {id(target) for target in targets}
+    stack, contexts = {}, {}
+    for element in body.descendants:
+        name = getattr(element, 'name', None)
+        if id(element) in ids:
+            headings = [stack[level] for level in sorted(stack)]
+            contexts[id(element)] = (('Document title: ' + title + '\n') if title else '') + (
+                'Source headings: ' + ' > '.join(headings) + '\n' if headings else '')
+        if name in {'h1', 'h2', 'h3', 'h4', 'h5', 'h6'} and not any(id(p) in ids for p in element.parents):
+            level = int(name[1])
+            stack = {depth: title for depth, title in stack.items() if depth < level}
+            heading_title = element.get_text(' ', strip=True)
+            if heading_title:
+                stack[level] = heading_title
+    return contexts
+
+
+def structured_html_text(body, max_chars: int, title: str = '') -> str:
+    """Preserve table and repeated-card boundaries without site-specific rules.
+
+    Args:
+        body: Cleaned BeautifulSoup content element, mutated only in this worker.
+        max_chars: Maximum output size, also bounding table expansion.
+        title: Actual document TITLE text, preserved as untrusted source context.
+
+    Returns:
+        Visible text with structural record labels, not inferred facts. DIV/LI cards
+        are detected by sibling shape, never URLs, names or benchmark answers.
+        Actual enclosing headings repeat within each record to preserve source
+        scope across passage boundaries; they remain untrusted source content.
+    """
+    from collections import defaultdict
+    from bs4 import NavigableString
+
+    cards = []
+    for parent in [body, *body.find_all(['div', 'ul', 'ol'])]:
+        groups = defaultdict(list)
+        for child in parent.find_all(['div', 'li'], recursive=False):
+            groups[(child.name, tuple(child.get('class', [])))].append(child)
+        for siblings in groups.values():
+            if len(siblings) < 3:
+                continue
+            for child in siblings:
+                if child.find('table') or child.find_parent('table'):
+                    continue
+                pieces = list(child.stripped_strings)
+                if 2 <= len(pieces) <= 32 and sum(map(len, pieces)) <= 2000:
+                    cards.append(child)
+    selected = {id(card) for card in cards}
+    tables = [table for table in body.find_all('table') if not table.find_parent('table')]
+    contexts = record_contexts(body, [*cards, *tables], title)
+    for number, card in enumerate(cards, 1):
+        if any(id(parent) in selected for parent in card.parents):
+            continue
+        value = ' | '.join(card.stripped_strings)
+        card.replace_with(NavigableString(f'\n\n[Record C{number}]\n{contexts[id(card)]}{value}\n\n'))
+    for number, table in enumerate(tables, 1):
+        table.replace_with(NavigableString('\n\n' + table_records(table, number, max_chars, contexts[id(table)]) + '\n\n'))
+    return body.get_text('\n', strip=False)
+
+
 def extract(raw: bytes, media_type: str, charset: str, max_chars: int, max_pages: int) -> tuple[str, str]:
     """Convert one supported document into normalized text and a parser-version label.
 
@@ -61,10 +232,18 @@ def extract(raw: bytes, media_type: str, charset: str, max_chars: int, max_pages
         soup = bs4.BeautifulSoup(raw, "html.parser", from_encoding=charset or None)
         # These sections usually contain controls or executable markup, not the
         # article. This heuristic is intentionally simple; raw HTML is also saved.
-        for element in soup.find_all(["script", "style", "nav", "header", "footer", "form", "noscript", "template", "svg", "iframe"]):
+        for element in soup.find_all(["script", "style", "nav", "footer", "form", "noscript", "template", "svg", "iframe"]):
             element.decompose()
+        for header in soup.find_all('header'):
+            # An article's title may live in HEADER. Retain its source headings
+            # before removing navigational/header furniture, not a guessed title.
+            for heading in list(header.find_all(['h1', 'h2', 'h3', 'h4', 'h5', 'h6'])):
+                header.insert_before(heading.extract())
+            header.decompose()
         body = soup.find("main") or soup.find("article") or soup.body or soup
-        text, parser = body.get_text("\n", strip=True), "beautifulsoup4-" + bs4.__version__ + "/html.parser"
+        title = soup.title.get_text(' ', strip=True) if soup.title else ''
+        text = structured_html_text(body, max_chars, title)
+        parser = "beautifulsoup4-" + bs4.__version__ + "/html.parser/records-v3"
     else:
         encoding = charset or ("utf-16" if raw.startswith((b"\xff\xfe", b"\xfe\xff")) else "utf-8-sig")
         text, parser = raw.decode(encoding), "python-text-v1"
@@ -79,6 +258,35 @@ def extract(raw: bytes, media_type: str, charset: str, max_chars: int, max_pages
     if len(text) + 1 > max_chars:
         raise ValueError("text_size_limit")
     return text + "\n", parser + "/normalize-v1"
+
+
+def html_source_metadata(soup):
+    """Retain explicitly stated document labels without interpreting their truth.
+
+    Args:
+        soup: Parsed HTML tree from the bounded parser worker, before cleanup.
+    Returns:
+        Title and selected metadata declarations, each capped at 1000 characters,
+        with at most 32 declarations and an explicit truncation flag. No inferred
+        publisher, generated summary or acquisition-derived publication date.
+    """
+    names = {'publisher', 'dc.publisher', 'dcterms.publisher', 'og:site_name',
+        'article:published_time', 'article:modified_time', 'date', 'dc.date',
+        'dcterms.created', 'dcterms.modified', 'datepublished', 'datemodified'}
+    title = soup.title.get_text(' ', strip=True) if soup.title else None
+    declarations, truncated = [], bool(title and len(title) > 1000)
+    for tag in soup.find_all('meta'):
+        key = str(tag.get('property') or tag.get('name') or '').casefold()
+        if key not in names or not tag.get('content'):
+            continue
+        value = str(tag['content'])
+        if len(declarations) >= 32:
+            truncated = True
+            continue
+        truncated = truncated or len(value) > 1000
+        declarations.append(dict(name=key, value=value[:1000]))
+    return dict(title=title[:1000] if title else None, declarations=declarations,
+        truncated=truncated)
 
 
 def html_links(raw: bytes, media_type: str, charset: str) -> dict:
@@ -97,7 +305,8 @@ def html_links(raw: bytes, media_type: str, charset: str) -> dict:
     Returns:
         A dictionary of href/label records within the source-byte/parser-resource bounds;
         there is no first-N anchor cutoff. Overlong URLs are excluded and disclosed by
-        the truncation flag. Non-HTML documents produce an empty inventory.
+        the truncation flag. Source-stated HTML labels/dates are retained separately
+        as metadata, not verified claims. Non-HTML documents produce an empty inventory.
     """
     if media_type not in {"text/html", "application/xhtml+xml"}:
         return {"links": [], "links_truncated": False}
@@ -106,7 +315,8 @@ def html_links(raw: bytes, media_type: str, charset: str) -> dict:
     anchors = soup.find_all("a", href=True)
     return {"links": [{"href": str(a["href"])[:2048], "label": a.get_text(" ", strip=True)[:240]}
         for a in anchors if len(str(a["href"])) <= 2048],
-        "links_truncated": any(len(str(a["href"])) > 2048 for a in anchors)}
+        "links_truncated": any(len(str(a["href"])) > 2048 for a in anchors),
+        "source_metadata": html_source_metadata(soup)}
 
 
 def main() -> None:

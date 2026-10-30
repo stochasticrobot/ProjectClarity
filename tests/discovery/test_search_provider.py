@@ -1,4 +1,11 @@
-"""Exercise DDGS adapter/worker contracts without making network requests."""
+"""Check the parent search adapter and its subprocess request/response format.
+
+Mocked process or engine responses verify explicit backend selection, normalized
+results, stripped credentials, timeout cleanup and failure reporting. Unexpected
+engine choices must not fall through to DDGS's automatic selection. No search
+request reaches the Internet, and an empty success remains distinct from an
+engine error or killed worker.
+"""
 import contextlib
 import io
 import json

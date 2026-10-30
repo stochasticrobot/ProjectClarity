@@ -1,11 +1,19 @@
 """Keep LangGraph's place while a person reviews a research plan.
 
-The CLI process can exit at review_plan. A later command opens this same SQLite
+The terminal interface process can exit at review_plan. A later command opens this same SQLite
 database and resumes the interrupted node, without repeating the planning call.
 Opted-in source selection, extraction, review and coverage stages can make new
 bounded model calls after resumption; the original planning call is not repeated.
 LangGraph's maintained SqliteSaver owns checkpoint storage; this file only
-configures it. The database is local development infrastructure, not PostgreSQL
+configures it. Production invocations use LangGraph's durability="exit": save one
+checkpoint when execution completes, pauses for review or unwinds an exception.
+This avoids storing the entire growing session both as a checkpoint and as a step
+output after every node. Review resumption uses that durable interrupt; interrupted
+research uses the separately saved session.json journal. A hard process kill does
+not promise a final graph checkpoint. Existing history is not pruned automatically,
+and repeated invocations still add checkpoints. This is not a time-travel archive.
+
+The database is local development infrastructure, not PostgreSQL
 or a multi-host job service. Keep it with the run folders when moving the store.
 
 Graph state uses plain JSON-shaped dictionaries. The restricted serializer does

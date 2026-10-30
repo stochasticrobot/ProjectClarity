@@ -1,4 +1,11 @@
-"""Verify cumulative fact progress through real CLI extraction and partial assessments."""
+"""Check that per-goal claim history survives partial coverage assessments.
+
+The command-line workflow extracts and reviews synthetic evidence and saves the
+cumulative goal register. Tests compare those saved counts and statuses with what
+later model requests receive, including assessments that consider only part of
+the evidence. Claim counts must not become distinct-person counts or completed
+research goals. No live model supplies the fixture judgments.
+"""
 import json
 import unittest
 
@@ -14,7 +21,7 @@ class GoalRegisterPipelineTests(unittest.TestCase):
         """Offer different findings across rounds while preserving every discovered claim.
 
         Args:
-            self: Production CLI test with only external transports substituted.
+            self: Production terminal interface test with only external transports substituted.
 
         Returns:
             None. Assert separate latest-assessment and cumulative counts, persisted

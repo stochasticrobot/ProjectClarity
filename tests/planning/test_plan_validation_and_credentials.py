@@ -58,7 +58,7 @@ class PlanContractTests(unittest.TestCase):
                 saved["prompt_version"] = version
                 restored = ResearchSession.model_validate_json(json.dumps(saved))
                 self.assertEqual(restored.model_dump(mode="json"), saved)
-        self.assertEqual(example_session().prompt_version, "research-plan-v11")
+        self.assertEqual(example_session().prompt_version, "research-plan-v12")
 
     def test_question_category_is_required_nonblank_text_with_a_length_bound(self):
         """The prompt's category request must produce data, not vanish from the output.

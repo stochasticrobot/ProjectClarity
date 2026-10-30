@@ -1,4 +1,10 @@
-"""Classify actual urllib3 exceptions at the production HTTP adapter boundary."""
+"""Check how the HTTP reader classifies failures and server-requested retry delays.
+
+Real urllib3 exception types are supplied without making network requests. Tests
+distinguish timeouts, certificate failures and ambiguous transport errors, then
+check Retry-After seconds and dates. Classification must not turn an unsafe or
+unknown failure into an automatic retry.
+"""
 import unittest
 from unittest.mock import Mock, patch
 

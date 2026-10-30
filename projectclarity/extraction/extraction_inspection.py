@@ -1,6 +1,6 @@
 """Explain saved extraction calls without rerunning research or reading an API key.
 
-The CLI prints a compact per-passage summary after research. The separate
+The terminal interface prints a compact per-passage summary after research. The separate
 `inspect-extraction RUN_ID --call S1_P1` command shows what that call was asked
 and what it returned, and saves a readable private inspection file. This module
 is presentation/inspection only: it does not alter evidence or approve claims.

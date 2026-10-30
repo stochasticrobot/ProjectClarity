@@ -3,7 +3,7 @@
 The whitelist is a starter catalogue unless whitelist-only mode is requested.
 It does not certify evidence, bypass deny rules or grant access to private networks.
 Rules are frozen into each request so edits cannot silently change an active run.
-The CLI loads both files even when web search is disabled. Python API callers must
+The terminal interface loads both files even when web search is disabled. Python API callers must
 load/pass a policy explicitly; constructing URLPolicy alone does not read files.
 Only source acquisition is controlled here, not all network traffic from DDGS.
 """
@@ -43,7 +43,7 @@ def load_url_configuration(blacklist, whitelist, *, whitelist_only=False):
     Keeping the catalogue separate from the domain policy allows useful starting
     points without confining every investigation to those sites. All configured
     seed URLs are validated even when the caller does not opt to add them to a run.
-    Provider selection and adding seeds remain the CLI's responsibility.
+    Provider selection and adding seeds remain the terminal interface's responsibility.
 
     Args:
         blacklist: Local path to the domain-per-line deny file. Blank lines and
@@ -60,7 +60,7 @@ def load_url_configuration(blacklist, whitelist, *, whitelist_only=False):
         catalogue dictionary holding provider choices/default and seed URLs).
         This only reads files; it does not register sources or contact a provider.
         File errors raise OSError; invalid JSON, domains or catalogue values raise
-        ValueError (including UnicodeError). The CLI reports these before research.
+        ValueError (including UnicodeError). The terminal interface reports these before research.
     """
     blocked = [normalize_domain(line.strip()) for line in Path(blacklist).read_text().splitlines()
         if line.strip() and not line.lstrip().startswith('#')]
