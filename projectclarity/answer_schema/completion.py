@@ -22,12 +22,19 @@ def contract_checks(session):
     Args:
         session: Run containing an optional accepted answer schema.
     Returns:
-        Explicit typed checks or an empty list. Invalid saved contracts raise
+        Explicit typed checks with their associated sections' evidence requirements
+        included verbatim. These are whole-answer obligations, not repeated entry
+        eligibility checks. The saved specification is unchanged. Invalid contracts raise
         ValueError rather than yielding an easier completion policy. No mutation.
     """
     if not (session.answer_schema or {}).get('completion_checks'):
         return []
-    return AnswerSchema.model_validate(session.answer_schema).completion_checks
+    schema = AnswerSchema.model_validate(session.answer_schema)
+    sections = {section.goal_id: section for section in schema.sections}
+    return [check.model_copy(update={'evidence_required': list(dict.fromkeys([
+        *check.evidence_required,
+        *(requirement for gid in check.goal_ids for requirement in sections[gid].evidence_requirements)
+    ]))}) for check in schema.completion_checks]
 
 
 def completion_criteria(session):

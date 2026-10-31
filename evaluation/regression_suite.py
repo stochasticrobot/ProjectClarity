@@ -28,6 +28,13 @@ import unittest
 
 ROOT = Path(__file__).resolve().parents[1]
 REQUIRED_MODULES = (
+    'tests.claim_review.test_parallel_review_cli',
+    'tests.research.test_adaptive_reading',
+    'tests.research.test_bounded_inputs',
+    'tests.research.test_coverage_diagnostics',
+    'tests.research.test_coverage_normalization',
+    'tests.claim_review.test_review_capacity',
+    'tests.claim_review.test_qualification',
     'tests.research.test_report_mapping',
     'tests.research.test_record_aggregation',
     'tests.research.test_release_invariants',
@@ -42,6 +49,16 @@ REQUIRED_MODULES = (
 # Require these individual test IDs as well as their modules, so removing an
 # important case cannot leave a passing gate merely because its file still exists.
 REQUIRED_TESTS = (
+    'tests.research.test_contract_completion.ContractCompletionTests.test_summary_conflict_blocks_optimistic_global_completion',
+    'tests.research.test_bounded_inputs.BoundedInputTests.test_scaling_has_complete_leaves_and_fixed_fan_in',
+    'tests.research.test_coverage_diagnostics.CoverageDiagnosticsTests.test_fixture_preflight_rejects_the_observed_contract_and_attribution_faults',
+    'tests.research.test_contract_completion.ContractCompletionTests.test_diagnostics_survive_rejected_and_downgraded_cli_answers',
+    'tests.research.test_contract_completion.ContractCompletionTests.test_diagnostics_are_persisted_before_interrupted_coverage_dispatch',
+    'tests.research.test_coverage_normalization.CoverageNormalizationTests.test_realistic_population_fits_without_losing_names_or_conflicts',
+    'tests.research.test_contract_completion.ContractCompletionTests.test_repeated_qualification_scope_fits_through_real_cli',
+    'tests.claim_review.test_review_capacity.ReviewCapacityTests.test_output_limited_reviews_drain_at_three_real_response_caps',
+    'tests.claim_review.test_review_capacity.ReviewCapacityTests.test_individuals_qualify_while_section_evidence_still_blocks_completion',
+    'tests.claim_review.test_review_capacity.ReviewCapacityTests.test_oversized_single_candidate_is_not_exempt_from_output_bounds',
     'tests.research.test_record_aggregation.RecordAggregationTests.test_public_cli_obeys_single_and_multiple_completion_semantics',
     'tests.research.test_record_aggregation.RecordAggregationTests.test_unassigned_observations_never_count_or_fill_known_records',
     'tests.research.test_record_aggregation.RecordAggregationTests.test_coverage_markdown_and_dashboard_share_the_full_inventory',

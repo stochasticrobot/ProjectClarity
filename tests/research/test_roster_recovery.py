@@ -6,7 +6,7 @@ check whether actual item sections receive reading before distracting material
 consumes the allowance. Saved records and pending reviews remain visible at tight
 limits. Controlled replies establish mechanics, not live extraction recall.
 """
-from tests.claim_review.mapping_fixtures import fixture_mappings
+from tests.claim_review.mapping_fixtures import fixture_mappings, fixture_eligibility
 import copy
 import json
 from pathlib import Path
@@ -199,7 +199,7 @@ class CompetingDocumentsCLITests(unittest.TestCase):
             return self.cli.response(text=json.dumps({'assessments': [
                 {'candidate_id': c['candidate_id'], 'verdict': 'supported', 'in_scope': True,
                  'rationale': 'Fixture support for original source fields.',
-                 'report_mappings': fixture_mappings(c, payload), 'evidence_quotes': [c['proposal']['evidence'][0]['quote']]} for c in payload['candidates']]}))
+                 'report_mappings': fixture_mappings(c, payload), 'eligibility_assessments': fixture_eligibility(c, payload), 'evidence_quotes': [c['proposal']['evidence'][0]['quote']]} for c in payload['candidates']]}))
         return self.base_provider(request)
 
     def test_production_prioritizes_roster_and_retains_all_pairs_under_shared_budget(self):
@@ -222,7 +222,8 @@ class CompetingDocumentsCLITests(unittest.TestCase):
         self.assertTrue(all(r['provenance'] for r in result['records']))
         self.assertTrue(saved['workflow']['result_contract_adjustments'])
         self.assertLessEqual(saved['usage']['requests_attempted'], 29)
-        self.assertEqual(saved['model_attempts'][-1]['task'], 'assess_research_gaps')
+        self.assertFalse(any(call['task'] == 'bounded_evidence' for call in saved['model_attempts']))
+        self.assertEqual(saved['model_attempts'][-1]['task'], 'bounded_coverage')
         roster = [a for a in saved['extraction']['attempts'] if a['source_id'] == 'S2']
         self.assertTrue(all(a['status'] == 'completed' for a in roster if a['start'] >= 2000))
         self.assertLess(sum(sid == 'S1' for sid, _ in self.calls), 10)
@@ -246,6 +247,6 @@ class CompetingDocumentsCLITests(unittest.TestCase):
         self.assertEqual({(r['values']['name'], r['values']['location']) for r in result['records']}, expected)
         self.assertEqual((result['supported'], result['pending']), (56, 8))
         self.assertTrue(all(r['provenance'] for r in result['records']))
-        self.assertEqual(saved['model_attempts'][-1]['task'], 'assess_research_gaps')
+        self.assertEqual(saved['model_attempts'][-1]['task'], 'bounded_coverage')
         self.assertEqual(saved['usage']['requests_attempted'], 28)
         self.assertEqual(answer['coverage_freshness']['status'], 'fresh')

@@ -16,7 +16,7 @@ are loaded separately from text files by prompt_loader.py.
 """
 
 
-def research_context(session):
+def research_context(session, *, include_study=True):
     """Build the background-data dictionary attached to research-model requests.
 
     Keep the user's clarification answers paired with their original questions and
@@ -28,6 +28,8 @@ def research_context(session):
             review decision, optional answer schema and optional preliminary study.
             A review made against a replaced plan must carry its original question
             text; a missing question is not guessed from the replacement plan.
+        include_study: Whether this task needs preliminary global study conclusions;
+            False omits them entirely rather than shortening them into hidden advice.
 
     Returns:
         A fresh dictionary with research_date, working_assumptions, human_guidance
@@ -50,7 +52,7 @@ def research_context(session):
     if session.answer_schema:
         context['answer_schema'] = session.answer_schema
     study = session.coverage_study
-    if study and study.get('status') != 'running':
+    if include_study and study and study.get('status') != 'running':
         context['early_coverage_study'] = {'status': study['status'],
             'estimates': [{**{k: e[k] for k in ('estimate_id', 'goal_ids', 'range', 'basis')},
                 'unit': e['unit'][:160], 'method': e['method'][:400],
@@ -64,4 +66,30 @@ def research_context(session):
             context['early_coverage_study'].update(coverage_outcome=study.get('coverage_outcome', 'unknown'),
                 readiness=study['readiness'],
                 readiness_progress=session.coverage.get('readiness_progress', []))
+    return context
+
+
+def record_task_context(session):
+    """Project only scope, human guidance and record definitions for local evidence work.
+
+    Extraction and claim review operate on assigned passages, not global coverage.
+    Keep the full accepted contract in storage, but do not send preliminary study
+    estimates or global completion obligations to every record-level call.
+
+    Args:
+        session: Planned research session, with an optional accepted answer schema.
+    Returns:
+        New context preserving clarification binding, assumptions, dates, scope,
+        interpretation notes and all field/identity definitions. Global section
+        evidence requirements and completion checks remain for coverage only.
+        No saved schema or nested source data is mutated.
+    """
+    from copy import deepcopy
+    context = research_context(session, include_study=False)
+    if session.answer_schema:
+        schema = deepcopy(session.answer_schema)
+        schema.pop('completion_checks', None)
+        for section in schema.get('sections', []):
+            section.pop('evidence_requirements', None)
+        context['answer_schema'] = schema
     return context

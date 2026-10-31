@@ -19,6 +19,14 @@ import time
 from projectclarity.retrieval.retrieval_limits import RunCancelled
 
 
+class ConcurrentWorkInterrupted(RunCancelled):
+    """Mark a peer's unknown outcome during runner cleanup, not a user cancellation.
+
+    The original exception remains authoritative for the caller. Cleanup must not
+    turn a process interruption into a cancelled run that cannot be resumed.
+    """
+
+
 @dataclass
 class ModelInvocation:
     """A prepared model request whose allowance was already reserved by its task.
@@ -127,7 +135,7 @@ def run_model_jobs(jobs, *, concurrency, monitor=None):
         # A worker still running owns no journal/monitor and cannot overwrite state.
         for job in list(live):
             try:
-                job.throw(RunCancelled('Concurrent model work interrupted'))
+                job.throw(ConcurrentWorkInterrupted('Concurrent model work interrupted'))
             except BaseException:
                 pass  # Preserve the first failure while flushing peer finally blocks.
             finally:

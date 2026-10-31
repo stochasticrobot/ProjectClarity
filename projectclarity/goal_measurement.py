@@ -37,7 +37,9 @@ def measure_goal(data, goal, inventory, valid_ids=None):
     Returns:
         A new dictionary with result counts or evidence-check statuses, the accepted
         target and its source, and identified/supported percentages. Missing or
-        conflicting targets leave percentages as None. A zero target also has no
+        conflicting targets leave percentages as None. A recorded unverified
+        population cannot become a display denominator. Legacy rows without this
+        receipt retain the existing evidence checks. A zero target also has no
         percentage. Counts exceeding the target are flagged, not capped at 100%.
         No supplied data is changed and no model or file operation is performed.
     """
@@ -70,7 +72,9 @@ def measure_goal(data, goal, inventory, valid_ids=None):
         # Mapping protects against interpreting a seat/vacancy count as a count
         # of people, or a relationship count as a count of organizations.
         aligned = row.get('result_goal_id') == goal['goal_id']
+        population = row.get('population')
         if (row.get('target_count') is not None and aligned and refs and
+                (population is None or population.get('state') == 'model_asserted_supported_benchmark') and
                 all(cid in candidates and candidates[cid].get('adjudication_status') == 'supported'
                     for cid in refs)):
             targets.append((row['target_count'], 'source_backed_assessment', refs))

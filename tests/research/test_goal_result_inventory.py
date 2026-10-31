@@ -276,10 +276,9 @@ class GeneralResultProductionTests(unittest.TestCase):
                         self.assertIn(field, payload)
                     ledger = payload['result_inventory']['G1']
                     self.assertEqual(ledger['required_fields'], fields)
-                    self.assertTrue(ledger['items'])
-                    for item in ledger['items']:
-                        self.assertTrue(item['candidate_ids'])
-                        self.assertTrue(item['fields'])
+                    self.assertNotIn('items', ledger)
+                    self.assertTrue(ledger['manifest_sha256'])
+                    self.assertGreater(ledger['identified'], 0)
                     response_schema = wire['output_config']['format']['schema']
                     self.assertIn('result_goal_id', response_schema['$defs']['CriterionAssessment']['properties'])
                     offered.append(payload)
@@ -320,22 +319,25 @@ class GeneralResultProductionTests(unittest.TestCase):
         Args:
             self: Test owner using a generated 480-row source, not saved benchmark answers.
         Returns:
-            None; proves full inventory delivery within the bounded aggregate allowance,
-            not live-model reasoning accuracy or an unbounded-context claim.
+            None; proves full application accounting and bounded final transport,
+            not live-model reasoning accuracy. This large-completion case allocates
+            summary calls explicitly; separate checkpoint tests retain tight budgets.
         """
         from tests.research import test_coverage_checkpoints_cli as checkpoints
         f = checkpoints.CoverageCheckpointCLITests()
         f.setUp()
         self.addCleanup(f.doCleanups)
-        _, directory, saved, _ = f.run_case('--max-requests', '70')
+        _, directory, saved, _ = f.run_case('--max-requests', '220')
         last = saved['coverage']['history'][-1]
         self.assertGreater(last['candidate_total'], 250)
         self.assertFalse(last['inventory_truncated'])
-        self.assertEqual(len(last['offered_candidate_ids']), last['candidate_total'])
+        self.assertEqual(len(last['accounted_candidate_ids']), last['candidate_total'])
+        self.assertLessEqual(len(last['offered_candidate_ids']), 24)
         call = json.loads((directory / 'llm_calls' / (last['call_id'] + '.json')).read_text())
         payload = json.loads(call['messages'][1]['content'])
         self.assertEqual(payload['result_inventory']['G1']['identified'], last['candidate_total'])
-        self.assertGreater(len(json.dumps(call['messages'])), 48000)
+        self.assertNotIn('items', payload['result_inventory']['G1'])
+        self.assertLessEqual(last['input_contract']['total_characters'], 64000)
 
     def test_failed_final_check_keeps_previous_values_but_cannot_stop(self):
         """Keep progress readable after an invalid assessment without calling stale evidence current.
@@ -362,7 +364,7 @@ class GeneralResultProductionTests(unittest.TestCase):
             wire = json.loads(request.content)
             if wire['output_config']['format']['schema']['title'] == 'CoverageAssessment':
                 saved = f.flow.cli.saved_session()[1]
-                if saved['usage']['requests_attempted'] == 40:
+                if saved['usage']['requests_attempted'] >= 39:
                     return f.flow.cli.response(text='{')
             return original(request)
 

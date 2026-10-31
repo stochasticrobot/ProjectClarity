@@ -6,7 +6,7 @@ truncation, cancellation and restart. Tests inspect saved claim-to-review accoun
 and source checks, not just node visits. The actual SDK parser, scheduler and file
 writes execute, but the authored judgments do not measure live review accuracy.
 """
-from tests.claim_review.mapping_fixtures import fixture_mappings
+from tests.claim_review.mapping_fixtures import fixture_mappings, fixture_eligibility
 import json
 import unittest
 from collections import Counter
@@ -77,7 +77,7 @@ class BatchedReviewCLITests(unittest.TestCase):
             return self.flow.cli.response(text='{"assessments":', stop_reason='max_tokens')
         assessments = [{'candidate_id': c['candidate_id'], 'verdict': 'supported',
             'in_scope': True, 'rationale': 'Synthetic source-bound review.',
-            'report_mappings': fixture_mappings(c, payload), 'evidence_quotes': [c['proposal']['evidence'][0]['quote']]} for c in payload['candidates']]
+            'report_mappings': fixture_mappings(c, payload), 'eligibility_assessments': fixture_eligibility(c, payload), 'evidence_quotes': [c['proposal']['evidence'][0]['quote']]} for c in payload['candidates']]
         if self.fault == 'wrong_source':
             assessments[0]['evidence_quotes'] = assessments[1]['evidence_quotes']
         elif self.fault == 'missing':

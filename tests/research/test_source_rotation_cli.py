@@ -5,7 +5,7 @@ low-yield reading should give another source or search a turn. Controlled provid
 and search replies retain actual scheduling and saved outcomes. The assertions
 measure allocation and restart behavior, not live source usefulness.
 """
-from tests.claim_review.mapping_fixtures import fixture_mappings
+from tests.claim_review.mapping_fixtures import fixture_mappings, fixture_eligibility
 import json
 import unittest
 from unittest.mock import patch
@@ -194,7 +194,7 @@ class LateSelectionCLITests(unittest.TestCase):
                 return flow.cli.response(text=json.dumps({'assessments': [
                     {'candidate_id': c['candidate_id'], 'verdict': 'supported', 'in_scope': True,
                      'rationale': 'Synthetic source support.',
-                     'report_mappings': fixture_mappings(c, payload), 'evidence_quotes': [c['proposal']['evidence'][0]['quote']]}
+                     'report_mappings': fixture_mappings(c, payload), 'eligibility_assessments': fixture_eligibility(c, payload), 'evidence_quotes': [c['proposal']['evidence'][0]['quote']]}
                     for c in payload['candidates']]}))
             return base(request)
 

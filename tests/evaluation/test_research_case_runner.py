@@ -79,7 +79,7 @@ class ResearchCaseRunnerTests(unittest.TestCase):
                 Never returns normally; SystemExit carries the actual evaluation terminal interface result to the
                 harness.
             """
-            raise SystemExit(main(['run', case['case_id'], '--max-requests', '3', '--max-output-tokens', '1024',
+            raise SystemExit(main(['run', case['case_id'], '--max-requests', '4', '--max-output-tokens', '1024',
                 '--output-dir', str(output)]))
         with patch('evaluation.research_case_runner.load_suite', return_value=suite), \
                 patch('runpy.run_module', side_effect=evaluation_entry):
@@ -89,10 +89,15 @@ class ResearchCaseRunnerTests(unittest.TestCase):
         self.assertEqual(len(score_paths), 1)
         score = json.loads(score_paths[0].read_text())
         self.assertEqual(score['supported_relationships']['correct_count'], 2)
-        self.assertEqual(score['usage']['requests_attempted'], 3)
+        self.assertEqual(score['usage']['requests_attempted'], 4)
         self.assertEqual(score['reference_validation']['status'], 'not_recorded')
         self.assertEqual(score['human_reference_review'], 'pending')
-        self.assertEqual(len(flow.cli.requests), 3)
+        self.assertEqual(len(flow.cli.requests), 4)
+        reviews = [json.loads(r.content) for r in flow.cli.requests
+                   if json.loads(r.content)['output_config']['format']['schema']['title'] == 'ClaimReviewBatch']
+        self.assertEqual(len(reviews), 2)
+        self.assertTrue(all(r['max_tokens'] == 1024 for r in reviews))
+        self.assertTrue(all(len(json.loads(r['messages'][0]['content'])['candidates']) == 1 for r in reviews))
         for request in flow.cli.requests:
             self.assertNotIn('DO_NOT_SEND_REFERENCE_ANSWERS', request.content.decode())
         self.assertTrue((score_paths[0].parent / 'reference_suite.json').is_file())

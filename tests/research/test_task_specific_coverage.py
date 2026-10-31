@@ -6,7 +6,7 @@ how statuses are saved and how invalid references are rejected. An explanation,
 comparison or timeline must not require an invented population count merely to
 represent progress. These are validation and data-delivery tests, not live reasoning scores.
 """
-from tests.claim_review.mapping_fixtures import fixture_mappings
+from tests.claim_review.mapping_fixtures import fixture_mappings, fixture_eligibility
 import json
 import unittest
 
@@ -75,7 +75,7 @@ class TaskSpecificCoverageTests(unittest.TestCase):
         elif title == 'ClaimReviewBatch':
             answer = {'assessments': [{'candidate_id': c['candidate_id'], 'verdict': 'supported',
                 'in_scope': True, 'rationale': 'The synthetic source states this fact.',
-                'report_mappings': fixture_mappings(c, payload), 'evidence_quotes': [self.quote]} for c in payload['candidates']]}
+                'report_mappings': fixture_mappings(c, payload), 'eligibility_assessments': fixture_eligibility(c, payload), 'evidence_quotes': [self.quote]} for c in payload['candidates']]}
         else:
             self.coverage_inputs.append(payload)
             ids = [c['candidate_id'] for c in payload['candidates']]

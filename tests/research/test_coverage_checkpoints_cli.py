@@ -58,6 +58,9 @@ class CoverageCheckpointCLITests(unittest.TestCase):
         body = json.loads(request.content)
         title = body['output_config']['format']['schema']['title']
         payload = json.loads(body['messages'][0]['content']) if title != 'ResearchPlan' else {}
+        if title == 'BoundedDigest':
+            from tests.research.bounded_transport_fixtures import digest_reply
+            return self.flow.cli.response(text=json.dumps(digest_reply(payload)))
         if title == 'CoverageAssessment':
             self.coverage_snapshots.append(self.flow.cli.saved_session()[1])
             if self.crash_coverage:
@@ -125,9 +128,11 @@ class CoverageCheckpointCLITests(unittest.TestCase):
             self.assertFalse(snap['request']['stop_when_satisfied'])
             self.assertTrue(any(a['status'] == 'not_attempted' for a in snap['extraction']['attempts']))
         calls = saved['model_attempts']
-        self.assertEqual(len(calls), 40)
-        self.assertEqual(calls[-1]['task'], 'assess_research_gaps')
-        self.assertLessEqual(int(next(a for a in calls if a['task'] == 'assess_research_gaps')['attempt_id'][1:]), 17)
+        self.assertEqual(len(calls), saved['usage']['requests_attempted'])
+        self.assertLessEqual(len(calls), 40)
+        self.assertGreaterEqual(len(calls), 39)
+        self.assertEqual(calls[-1]['task'], 'bounded_coverage')
+        self.assertLessEqual(int(next(a for a in calls if a['task'] == 'bounded_coverage')['attempt_id'][1:]), 17)
         self.assertEqual(saved['workflow']['stop_reason'], 'budget_exhausted')
         self.assertEqual(coverage_freshness(ResearchSession.model_validate(saved))['status'], 'fresh')
         self.assertTrue(all(a['status'] in {'completed', 'not_attempted'} for a in saved['extraction']['attempts']))
@@ -141,7 +146,7 @@ class CoverageCheckpointCLITests(unittest.TestCase):
             None. Assert retained pending claims, final assessment, and no false stop.
         """
         _, _, saved, _ = self.run_case('--max-requests', '6')
-        self.assertEqual(saved['model_attempts'][-1]['task'], 'assess_research_gaps')
+        self.assertEqual(saved['model_attempts'][-1]['task'], 'bounded_coverage')
         self.assertEqual(len(saved['model_attempts']), 6)
         self.assertTrue(any(c['adjudication_status'] == 'pending' for c in saved['extraction']['candidates']))
         self.assertNotEqual(saved['workflow']['stop_reason'], 'criteria_satisfied')
@@ -191,7 +196,7 @@ class CoverageCheckpointCLITests(unittest.TestCase):
         self.assertEqual(sum(c['task'] == 'plan_research' for c in calls), 1)
         self.assertEqual(sum(c['call_id'] == 'coverage_1' for c in calls), 1)
         self.assertEqual(next(c for c in calls if c['call_id'] == 'coverage_1')['status'], 'uncertain')
-        self.assertEqual(calls[-1]['task'], 'assess_research_gaps')
+        self.assertEqual(calls[-1]['task'], 'bounded_coverage')
         self.assertLessEqual(len(calls), 40)
 
     def test_transient_review_retries_cannot_spend_final_coverage_slot(self):
@@ -209,7 +214,7 @@ class CoverageCheckpointCLITests(unittest.TestCase):
         failed = [c for c in calls if c['status'] == 'failed']
         self.assertTrue(failed)
         self.assertEqual(failed[-1]['recovery_stop'], 'request_limit')
-        self.assertEqual(calls[-1]['task'], 'assess_research_gaps')
+        self.assertEqual(calls[-1]['task'], 'bounded_coverage')
         self.assertEqual(calls[-1]['status'], 'response_received')
         self.assertEqual(len(calls), 7)
         self.assertEqual(coverage_freshness(ResearchSession.model_validate(saved))['status'], 'fresh')
@@ -224,7 +229,7 @@ class CoverageCheckpointCLITests(unittest.TestCase):
         """
         self.malformed_coverage = True
         _, _, saved, _ = self.run_case('--max-requests', '6')
-        self.assertEqual(saved['model_attempts'][-1]['task'], 'assess_research_gaps')
+        self.assertEqual(saved['model_attempts'][-1]['task'], 'bounded_coverage')
         self.assertEqual(saved['coverage']['assessment_status'], 'not_assessed')
         self.assertTrue(saved['coverage']['history'][-1]['error_code'])
         self.assertTrue(saved['extraction']['candidates'])
@@ -245,7 +250,7 @@ class CoverageCheckpointCLITests(unittest.TestCase):
         failed = [c for c in calls if c['call_id'] == 'S1_P3']
         self.assertEqual(len(failed), 2)
         self.assertEqual(failed[-1]['recovery_stop'], 'request_limit')
-        self.assertEqual(calls[-1]['task'], 'assess_research_gaps')
+        self.assertEqual(calls[-1]['task'], 'bounded_coverage')
         self.assertEqual(len(calls), 6)
         attempts = {a['batch_id']: a for a in saved['extraction']['attempts']}
         self.assertEqual(attempts['S1_P2']['status'], 'completed')

@@ -54,3 +54,36 @@ assert.match(vm.runInContext('compactGoalProgress(compactFixture,compactGoal)',c
 vm.runInContext("data.result_progress.mapping_ledger={rows:[{blocking:true,status:'pending',goal_id:'G1',field_names:[],rationale:'Repair pending',candidate_id:'C1'}]}",context);
 const blockedReport=vm.runInContext('reportPanel(data)',context);
 assert.ok(blockedReport.indexOf('<table>')<blockedReport.indexOf('Unresolved claim-to-report mappings'));
+
+// Inclusion uncertainty stays distinct from supported field values, with escaped reasons.
+vm.runInContext(`
+  const qualifiedRecord=data.targets[0].rows[0].records[0];
+  qualifiedRecord.field_support_status='supported';
+  qualifiedRecord.qualification_status='unknown';
+  qualifiedRecord.qualification_requirements=[{description:'Current affiliation',status:'unknown',assessments:[{candidate_id:'C1',rationale:'No <dated> evidence.'}]}];
+`,context);
+const qualificationHTML=vm.runInContext('reportPanel(data)',context);
+assert.match(qualificationHTML,/Inclusion checks: unknown/);
+assert.match(qualificationHTML,/Field support: supported/);
+assert.match(qualificationHTML,/Current affiliation/);
+assert.match(qualificationHTML,/No &lt;dated&gt; evidence/);
+assert.doesNotMatch(qualificationHTML,/<dated>/);
+vm.runInContext("state.data=data;showDrawer('target',data.targets[0].rows[0].id)",context);
+assert.match(nodes.get('#drawer-content').innerHTML,/Inclusion checks: unknown/);
+
+// A flat qualification count must not conceal growing factual support, nor may
+// historical field-only counts be relabelled as eligibility approvals.
+vm.runInContext("const supportFixture={field_supported:5,supported:0,qualification_policy:'record-scope-and-currentness-v2'}",context);
+const supportStats=vm.runInContext('targetSupportStats(supportFixture)',context);
+assert.equal(supportStats[0][0],'Field-supported targets');
+assert.equal(supportStats[0][1],'5');
+assert.equal(supportStats[1][0],'Qualified targets');
+assert.equal(supportStats[1][1],'0');
+vm.runInContext("supportFixture.qualification_policy='legacy_field_support'",context);
+assert.equal(vm.runInContext('targetSupportStats(supportFixture)[1][1]',context),'—');
+
+// The field-support legend must use the same blue as its plotted series.
+vm.runInContext("data.history=[];data.metrics=data.metrics||{}",context);
+const targetChartHTML=vm.runInContext('targetChart(data)',context);
+assert.match(targetChartHTML,/<span class="field-support">Field-supported targets<\/span>/);
+assert.match(fs.readFileSync('projectclarity/dashboard/static/style.css','utf8'),/\.legend \.field-support:before\{background:#3568ac\}/);

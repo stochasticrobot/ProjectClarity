@@ -26,6 +26,7 @@ def evidence_revision(session):
         Digest invalidated by changed evidence, criteria, readiness requirements or
         result-accounting rules, report-mapping policy/repair ownership and the recorded report policy. Old grouping-based
         judgments cannot silently pass.
+        Benchmark-validation policy changes also invalidate legacy judgments.
         Budget/cancellation annotations on never-attempted passages are operational
         bookkeeping, not new evidence, and do not invalidate the final assessment.
         Initial/study numerical estimates never become stopping evidence. Explicit
@@ -38,10 +39,13 @@ def evidence_revision(session):
             {**a, 'error_code': None} if a['status'] == 'not_attempted' else a
             for a in extraction.get('attempts', [])]}
     from projectclarity.claim_review.report_mapping import MAPPING_VERSION
+    from projectclarity.coverage.population import POPULATION_POLICY
     payload = {'mapping_policy': MAPPING_VERSION,
+        'population_policy': POPULATION_POLICY,
         'mapping_repairs': session.workflow.get('report_mapping_repairs', {}),
         'accounting_version': ACCOUNTING_VERSION,
         'report_policy': session.workflow.get('controller_policy', 'legacy'),
+        'claim_support_policy': session.workflow.get('claim_support_policy', 'legacy_field_support'),
         'criteria': [c.model_dump(mode='json') for c in session.plan.completion_criteria],
         'readiness': session.coverage_study.get('readiness'),
         'extraction': extraction, 'reviews': session.claim_reviews,
@@ -50,11 +54,13 @@ def evidence_revision(session):
         from projectclarity.answer_schema.inventory import AGGREGATION_VERSION
         payload['report_aggregation_version'] = AGGREGATION_VERSION
         payload['answer_schema'] = session.answer_schema
-    if contract_checks(session):
+    if session.plan:
         from projectclarity.coverage.contract_assessment import policy_revision
-        payload.pop('readiness', None)
+        if contract_checks(session):
+            payload.pop('readiness', None)
         payload.update(assessment_policy=policy_revision(), plan=session.plan.model_dump(mode='json', exclude={'scope_estimates'}),
-            human_guidance=session.review_decision, question=session.request.question)
+            human_guidance=session.review_decision, question=session.request.question,
+            sources=[source.model_dump(mode='json') for source in session.sources])
     return hashlib.sha256(json.dumps(payload, sort_keys=True).encode()).hexdigest()
 
 
@@ -128,9 +134,14 @@ def completion_status(session, output_root, valid=None):
             if c.get('evidence_status') == 'anchored'}
         if anchored - set(valid):
             blockers.append('Some collected evidence no longer matches its saved source.')
-        if fresh and set(last.get('offered_candidate_ids', [])) != set(valid):
+        if fresh and not last.get('bounded_manifest') and set(last.get('offered_candidate_ids', [])) != set(valid):
             blockers.append('The global assessment did not account for the current evidence collection.')
         blockers.extend(batch_completion_blockers(session, last, valid))
+    if last.get('bounded_manifest'):
+        from projectclarity.coverage.bounded_assessment import completion_blockers
+        blockers.extend(completion_blockers(session, last, valid))
+    elif last.get('input_mode') in {'direct', 'bounded_tree'}:
+        blockers.append('Bounded coverage has no final manifest.')
     for criterion in expected:
         row = by_id.get(criterion.criterion_id, {})
         declared = next((c for c in explicit if c.criterion_id == criterion.criterion_id), None)

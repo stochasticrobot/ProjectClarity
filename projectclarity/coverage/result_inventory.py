@@ -42,6 +42,9 @@ def coverage_results(session, valid):
         unassigned_observations=g['results'].get('unassigned_observations', []),
         items=[dict(result_id=r['result_id'], fields=r['values'],
                     display_values=r.get('display_values', {}), status=r['status'],
+                    field_support_status=r.get('field_support_status', r['status']),
+                    qualification_status=r.get('qualification_status', 'not_assessed_legacy'),
+                    qualification_requirements=r.get('qualification_requirements', []),
                     candidate_ids=r['candidate_ids'], field_status=r.get('field_status')) for r in g['results']['records']
                if r['status'] in {'supported', 'pending', 'disputed', 'identity_pending', 'incomplete'}])
         for g in progress['goals'] if g['results'] is not None}

@@ -14,7 +14,7 @@ from projectclarity.providers.structured_model_provider import create_structured
 
 from projectclarity.extraction.extraction_contracts import ExtractionBatch
 from projectclarity.extraction.record_refinement import refinement_context
-from projectclarity.prompt_context import research_context
+from projectclarity.prompt_context import record_task_context
 from projectclarity.source_context import source_context
 
 
@@ -70,16 +70,16 @@ def extraction_messages(session, attempt, text: str) -> list[tuple[str, str]]:
     Returns:
         Ordered system and human message pairs asking for structured candidates from one
         source passage. Full mapping obligations are not silently truncated; an
-        oversized message fails through the normal bounded-call policy, leaving
+        Global study conclusions and completion criteria are omitted; scope and
+        record definitions remain. An oversized message fails through the normal bounded-call policy, leaving
         the mapping gaps unresolved.
     """
     plan = session.plan
     payload = {
         "original_question": session.request.question,
-        **research_context(session),
+        **record_task_context(session),
         "objective": plan.objective,
         "goals": [goal.model_dump(mode="json") for goal in plan.goals],
-        "completion_criteria": [c.model_dump(mode="json") for c in plan.completion_criteria],
         "scope_in": plan.scope_in, "scope_out": plan.scope_out,
         "source_id": attempt.source_id,
         "source_context": source_context(session, attempt.source_id),

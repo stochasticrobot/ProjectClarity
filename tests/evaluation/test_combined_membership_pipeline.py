@@ -5,7 +5,7 @@ retriever, extractor parser, evidence validator, reviewer, adjudicator, saved
 session and evaluator execute. A passing fixture proves cross-source wiring and
 test assertions, not that a live LLM will return these answers on current pages.
 """
-from tests.claim_review.mapping_fixtures import fixture_mappings
+from tests.claim_review.mapping_fixtures import fixture_mappings, fixture_eligibility
 import copy
 import io
 import json
@@ -96,7 +96,7 @@ class CombinedMembershipPipelineTests(unittest.TestCase):
             return flow.cli.response(text=json.dumps({'assessments': [
                 {'candidate_id': c['candidate_id'], 'verdict': 'supported', 'in_scope': True,
                  'rationale': 'Synthetic source explicitly states this relationship.',
-                 'report_mappings': fixture_mappings(c, payload), 'evidence_quotes': [c['proposal']['evidence'][0]['quote']]}
+                 'report_mappings': fixture_mappings(c, payload), 'eligibility_assessments': fixture_eligibility(c, payload), 'evidence_quotes': [c['proposal']['evidence'][0]['quote']]}
                 for c in payload['candidates']]}))
 
         flow.overrides.update(ExtractionBatch=extraction, ClaimReviewBatch=review)
@@ -148,7 +148,11 @@ class CombinedMembershipPipelineTests(unittest.TestCase):
         self.assertEqual(score['supported_relationships']['correct_count'], 10)
         self.assertEqual(len(session['extraction']['candidates']), 12)
         self.assertEqual(len(session['documents']), 4)
-        self.assertEqual(len(flow.cli.requests), 6)  # One plan + four extractions + one source-bound review.
+        self.assertEqual(len(flow.cli.requests), 7)  # One plan, four extractions, two output-bounded reviews.
+        reviews = [json.loads(request.content) for request in flow.cli.requests
+                   if json.loads(request.content)['output_config']['format']['schema']['title'] == 'ClaimReviewBatch']
+        self.assertEqual([len(json.loads(r['messages'][0]['content'])['candidates']) for r in reviews], [6, 6])
+        self.assertTrue(all(r['max_tokens'] == 4096 for r in reviews))
         self.assertIn('Built-in multi-source test: PASSED', out)
         for node in ['retrieve_sources', 'extract_knowledge', 'validate_evidence', 'review_claims', 'adjudicate_claims']:
             self.assertIn(node, session['visited_nodes'])

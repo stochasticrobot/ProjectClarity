@@ -99,7 +99,8 @@ def document_yields(session):
     Args:
         session: Run with finalized extraction batches and saved rotation watermarks.
     Returns:
-        Source-ID summaries with a conservative no-gain streak. Failed, uncertain
+        Source-ID summaries with a conservative no-gain streak and the last three
+        source-version-matched attempts, including finalized status and gain. Failed, uncertain
         and unfinalized attempts break a streak, never count as empty evidence.
         Review upgrades are recomputed from retained evidence; a later supported
         duplicate can therefore reset a tail. No receipt or queued passage changes.
@@ -128,6 +129,10 @@ def document_yields(session):
                 streak = 0
             else:
                 streak += 1
+        recent = [{'batch_id': a['batch_id'],
+            'finalized': a['status'] == 'completed' and a['batch_id'] in finalized,
+            'gain': gains.get(a['batch_id'], 0)} for a in rows[-3:]]
         summaries[doc.source_id] = {'text_sha256': doc.text_sha256, 'attempted': len(rows),
-            'no_gain_passages': streak, 'signal_count': sum(gains.get(a['batch_id'], 0) for a in rows)}
+            'no_gain_passages': streak, 'signal_count': sum(gains.get(a['batch_id'], 0) for a in rows),
+            'recent_passages': recent}
     return summaries

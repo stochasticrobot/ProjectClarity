@@ -232,13 +232,13 @@ class EarlyCoverageStudyTests(unittest.TestCase):
         self.assertIn(('review_plan', 'study_coverage'), edges)
         self.assertIn(('study_coverage', 'schedule_work'), edges)
 
-    def test_supplied_page_is_reused_and_estimate_reaches_normal_extraction(self):
-        """Study results guide ordinary tasks without becoming claim candidates themselves.
+    def test_supplied_page_is_reused_without_global_estimates_in_extraction(self):
+        """Retain the global study in storage without sending it to local extraction.
 
         Args:
             self: Case selecting a supplied page with search disabled.
         Returns:
-            None. Assert downstream context, one page acquisition and no invented claims.
+            None. Assert scoped inputs, saved estimates, one acquisition and no invented claims.
         """
         self.seed_ids = ['S1']
         code, _, err, _, saved = self.run_case('--extract')
@@ -246,9 +246,8 @@ class EarlyCoverageStudyTests(unittest.TestCase):
         self.assertFalse(self.searches)
         self.assertEqual([r[1] for r in self.http.requests].count('/research'), 1)
         extraction = next(p for t, p in self.payloads if t == 'ExtractionBatch')
-        context = extraction['early_coverage_study']
-        self.assertFalse(context['completion_target'])
-        self.assertEqual(context['estimates'][0]['range']['lower'], 7)
+        self.assertNotIn('early_coverage_study', extraction)
+        self.assertEqual(saved['coverage_study']['estimates'][0]['range']['lower'], 7)
         self.assertEqual(saved['extraction']['candidates'], [])
 
     def test_blocked_search_uses_only_explicit_estimate_fallback(self):

@@ -6,12 +6,10 @@ and dashboard projections use mapping_ledger to derive the same unresolved-gap
 list from saved claims, reviews and repair ownership. No prose is parsed into
 fields. A repair is not successful merely because its model call completed.
 
-The current policy requires complete identity and an answer-evidence role for a
-mapped judgment. It also checks supported lead/context claims, which may therefore
-block completion even when report assembly excludes them. Closure requires exact
-claim wording, qualifications and source-anchor continuity; a useful paraphrased
-repair can fill report fields without closing its original obligation. These are
-current limitations, not guarantees of correct mapping or research completeness.
+Only answer-evidence claims create report obligations. Complete identity may be
+established by a supported same-batch subject association, using the same rule as
+report assembly. Each goal is checked independently; an unrelated assessment does
+not invalidate correctly attributed contributions for another goal.
 Missing legacy assessments stay unknown. Ledger projection performs no I/O;
 queueing mutates the supplied session and extraction record for the caller to save."""
 import hashlib
@@ -21,7 +19,7 @@ from projectclarity.research_results import record_check, structure_status
 MAPPING_VERSION = 'report-mapping-v1'
 
 
-def mapping_assessments(data, candidate):
+def mapping_assessments(data, candidate, identity_candidates=None):
     """Validate the reviewer's account of how claims contribute to report fields.
 
     A supported claim can still lack the structured fields needed for a report entry.
@@ -33,15 +31,17 @@ def mapping_assessments(data, candidate):
             claim_reviews keyed by candidate ID; no file reads are performed.
         candidate: Serialized extraction candidate with its proposal, source-text hash
             and candidate ID. Neither this dictionary nor data is modified.
+        identity_candidates: Optional source-verified candidate list for same-batch
+            identity association. None uses the supplied session candidates.
     Returns:
         One assessment dictionary per shaped goal named in the claim. Each contains
         goal_id, status, field_names and rationale. Missing, stale or invalid review
         data produces unknown rather than a guessed mapping. A mapped decision needs
         an answer_evidence role, usable claim structure, and one valid result record
-        containing both the named fields and the full declared identity. Other
-        required attributes need not be present in that contribution. Under the
-        current policy, any supplied assessment for an unrelated or unshaped goal
-        invalidates all the candidate's mappings, not just that extra assessment.
+        containing the named fields and a complete or explicitly associated identity.
+        Other required attributes need not be present in that contribution. Pure
+        context/leads return not_applicable, regardless of a mistaken model mapping.
+        Invalid or duplicate judgments affect only their own goal.
         Input dictionaries are expected to follow the persisted session schema.
     """
     proposal = candidate['proposal']
@@ -54,9 +54,14 @@ def mapping_assessments(data, candidate):
     malformed = (not isinstance(supplied, list) or review.get('error_code')
                  or review.get('text_sha256') != candidate.get('text_sha256'))
     supplied = supplied if isinstance(supplied, list) else []
-    malformed = malformed or any(not isinstance(r, dict) or r.get('goal_id') not in goals for r in supplied)
+    from projectclarity.answer_schema.source_identity import source_identity
+    identity_candidates = (data.get('extraction') or {}).get('candidates', []) if identity_candidates is None else identity_candidates
     rows = []
     for gid, goal in goals.items():
+        if 'answer_evidence' not in proposal.get('research_roles', []):
+            rows.append(dict(goal_id=gid, status='not_applicable', field_names=[],
+                rationale='This claim is retained as background, a lead or counterevidence, not an answer contribution.'))
+            continue
         matches = [r for r in supplied if isinstance(r, dict) and r.get('goal_id') == gid]
         row = dict(goal_id=gid, status='unknown', field_names=[], rationale='Mapping assessment missing or invalid.')
         if not malformed and len(matches) == 1:
@@ -71,12 +76,16 @@ def mapping_assessments(data, candidate):
             if status == 'not_applicable' and fields:
                 valid = False
             if valid and status == 'mapped':
-                identity = sections.get(gid, {}).get('identity_fields', list(allowed))
+                section = sections.get(gid, {})
+                identity = section.get('identity_fields', list(allowed))
                 records = [record_check(r, goal) for r in proposal.get('result_records', []) if r['goal_id'] == gid]
                 valid = (structure_status(proposal) in {'structured', 'non_relational'}
                          and 'answer_evidence' in proposal.get('research_roles', [])
-                         and any(not r['errors'] and all(r['values'].get(f, '').strip()
-                             for f in set(fields) | set(identity)) for r in records))
+                         and any(not r['errors']
+                             and all(r['values'].get(f, '').strip() for f in fields)
+                             and (all(r['values'].get(f, '').strip() for f in identity)
+                                  or section and source_identity(candidate, r['values'], identity_candidates, goal, section))
+                             for r in records))
             if valid:
                 row = dict(item)
         rows.append(row)
@@ -86,10 +95,10 @@ def mapping_assessments(data, candidate):
 def closes_gap(original, replacement, gap, assessment):
     """Check whether a reread supplied the report contribution missing from an earlier claim.
 
-    The current rule requires the same claim wording, qualifications and source anchors,
-    plus the required structured information. A paraphrased repair can therefore add
-    useful fields without satisfying this exact continuity check. A completed model
-    call alone never closes the missing contribution.
+    Preserve source anchors and qualifications, then compare explicit field values
+    rather than demanding identical prose for an already structured contribution.
+    Claims with no original field values still require identical wording: source
+    overlap alone cannot prove that a paraphrase means the same thing.
 
     Args:
         original: Supported original candidate, retained without modification.
@@ -97,16 +106,26 @@ def closes_gap(original, replacement, gap, assessment):
         gap: Original goal and affected field names.
         assessment: Structurally validated child mapping assessment.
     Returns:
-        True only for an identically worded/qualified claim, same source version,
-        covering source anchors, and all affected fields assessed mapped. Unrelated
-        or paraphrased repairs never clear the gap merely by producing useful rows.
+        True for a supported child mapping with all affected fields present, unchanged
+        original structured values (or identical unstructured wording), unchanged
+        qualifications and covering anchors from the same source version. No semantic
+        equivalence is inferred from free prose. A completed call alone returns no credit.
     """
     left, right = original['proposal'], replacement['proposal']
+    from projectclarity.result_identity import normalized
+    before = [{f['name']: f['value'] for f in r['fields']}
+              for r in left.get('result_records', []) if r['goal_id'] == gap['goal_id']]
+    after = [{f['name']: f['value'] for f in r['fields']}
+             for r in right.get('result_records', []) if r['goal_id'] == gap['goal_id']]
+    complete = [new for new in after if all(new.get(f, '').strip() for f in gap['field_names'])]
+    continuity = (all(old and any(all(k in new and normalized(v) == normalized(new[k])
+                        for k, v in old.items()) for new in complete) for old in before)
+                  if before else bool(complete) and left['statement'] == right['statement'])
     return bool(assessment['status'] == 'mapped'
         and assessment['goal_id'] == gap['goal_id']
-        and set(gap['field_names']) <= set(assessment['field_names'])
-        and left['statement'] == right['statement']
-        and left.get('qualifications', []) == right.get('qualifications', [])
+        and continuity
+        and {normalized(q) for q in left.get('qualifications', [])}
+            == {normalized(q) for q in right.get('qualifications', [])}
         and original.get('source_id') == replacement.get('source_id')
         and original.get('text_sha256') == replacement.get('text_sha256')
         and original.get('evidence') and all(any(
@@ -118,9 +137,8 @@ def mapping_ledger(data, valid_ids=None):
     """List supported claims whose expected report contributions are still unresolved.
 
     Combine saved review decisions and repair records into the shared gap list shown
-    by reports, coverage assessment and the dashboard. The current policy can include
-    lead or background claims even when report assembly excludes them; this is a
-    known limitation, not proof that every listed gap belongs in the final report.
+    by reports, coverage assessment and the dashboard. Lead and background claims
+    are retained as not_applicable, never mandatory report contributions.
 
     Args:
         data: Serialized session containing extraction candidates/attempts, claim
@@ -133,8 +151,9 @@ def mapping_ledger(data, valid_ids=None):
         Each row retains the original assessment, current gap state, candidate/source
         links, repair attempt and any closing child IDs. A queued/started child or
         child awaiting adjudication is pending; a finished child without a qualifying
-        replacement is exhausted. Only supported children meeting closes_gap's exact
-        continuity checks resolve a gap. Unknown/identity-unresolved gaps also block.
+        replacement is exhausted. Only supported children meeting closes_gap's
+        field/qualification/source continuity checks resolve a gap. Unknown and
+        identity-unresolved answer contributions also block.
         This is a derived view, not a newly persisted ledger: no file writes, calls,
         retroactive scheduling or changes to original receipts occur. Attempts without
         batch IDs cannot establish ownership of a repair.
@@ -145,7 +164,7 @@ def mapping_ledger(data, valid_ids=None):
     repairs = data.get('workflow', {}).get('report_mapping_repairs', {})
     supported = [c for c in candidates if c.get('adjudication_status') == 'supported'
         and c.get('evidence_status') == 'anchored' and (valid_ids is None or c['candidate_id'] in valid_ids)]
-    assessments = {c['candidate_id']: mapping_assessments(data, c) for c in supported}
+    assessments = {c['candidate_id']: mapping_assessments(data, c, supported) for c in supported}
     rows = []
     for candidate in supported:
         cid = candidate['candidate_id']

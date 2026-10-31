@@ -42,8 +42,8 @@ def model_request_ceiling(session, task):
         assessment slot available. No usage counters or operator limits change.
     """
     active = session.workflow.get('tasks', {}).get(session.workflow.get('active'), {})
-    reserved = task == 'summarize_evidence' or (
-        active.get('reserve_coverage_call', False) and task != 'assess_research_gaps')
+    reserved = task in {'summarize_evidence', 'bounded_evidence'} or (
+        active.get('reserve_coverage_call', False) and task not in {'assess_research_gaps', 'bounded_coverage'})
     return max(0, session.request.budget.max_requests - int(reserved))
 
 
@@ -65,6 +65,8 @@ def coverage_checkpoint(session, available):
         coverage even with reviews pending. Failed/uncertain tasks are never made
         runnable here, and the flush watermark survives restart. A reserved call
         is an opportunity, not a guarantee of a successful or complete assessment.
+        An active summary tree takes subsequent coverage turns before more reading
+        can invalidate its inputs; each summary still consumes the shared allowance.
     """
     if not coverage_enabled(session):
         return None
@@ -73,9 +75,11 @@ def coverage_checkpoint(session, available):
     baseline = max(previous, default=0)
     used = session.usage.requests_attempted
     remaining = session.request.budget.max_requests - used
+    coverage = [t for t in available if t['action'] == 'assess_research_gaps']
+    if coverage and session.coverage.get('assessment_status') == 'reviewing':
+        return coverage
     if used - baseline < COVERAGE_CALL_INTERVAL and remaining > 1:
         return None
-    coverage = [t for t in available if t['action'] == 'assess_research_gaps']
     if not coverage:
         return None
     marker = session.workflow.setdefault('coverage_checkpoint', {})

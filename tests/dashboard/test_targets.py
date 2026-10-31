@@ -133,7 +133,7 @@ class TargetTests(unittest.TestCase):
         session = SimpleNamespace(request=SimpleNamespace(stop_when_satisfied=False,
             assess_coverage=False, extract_knowledge=True, model_retries=2,
             budget=SimpleNamespace(max_requests=100)), plan=SimpleNamespace(completion_criteria=[True]),
-            usage=SimpleNamespace(requests_attempted=12), workflow=dict(tasks={}))
+            usage=SimpleNamespace(requests_attempted=12), workflow=dict(tasks={}), coverage={})
         tasks = [dict(action='extract_knowledge'), dict(action='assess_research_gaps')]
         self.assertIsNone(coverage_checkpoint(session, tasks))
         session.request.assess_coverage = True

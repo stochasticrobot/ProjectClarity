@@ -60,7 +60,7 @@ class GoalRegisterPipelineTests(unittest.TestCase):
         self.assertEqual(register['total_facts'], 2)
         self.assertEqual(set(register['facts']), {'S1_P1_C1', 'S2_P1_C1'})
         self.assertEqual(saved['coverage']['criteria_progress'][0]['observed_count'], 1)
-        self.assertEqual(seen[-1]['cumulative_goal_progress']['total_facts'], 2)
+        self.assertEqual(seen[-1]['candidate_total'], 2)
         self.assertIn('not cumulative discovery', out)
         self.assertEqual(saved['request']['knowledge_max_requests'], 0)
         self.assertNotIn('accumulate_knowledge', saved['visited_nodes'])

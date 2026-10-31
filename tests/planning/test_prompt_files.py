@@ -17,6 +17,7 @@ from projectclarity.prompt_loader import PROMPT_DIRECTORY, load_prompt
 
 
 PROMPTS = {
+    'projectclarity.coverage.bounded_assessment': ('SYSTEM_PROMPT', 'bounded_evidence.txt'),
     'projectclarity.coverage.contract_assessment': ('DIGEST_PROMPT', 'summarize_evidence.txt'),
     'projectclarity.nodes.design_answer.node': ('SYSTEM_PROMPT', 'design_answer.txt'),
     "projectclarity.nodes.plan_research.research_planner": ("SYSTEM_PROMPT", "research_planner.txt"),

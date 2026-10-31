@@ -127,7 +127,7 @@ def work_inventory(session):
         converted into individual failed calls. Payload bodies stay in their ledgers.
         Coverage-enabled runs reserve the final model slot; new acquisition also
         waits at that boundary so it cannot invalidate the terminal assessment.
-        Explicit-contract coverage identities include evidence revisions and durable
+        All coverage identities include evidence revisions and durable
         batch advancement, permitting bounded continuation without resetting retries.
     """
     request = session.request
@@ -198,11 +198,9 @@ def work_inventory(session):
 
     evidence_revision = [(p['batch_id'], p['status']) for p in passages if p['status'] != 'not_attempted']
     if request.assess_coverage and extraction and evidence_revision:
-        coverage_key = [evidence_revision, len(session.claim_reviews)]
-        if (session.answer_schema or {}).get('completion_checks'):
-            from projectclarity.coverage.stopping import evidence_revision as current_revision
-            from projectclarity.coverage.contract_assessment import batch_schedule_key
-            coverage_key = [current_revision(session), batch_schedule_key(session)]
+        from projectclarity.coverage.stopping import evidence_revision as current_revision
+        from projectclarity.coverage.contract_assessment import batch_schedule_key
+        coverage_key = [current_revision(session), batch_schedule_key(session)]
         add('coverage', 'assess_research_gaps', coverage_key, blocked=model_reason,
             attempts=2)
 
@@ -435,6 +433,9 @@ def schedule_work(state, output_root, monitor=None):
         completion gate or execution reservations. One final assessment opportunity
         remains within the existing model allowance. Unfinished work is recorded as
         blocked/deferred/failed rather than mistaken for sufficient evidence.
+        Reading, search and coverage reservations retain compact decision snapshots:
+        eligible actions, phase/reason, recent gain allocation, backlog and coverage round.
+        These diagnostics do not change eligibility, ordering or request allowances.
     """
     session = state['session']
     session.visited_nodes.append('schedule_work')
@@ -472,6 +473,7 @@ def schedule_work(state, output_root, monitor=None):
     if not controlled:
         prepare_cycle(session)
     available, delayed = ready_work(session)
+    diagnostic_available = list(available)
     complete = session.status != 'cancelled' and completion_ready(session, output_root)
     if session.status != 'cancelled' and not complete:
         if controlled:
@@ -508,6 +510,9 @@ def schedule_work(state, output_root, monitor=None):
             before_extraction_batches=[p['batch_id'] for p in (session.extraction or {}).get('attempts', [])
                 if p['status'] != 'not_attempted'])
         workflow.update(active=task['task_id'], next=task['action'], stop_reason=None)
+        if task['action'] in {'web_search', 'assess_research_gaps', 'extract_knowledge'}:
+            from projectclarity.coverage.assessment_diagnostics import scheduling_snapshot
+            task.setdefault('decision_history', []).append(scheduling_snapshot(session, diagnostic_available))
     elif delayed:
         workflow.update(next='wait', wait_until=min(t['ready_at'] for t in delayed), stop_reason=None)
     else:

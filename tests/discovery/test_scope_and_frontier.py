@@ -350,4 +350,6 @@ class ScopeAndFrontierTests(unittest.TestCase):
         self.assertEqual(code, 0, err)
         _, session = base.cli.saved_session()
         self.assertEqual(len(session['coverage']['history'][-1]['offered_candidate_ids']), 48)
-        self.assertEqual(session['coverage']['next_searches'][0]['query'], 'Lab X collaborators current membership')
+        self.assertEqual(session['coverage']['history'][-1]['proposal']['next_searches'][0]['query'],
+            'Lab X collaborators current membership')
+        self.assertEqual(session['coverage']['next_searches'], [])  # Search was not enabled.

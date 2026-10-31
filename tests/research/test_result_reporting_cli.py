@@ -4,7 +4,7 @@ These tests exercise the real parser, SDK schemas, scheduler, review, persistenc
 and terminal entry point. Handwritten replies prove control flow, not live-model
 extraction accuracy. No benchmark answers or previous-run findings enter replies.
 """
-from tests.claim_review.mapping_fixtures import fixture_mappings
+from tests.claim_review.mapping_fixtures import fixture_mappings, fixture_eligibility
 import hashlib
 import json
 import unittest
@@ -95,7 +95,7 @@ class ResultReportingCLITests(unittest.TestCase):
             return self.cli.response(text=json.dumps({'assessments': [
                 {'candidate_id': c['candidate_id'], 'verdict': 'supported', 'in_scope': True,
                  'rationale': 'Fixture values occur together in the original assigned passage.',
-                 'report_mappings': fixture_mappings(c, payload), 'evidence_quotes': [c['proposal']['evidence'][0]['quote']]}
+                 'report_mappings': fixture_mappings(c, payload), 'eligibility_assessments': fixture_eligibility(c, payload), 'evidence_quotes': [c['proposal']['evidence'][0]['quote']]}
                 for c in payload['candidates']]}))
         raise AssertionError(title)
 

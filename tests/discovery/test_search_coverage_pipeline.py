@@ -4,7 +4,7 @@ Only search-provider results, model HTTP replies and source HTTP/DNS are fixture
 These prove routing/reference/budget behavior, not search relevance or judgment
 accuracy. The search adapter/worker have separate transport-boundary checks.
 """
-from tests.claim_review.mapping_fixtures import fixture_mappings
+from tests.claim_review.mapping_fixtures import fixture_mappings, fixture_eligibility
 import json
 import unittest
 from unittest.mock import patch
@@ -102,7 +102,8 @@ class SearchCoveragePipelineTests(unittest.TestCase):
             self.assertEqual(len(payload["results"]), 1)
             answer = {"selections": [{"result_id": payload["results"][0]["result_id"], "goal_ids": ["G1"], "reason": "Useful evidence or lead."}]}
         elif schema == "ExtractionBatch":
-            self.assertIn("completion_criteria", payload)
+            self.assertNotIn("completion_criteria", payload)
+            self.assertNotIn('early_coverage_study', payload)
             self.assertNotIn("An unread lead.", payload["passage"]["text"])
             answer = proposed_batch()
             answer["claims"][0]["research_roles"] = ["answer_evidence", "lead"]
@@ -111,7 +112,7 @@ class SearchCoveragePipelineTests(unittest.TestCase):
                     research_roles=["coverage_evidence"], evidence=[{"passage_id": "P1", "quote": "The current roster has one member, Alice."}])
         elif schema == "ClaimReviewBatch":
             answer = {"assessments": [{"candidate_id": c["candidate_id"], "verdict": "supported", "in_scope": True,
-                "rationale": "Fixture review only.", "report_mappings": fixture_mappings(c, payload), "evidence_quotes": [c['proposal']['evidence'][0]['quote']]}
+                "rationale": "Fixture review only.", "report_mappings": fixture_mappings(c, payload), "eligibility_assessments": fixture_eligibility(c, payload), "evidence_quotes": [c['proposal']['evidence'][0]['quote']]}
                 for c in payload["candidates"]]}
         elif schema == "CoverageAssessment":
             self.round += 1
@@ -224,8 +225,8 @@ class SearchCoveragePipelineTests(unittest.TestCase):
                 methods.
 
         Returns:
-            None. Assertions fail if the documented behavior regresses; unittest records the
-            result.
+            None. Discovery retains the proposed total but unreviewed benchmark
+            evidence cannot establish it; no extra review calls are enabled.
         """
         code, out, err, directory, session = self.run_pipeline()
         self.assertEqual(code, 0, err)
@@ -236,7 +237,10 @@ class SearchCoveragePipelineTests(unittest.TestCase):
         self.assertEqual(session["coverage"]["history"][0]["criteria"][0]["target_count"], None)
         progress = session["coverage"]["criteria_progress"][0]
         self.assertEqual((progress["observed_count"], progress["target_count"]), (1, 1))
-        self.assertEqual(progress["status"], "model_assessed_satisfied")
+        self.assertEqual(progress["status"], "partial")
+        self.assertEqual(progress['population']['state'], 'unverified')
+        self.assertEqual(progress['population']['unsupported_candidate_ids'], ['S2_P1_C1'])
+        self.assertIn('population_benchmark_not_supported', progress['blocking_reasons'])
         self.assertIn("model grouped", out.replace("-", " "))
         self.assertEqual(session["sources"][1]["discovered_from_search"], "R4")
         self.assertIn('Search Q1 · duckduckgo:', err)
@@ -261,14 +265,17 @@ class SearchCoveragePipelineTests(unittest.TestCase):
                 methods.
 
         Returns:
-            None. Assertions fail if the documented behavior regresses; unittest records the
-            result.
+            None. Explicit review permits the benchmark-supported model judgment;
+            this positive control is distinct from the unreviewed partial outcome.
         """
         self.review = True
         code, _, err, _, session = self.run_pipeline()
         self.assertEqual(code, 0, err)
         self.assertEqual(len(self.cli.requests), 9)
         self.assertEqual({c["adjudication_status"] for c in session["extraction"]["candidates"]}, {"supported"})
+        progress = session['coverage']['criteria_progress'][0]
+        self.assertEqual(progress['status'], 'model_assessed_satisfied')
+        self.assertEqual(progress['population']['state'], 'model_asserted_supported_benchmark')
 
     def test_plan_only_does_not_search(self):
         """Permission to search is not execution during plan-only mode.
@@ -492,4 +499,4 @@ class SearchCoveragePipelineTests(unittest.TestCase):
         self.overrides["CoverageAssessment"] = mutate
         code, _, _, _, session = self.run_pipeline()
         self.assertEqual(code, 1)
-        self.assertEqual(session["coverage"]["history"][0]["error_code"], "unknown_or_changed_evidence")
+        self.assertEqual(session["coverage"]["history"][0]["error_code"], "evidence_changed_during_assessment")

@@ -6,7 +6,7 @@ repeated claims, useful evidence upgrades, unfinished or failed analysis, altern
 paths and restart. A page reached through a blocked route must remain available
 through a productive alternative. These checks do not measure live discovery quality.
 """
-from tests.claim_review.mapping_fixtures import fixture_mappings
+from tests.claim_review.mapping_fixtures import fixture_mappings, fixture_eligibility
 import json
 import re
 import unittest
@@ -95,7 +95,7 @@ class BranchProgressCLITests(unittest.TestCase):
                 assessments.append({'candidate_id': candidate['candidate_id'],
                     'verdict': 'supported' if page['verdict'] == 'out_of_scope' else page['verdict'],
                     'in_scope': page['verdict'] != 'out_of_scope', 'rationale': 'Synthetic passage assessment.',
-                    'report_mappings': fixture_mappings(candidate, payload), 'evidence_quotes': [page['quote']]})
+                    'report_mappings': fixture_mappings(candidate, payload), 'eligibility_assessments': fixture_eligibility(candidate, payload), 'evidence_quotes': [page['quote']]})
             return self.flow.cli.response(text=json.dumps({'assessments': assessments}))
         sid = payload['source_id']
         match = re.search(r'Page (\w+)\.', payload['passage']['text'])
@@ -120,7 +120,7 @@ class BranchProgressCLITests(unittest.TestCase):
             answer = {'assessments': [{'candidate_id': c['candidate_id'],
                 'verdict': 'supported' if page['verdict'] == 'out_of_scope' else page['verdict'],
                 'in_scope': page['verdict'] != 'out_of_scope', 'rationale': 'Synthetic passage assessment.',
-                'report_mappings': fixture_mappings(c, payload), 'evidence_quotes': [page['quote']]} for c in payload['candidates']]}
+                'report_mappings': fixture_mappings(c, payload), 'eligibility_assessments': fixture_eligibility(c, payload), 'evidence_quotes': [page['quote']]} for c in payload['candidates']]}
         return self.flow.cli.response(text=json.dumps(answer))
 
     def run_case(self, *flags):

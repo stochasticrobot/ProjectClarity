@@ -46,6 +46,8 @@ target_basis (research, user_request, or not_applicable), target_count, limitati
 unit, result_goal_id, and evidence_required. Cover every report section. Do not
 invent extra goals or make one particular website's availability a requirement.
 
+Choose completion kind from the question's completeness requirement, not the report format. An open-ended timeline, explanation, comparison, or illustrative collection need not enumerate a closed population. For those tasks, define evidence-sufficiency or constraint checks for the requested facets, chronology, boundaries and attribution, with no population target. Use enumeration when the user requests a count or exhaustive coverage of a defined population; a timeline of every item in a bounded register can still be an enumeration. Do not define completeness as discovering the total number of all “significant” events unless the question supplies an evidence-testable boundary for that set.
+
 Use result_goal_id only for an enumeration of exactly the entries in that section;
 copy its unit exactly. Supporting coverage checks use null and their own unit.
 For example, seats including vacancies and current officeholders are different

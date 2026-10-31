@@ -23,6 +23,23 @@ class ReportMappingAssessment(Contract):
     rationale: Text
 
 
+class RecordQualification(Contract):
+    """Assess one supplied inclusion requirement for one proposed report record.
+
+    met requires affirmative assigned-source evidence; not_met requires evidence
+    of incompatibility; missing information is unknown. This does not change the
+    factual verdict on the enclosing claim. Record indices are zero-based positions
+    in that candidate's result_records, not positions in another candidate.
+    """
+    record_index: int = Field(ge=0)
+    goal_id: str
+    requirement_id: str
+    verdict: Literal['met', 'not_met', 'unknown']
+    rationale: Text
+    evidence_quotes: list[str] = Field(max_length=2)
+    context_keys: list[Literal['url', 'final_url', 'acquired_at', 'source_stated_metadata']] = Field(max_length=4)
+
+
 class ClaimAssessment(Contract):
     """Assess one candidate's full meaning, qualifications and research relevance."""
     candidate_id: str = Field(min_length=1, max_length=64)
@@ -34,6 +51,9 @@ class ClaimAssessment(Contract):
     # Insufficient evidence may have no quotation: absence is not a quote.
     evidence_quotes: list[str] = Field(max_length=4)
     report_mappings: list[ReportMappingAssessment]
+    # Historical receipts omit this field. New runs treat absent decisions as
+    # unknown qualification, never as successful inclusion checks.
+    eligibility_assessments: list[RecordQualification] = Field(default_factory=list, max_length=64)
 
 
 class ClaimReviewBatch(Contract):

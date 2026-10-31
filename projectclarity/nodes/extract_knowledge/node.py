@@ -212,6 +212,8 @@ def extract_knowledge(state: dict, output_root: Path, key_reader=read_api_key, m
                 current: Reserved passage receipt in the shared extraction record.
             Returns:
                 A generator yielding network/retry operations to the coordinator.
+                Saves a task-input preflight receipt before credential access;
+                unexpected fields and oversized message/schema envelopes fail closed.
                 Its boolean return stops further dispatch on a provider failure;
                 completed peers still retain their proposals and original evidence.
             """
@@ -224,6 +226,11 @@ def extract_knowledge(state: dict, output_root: Path, key_reader=read_api_key, m
                 # hash from the earlier inventory. Never trust model-supplied paths.
                 text = read_verified_text(directory, documents[current.source_id])
                 messages = extraction_messages(session, current, text)
+                from projectclarity.task_inputs import input_receipt, save_input_receipt
+                preflight = input_receipt('extract_knowledge', messages, ExtractionBatch)
+                save_input_receipt(directory, current.batch_id, preflight)
+                if preflight['errors']:
+                    raise EvidenceInputError(preflight['errors'][0])
                 serialized = json.dumps(messages, ensure_ascii=False)
                 if len(serialized) > 48_000:
                     raise EvidenceInputError("extraction_input_too_large")

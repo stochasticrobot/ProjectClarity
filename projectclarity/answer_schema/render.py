@@ -54,7 +54,17 @@ def render_report(answer):
             values = [cell('; '.join(row.get('display_values', {}).get(f, [])) or row['values'].get(f)) +
                       (' (' + row['field_status'][f]['status'] + ')' if row.get('field_status', {}).get(f, {}).get('status') not in {None, 'supported'} else '')
                       for f in fields]
-            lines.append('| ' + ' | '.join([*values, row['status'], ', '.join(row['candidate_ids'])]) + ' |')
+            qualification = row.get('qualification_status', 'not_assessed_legacy')
+            status = (row['status'] + ' fields; eligibility not assessed' if qualification == 'not_assessed_legacy'
+                      else row['status'] + '; inclusion ' + qualification.replace('_', ' '))
+            lines.append('| ' + ' | '.join([*values, status, ', '.join(row['candidate_ids'])]) + ' |')
+        for row in inventory.get('records', []):
+            unresolved = [r for r in row.get('qualification_requirements', []) if r['status'] != 'met']
+            if unresolved:
+                lines += ['', 'Inclusion checks for ' + ', '.join(row['candidate_ids']) + ':']
+                for requirement in unresolved:
+                    label = requirement.get('description') or requirement.get('question') or ('Currentness as of ' + str(requirement.get('as_of')))
+                    lines.append('- ' + label + ': ' + requirement['status'].replace('_', ' '))
         if not inventory.get('records'):
             lines.append('No report entries yet.')
         unassigned = inventory.get('unassigned_observations', [])

@@ -167,8 +167,15 @@ class AnswerSchemaTests(unittest.TestCase):
                             target_count=None if format=='narrative' else 2,benchmark_candidate_ids=[],
                             evidence_candidate_ids=[c['candidate_id'] for c in payload['candidates']],
                             gaps=[],rationale='Fixture evidence satisfies the requested report.')],next_searches=[])))
-                    if title in {'ResearchPlan','ExtractionBatch'}:
+                    if title == 'ResearchPlan':
                         self.assertEqual(payload['answer_schema'],schema)
+                    if title == 'ExtractionBatch':
+                        expected = json.loads(json.dumps(schema))
+                        expected.pop('completion_checks', None)
+                        for section in expected['sections']:
+                            section.pop('evidence_requirements', None)
+                        self.assertEqual(payload['answer_schema'], expected)
+                        self.assertNotIn('early_coverage_study', payload)
                     response=original(request)
                     if format=='narrative' and title=='ExtractionBatch':
                         reply=json.loads(response.json()['content'][0]['text'])

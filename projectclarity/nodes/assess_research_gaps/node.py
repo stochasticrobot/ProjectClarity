@@ -12,22 +12,14 @@ is not independent proof of truth or exhaustive research, and an unknown total
 stays unknown rather than producing a completion percentage.
 """
 import json
-from collections import Counter
 
-from projectclarity.coverage.coverage_contracts import CoverageAssessment
-from projectclarity.coverage.scope_estimation import initialize_scope, revise_scope
-from projectclarity.discovery.inventory_context import pack_inventory, payload_messages
+from projectclarity.coverage.scope_estimation import initialize_scope
 from projectclarity.extraction.extraction_contracts import ExtractionRecord
 from projectclarity.extraction.saved_source_passages import EvidenceInputError, read_verified_text
-from projectclarity.providers.structured_model_call_execution import invoke_structured
 from projectclarity.nodes.plan_research.research_planner import read_api_key
-from projectclarity.prompt_context import research_context
-from projectclarity.coverage.goal_register import goal_progress_summary
 from projectclarity.coverage.readiness import readiness_criteria
-from projectclarity.coverage.result_inventory import coverage_results, align_result_items
-from projectclarity.providers.structured_model_call_execution import MAX_COVERAGE_CHARACTERS
+from projectclarity.coverage.result_inventory import align_result_items
 from projectclarity.session_storage import save_session, write_text
-from projectclarity.source_context import source_context
 from projectclarity.answer_schema.completion import contract_checks, completion_criteria
 
 
@@ -153,8 +145,13 @@ def validate_assessment(answer, session, offered, *, truncated=False, criteria_o
         blocking reasons and cross-goal candidate IDs. Unknown/changed evidence and
         inconsistent targets still raise ValueError. Accepted auxiliary-goal mappings
         permit relevance to a requirement without changing its unit; overlap is not
-        factual proof.
+        factual proof. Population receipts separately expose benchmark reference
+        support; unsupported or wrong-goal benchmarks cannot establish a total.
+        Exact report-row evidence citations are expanded through wholly offered,
+        unambiguous provenance, with receipts; benchmark references are not expanded.
     """
+    from projectclarity.coverage.reference_normalization import normalize_result_references
+    answer, reference_normalization = normalize_result_references(answer, offered, result_ledgers or {})
     criteria = {c.criterion_id: c for c in (completion_criteria(session)
         if criteria_override is None else criteria_override)}
     declared = {c.criterion_id: c for c in contract_checks(session)}
@@ -193,6 +190,10 @@ def validate_assessment(answer, session, offered, *, truncated=False, criteria_o
         if criterion.target_basis == "not_applicable" and target is not None:
             raise ValueError("unexpected_denominator")
         blocking = ['cross_goal_relevance_unconfirmed'] if cross_goal else []
+        from projectclarity.coverage.population import population_receipt
+        population = population_receipt(criterion, assessment, offered, allowed_goals)
+        if population['state'] == 'unverified':
+            blocking.append('population_benchmark_not_supported')
         gid, mapped = ((None, []) if check and check.result_goal_id is None else
             align_result_items(criterion, assessment, result_ledgers or {}))
         ledger = (result_ledgers or {}).get(gid)
@@ -227,6 +228,8 @@ def validate_assessment(answer, session, offered, *, truncated=False, criteria_o
                 blocking.append('readiness_evidence_not_supported')
         checked.append({**assessment.model_dump(mode="json"), "observed_count": ledger['identified'] if ledger else len(keys),
             "supported_count": ledger['supported'] if ledger else None,
+            "population": population,
+            "reference_normalization": reference_normalization[assessment.criterion_id],
             "result_goal_id": gid, "mapped_result_ids": sorted(set(mapped)),
             "cross_goal_candidate_ids": cross_goal,
             "count_basis": ledger['count_basis'] if ledger else "model_grouped_items_not_canonical_entities",
@@ -236,175 +239,17 @@ def validate_assessment(answer, session, offered, *, truncated=False, criteria_o
 
 
 def assess_research_gaps(state, output_root, key_reader=read_api_key, monitor=None):
-    """Assess progress against the plan's completion criteria and identify evidence gaps that
-    can guide another search round.
-
-    Offer intact anchored candidates in source-balanced, least-exposed-first context,
-    with no fixed first-30 cutoff. Disclose deferred evidence if the real adapter
-    allowance binds. Keep statements and all supporting quotations whole; disclose
-    search permission and provide dated, question-paired guidance. Source records
-    retain acquisition facts and source-stated metadata separately from claims.
-    Recheck saved
-    evidence after the call, validate IDs and count
-    consistency, and preserve each assessment in history. An unknown researched denominator
-    stays unknown; model-grouped items are not resolved entities and a satisfied judgment is
-    not independently verified truth. Independently validate proposed search goals and
-    retain those leads even when evidence/count validation rejects the assessment. Keep
-    unexecuted proposals queued across assessments; exploration-cycle runs put the
-    latest proposals first. A lead is not accepted evidence. Supplemental study checks
-    share this model call but retain separate progress and validation errors; a bad
-    supplemental reply cannot erase valid primary progress or create a stopping target.
-    Explicit new answer contracts dispatch to the bounded-review implementation:
-    their declared checks replace legacy study gates, large evidence is digested
-    without truncation, and a separate global assessment retains the final decision.
+    """Dispatch every coverage run through the shared bounded production engine.
 
     Args:
-        state: Graph-state dictionary whose session entry is a typed ResearchSession for the
-            current run.
-        output_root: Local filesystem directory containing research-run subdirectories; not
-            a URL or an individual run folder.
-        key_reader: Zero-argument callable returning the model API key when a request needs
-            it; defaults to read_api_key.
-        monitor: Optional RunMonitor for progress events and cooperative cancellation; None
-            disables those hooks.
-
+        state: Graph state containing the mutable research session.
+        output_root: Saved-run parent directory used for source verification.
+        key_reader: Existing credential callback, used only after preflight checks.
+        monitor: Optional cancellation and progress observer.
     Returns:
-        A dictionary with one session entry containing the updated ResearchSession.
-        LangGraph merges this update into its state; it is not an answer report or published
-        knowledge.
+        Session update after one bounded logical call or explicit preflight failure.
+        Both designed and legacy contracts retain their completion gates; no route
+        falls back to sending the full report inventory.
     """
-    session = state["session"]
-    if contract_checks(session):
-        from projectclarity.coverage.contract_assessment import assess_contract
-        return assess_contract(state, output_root, key_reader, monitor)
-    session.visited_nodes.append("assess_research_gaps")
-    save_coverage(session, output_root)
-    coverage = session.coverage
-    round_id = len(coverage["history"]) + 1
-    entry = {"round": round_id, "status": "not_assessed", "error_code": None}
-    coverage["history"].append(entry)
-    coverage.setdefault("next_searches", [])
-    # Preserve the last successful values for display; failed attempts remain
-    # explicit and cannot pass freshness/stopping gates.
-    coverage.setdefault('criteria_progress', [])
-    coverage.setdefault('readiness_progress', [])
-    supplemental = readiness_criteria(session)
-    if not session.plan.completion_criteria:
-        entry["error_code"] = "legacy_plan_without_criteria"
-    else:
-        record, valid = checked_candidates(session, output_root)
-        ledgers = coverage_results(session, valid)
-        summaries = [{"candidate_id": c.candidate_id, "source_id": c.source_id,
-            "statement": c.proposal.statement,
-            "goal_ids": c.proposal.goal_ids, "status": c.adjudication_status,
-            "roles": c.proposal.research_roles,
-            "qualifications": c.proposal.qualifications,
-            "quotes": [e.quote for e in c.evidence]} for c in valid.values()]
-        payload = {"original_question": session.request.question, "scope_in": session.plan.scope_in,
-            "scope_out": session.plan.scope_out, "criteria": coverage["criteria"] + coverage['readiness_criteria'],
-            "goals": [g.model_dump(mode="json") for g in session.plan.goals],
-            **research_context(session),
-            'cumulative_goal_progress': goal_progress_summary(session),
-            "current_scope_estimates": coverage["scope_estimates"],
-            "result_inventory": ledgers,
-            "sources": {sid: source_context(session, sid) for sid in
-                dict.fromkeys(c.source_id for c in valid.values())},
-            "candidate_total": len(record.candidates),
-            "intact_anchored_total": len(valid), "offered_total": len(valid),
-            "inventory_truncated": False, "work_counts": coverage["work_counts"],
-            "search_allowed": session.request.web_search,
-            "previous_searches": [q["query"] for q in session.search.get("queries", [])],
-            "search_outcomes": [{k: q.get(k) for k in ('query', 'status', 'error_code', 'result_count')}
-                for q in session.search.get('queries', [])]}
-        exposures = Counter(cid for h in coverage['history'] if h.get('status') == 'assessed'
-            for cid in h.get('offered_candidate_ids', []))
-        try:
-            payload, deferred = pack_inventory(SYSTEM_PROMPT, payload, 'candidates', summaries,
-                id_key='candidate_id', source_key='source_id', exposures=exposures,
-                max_characters=MAX_COVERAGE_CHARACTERS, task='assess_research_gaps')
-        except ValueError:
-            entry['error_code'] = 'coverage_context_blocked'
-            coverage['scope_estimate_history'].append({'round': round_id, 'status': 'not_revised',
-                'reason': 'Assessment context exceeded allowance; previous scope retained.', 'estimates': []})
-            coverage['assessment_status'] = 'not_assessed'
-            session.status = 'extraction_partial'
-            session.error = 'Coverage context could not fit; evidence and previous scope estimates remain saved.'
-            save_coverage(session, output_root)
-            return {'session': session}
-        offered = {row['candidate_id']: valid[row['candidate_id']] for row in payload['candidates']}
-        payload.update(offered_total=len(offered), inventory_truncated=bool(deferred))
-        entry.update({"offered_candidate_ids": list(offered), "candidate_total": len(record.candidates),
-                      "inventory_truncated": payload["inventory_truncated"],
-                      "deferred_candidate_ids": deferred, "context_inventory": payload['context_inventory']})
-        answer, receipt = invoke_structured(session, output_root, call_id=f"coverage_{round_id}",
-        task="assess_research_gaps", prompt_version="research-coverage-v8",
-            messages=payload_messages(SYSTEM_PROMPT, payload),
-            schema=CoverageAssessment, key_reader=key_reader, monitor=monitor)
-        entry["call_id"] = receipt["call_id"]
-        if answer is None:
-            entry["error_code"] = receipt["error_code"]
-        else:
-            entry["proposal"] = answer.model_dump(mode="json")
-            known_goals = {goal.goal_id for goal in session.plan.goals}
-            entry['search_proposals_accepted'] = not any(
-                set(proposal.goal_ids) - known_goals for proposal in answer.next_searches)
-            if entry['search_proposals_accepted']:
-                attempted = {' '.join(q['query'].split()).casefold() for q in session.search.get('queries', [])}
-                queued = {}
-                fresh = [s.model_dump(mode='json') for s in answer.next_searches]
-                previous = coverage.get('next_searches', [])
-                ordered = (fresh + previous if session.request.explore_before_search_depth and session.request.follow_links
-                    else previous + fresh)
-                for proposal in ordered:
-                    key = ' '.join(proposal['query'].split()).casefold()
-                    if key not in attempted:
-                        queued.setdefault(key, proposal)
-                coverage['next_searches'] = list(queued.values())
-            _, still_valid = checked_candidates(session, output_root)
-            current_offered = {cid: c for cid, c in offered.items() if cid in still_valid}
-            current_ledgers = coverage_results(session, still_valid)
-            primary_ids = {c.criterion_id for c in session.plan.completion_criteria}
-            primary_answer = answer.model_copy(update={'assessments':
-                [a for a in answer.assessments if a.criterion_id in primary_ids]}) if supplemental else answer
-            try:
-                checked = validate_assessment(primary_answer, session,
-                    current_offered, truncated=payload["inventory_truncated"],
-                    result_ledgers=current_ledgers)
-            except ValueError as exc:
-                entry["error_code"] = str(exc)
-            else:
-                entry["status"] = "assessed"
-                from projectclarity.coverage.stopping import evidence_revision
-                entry['evidence_revision'] = evidence_revision(session)
-                entry["criteria"] = checked
-                coverage["criteria_progress"] = checked
-                coverage["last_successful_round"] = round_id
-                if supplemental:
-                    try:
-                        readiness_answer = answer.model_copy(update={'assessments':
-                            [a for a in answer.assessments if a.criterion_id not in primary_ids]})
-                        progress = validate_assessment(readiness_answer, session, current_offered,
-                            truncated=payload['inventory_truncated'], criteria_override=supplemental,
-                            result_ledgers=current_ledgers)
-                    except ValueError as exc:
-                        entry['readiness_error'] = str(exc)
-                    else:
-                        entry['readiness'] = progress
-                        coverage['readiness_progress'] = progress
-                        coverage['readiness_assessment_round'] = round_id
-                        coverage['readiness_evidence_revision'] = entry['evidence_revision']
-                revise_scope(coverage, answer, session,
-                    {cid: c for cid, c in offered.items() if cid in still_valid}, round_id)
-        if entry['status'] != 'assessed':
-            coverage['scope_estimate_history'].append({'round': round_id, 'status': 'not_revised',
-                'reason': 'Coverage assessment failed; previous scope estimate retained.', 'estimates': []})
-    coverage["assessment_status"] = entry["status"]
-    if session.request.web_search:
-        from projectclarity.nodes.web_search.node import search_stop_reason, save_search
-        session.search["stop_reason"] = search_stop_reason(session) or "followup_queries_ready"
-        save_search(session, output_root)
-    if entry["error_code"] and session.status != "cancelled":
-        session.status = "extraction_partial"
-        session.error = "Coverage assessment incomplete; earlier evidence is retained. See coverage.json."
-    save_coverage(session, output_root)
-    return {"session": session}
+    from projectclarity.coverage.bounded_assessment import assess
+    return assess(state, output_root, key_reader, monitor)

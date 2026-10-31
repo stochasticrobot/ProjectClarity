@@ -11,6 +11,7 @@ import json
 import re
 import unittest
 from unittest.mock import patch
+from tests.claim_review.mapping_fixtures import fixture_eligibility
 
 from projectclarity.claim_review.report_mapping import mapping_ledger
 from projectclarity.coverage.stopping import completion_status
@@ -30,7 +31,7 @@ class ReportMappingTests(unittest.TestCase):
             self: Test owner retaining temporary production artifacts.
             fault: Optional identity, invalid_goal, invalid_field, missing_assessment,
                 empty_repair, unrelated_repair, paraphrase, partial, split, context,
-                or crash case. These control authored provider replies or a
+                partial_paraphrase, context_wrong_mapping or crash case. These control authored provider replies or a
                 deliberate interrupted call, not the production scheduler.
             budget: Unchanged shared model request allowance.
             labels: Optional literal source names replacing the generic population.
@@ -83,16 +84,17 @@ class ReportMappingTests(unittest.TestCase):
                     fields = [dict(name='item', value=name), dict(name=value_field, value=value)]
                     record = dict(goal_id='G1', fields=fields)
                     records = [record] if child else []
-                    if fault in {'partial', 'split'} and not child:
+                    if fault in {'partial', 'split', 'partial_paraphrase'} and not child:
                         records = [dict(goal_id='G1', fields=fields[:1])]
-                    if fault == 'context':
+                    if fault in {'context', 'context_wrong_mapping'}:
                         records = []
                     if fault == 'identity':
                         records = [dict(goal_id='G1', fields=fields[1:])]
-                    statement = quote + (' Other assertion.' if child and fault in {'unrelated_repair', 'paraphrase'} else '')
+                    statement = (f'{name} has the listed association {value}.' if child and fault == 'partial_paraphrase'
+                        else quote + (' Other assertion.' if child and fault in {'unrelated_repair', 'paraphrase'} else ''))
                     claims.append(dict(claim_id=f'C{i}', statement=statement, goal_ids=['G1'],
                         entity_ids=[f'E{i}a', f'E{i}b'], relationship=dict(subject_id=f'E{i}a', predicate='associated with', object_id=f'E{i}b'),
-                        claim_kind='relational', qualifications=[], research_roles=['context'] if fault == 'context' else ['answer_evidence'],
+                        claim_kind='relational', qualifications=[], research_roles=['context'] if fault in {'context', 'context_wrong_mapping'} else ['answer_evidence'],
                         result_records=records, evidence=[dict(passage_id=pid, quote=quote)]))
                     if fault == 'split':
                         separate = copy.deepcopy(claims[-1])
@@ -124,6 +126,7 @@ class ReportMappingTests(unittest.TestCase):
                         maps = []
                     assessments.append(dict(candidate_id=c['candidate_id'], verdict='supported', in_scope=True,
                         rationale='Controlled factual support, separate from mapping.', report_mappings=maps,
+                        eligibility_assessments=fixture_eligibility(c, payload),
                         evidence_quotes=[claim['evidence'][0]['quote']]))
                 return case.cli.response(text=json.dumps(dict(assessments=assessments)))
             return original(request)

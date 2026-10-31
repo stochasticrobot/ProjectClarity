@@ -11,8 +11,9 @@ These builders prepare messages for the structured model executor; they do not
 send the request or decide the resulting support status.
 """
 import json
-from projectclarity.prompt_context import research_context
+from projectclarity.prompt_context import record_task_context
 from projectclarity.source_context import source_context
+from projectclarity.claim_review.qualification import POLICY, requirement_catalog
 
 from projectclarity.prompt_loader import load_prompt
 
@@ -39,11 +40,14 @@ def review_messages(session, attempt, candidates, text):
 
     Returns:
         Ordered system and human message pairs containing one bounded candidate-review task.
+        Global study conclusions and completion checks are omitted; record definitions,
+        source evidence and the separately supplied inclusion requirements remain.
     """
     payload = {"original_question": session.request.question,
         "goals": [goal.model_dump(mode="json") for goal in session.plan.goals],
         "scope_in": session.plan.scope_in, "scope_out": session.plan.scope_out,
-        **research_context(session),
+        **record_task_context(session),
+        "report_requirements": requirement_catalog(session.answer_schema, session.workflow.get('claim_support_policy', POLICY)),
         "source_id": attempt.source_id,
         "source_context": source_context(session, attempt.source_id),
         "passage": {"passage_id": attempt.passage_id, "text": text[attempt.start:attempt.end]},

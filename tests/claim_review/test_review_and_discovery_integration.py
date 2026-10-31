@@ -5,7 +5,7 @@ The shared harness forbids real sockets and scans all artifacts for its fake key
 These tests establish orchestration and fail-closed policy, not model judgment
 quality. Review labels below are authored fixtures, not benchmark scores.
 """
-from tests.claim_review.mapping_fixtures import fixture_mappings
+from tests.claim_review.mapping_fixtures import fixture_mappings, fixture_eligibility
 import json
 import unittest
 from unittest.mock import patch
@@ -87,7 +87,7 @@ class ReviewDiscoveryIntegrationTests(unittest.TestCase):
                 self.assertIn(SOURCE_TEXT.strip(), group["passage"]["text"])
             answer = {"assessments": [{"candidate_id": c["candidate_id"], "verdict": self.review_verdict,
                 "in_scope": self.review_in_scope, "rationale": "Fixture assessment against saved passage.",
-                "report_mappings": fixture_mappings(c, payload), "evidence_quotes": ["Alice works at Lab X."]} for c in payload["candidates"]]}
+                "report_mappings": fixture_mappings(c, payload), "eligibility_assessments": fixture_eligibility(c, payload), "evidence_quotes": ["Alice works at Lab X."]} for c in payload["candidates"]]}
             return self.cli.response(text=json.dumps(answer))
         self.assertEqual(schema, "FollowupPlan")
         self.assertEqual([l["link_id"] for l in payload["links"]], ["S1_L1"])
@@ -171,7 +171,7 @@ class ReviewDiscoveryIntegrationTests(unittest.TestCase):
         self.assertNotIn("edge absent", graph)
         self.assertIn("[select_followup_sources]", graph)
         trace = json.loads((directory / "llm_calls/review_S1_P1.json").read_text())
-        self.assertEqual(trace["prompt_version"], "claim-review-v6")
+        self.assertEqual(trace["prompt_version"], "claim-review-v7")
         self.assertEqual(trace["parsed_result"]["assessments"][0]["candidate_id"], "S1_P1_C1")
         self.assertEqual((directory / "llm_calls/review_S1_P1.json").stat().st_mode & 0o777, 0o600)
         request_count = len(self.cli.requests)

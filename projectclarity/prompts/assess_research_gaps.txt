@@ -15,6 +15,7 @@ Return one assessment per criterion with a judgment, supporting candidate IDs, r
 - Distinguish names from individuals and historical from current membership. Preserve contradictions and uncertain identities or attributions.
 - For `target_count`: retain requested targets for `user_request`; use null for `not_applicable`; for `research`, use a verified total or null.
 - Support researched totals with `benchmark_candidate_ids` establishing population, scope, and date. Provisional estimates are not verified totals.
+- Assess the population benchmark separately from the completeness of individual records. If supplied evidence establishes a total for the correct population, scope and date, retain that total and its benchmark references even when required fields are missing or disputed; keep those field gaps explicit and the overall judgment partial. If the benchmark itself is uncertain or conflicting, leave the total unknown. Do not derive a total from report-row counts or a prior assessment.
 - Judge satisfaction by evidence sufficiency and coverage, not processing counts or partial inventories.
 
 ## Scope estimates
@@ -69,3 +70,5 @@ owns work progression. Search suggestions do not override reading or review turn
 Historical or contextual leads may remain useful without belonging in the requested
 answer population. Assess their scope explicitly, including contrary evidence; do
 not demand that every discovered lead become a completed answer entry.
+
+For bounded-tree assessment, evidence_batches contains a bounded root summary with original witness candidate IDs, not every record or claim. result_inventory contains application-computed counts and a manifest hash only; record-level evidence remains in application storage and is checked independently before completion. The evidence registry contains only offered witnesses. The application manifest accounts for all assessed evidence through the summary tree; this proves processing coverage, not semantic completeness. Do not infer a verified population from that manifest, report counts, or the number of batches. Judge against the supplied contract and summary evidence; cite only offered witness IDs. Return partial or unknown if the summaries cannot establish a criterion. Unresolved conflict, identity or requires_detail flags are completion blockers, not omissions to assume resolved. Do not emit report-row exceptions whose evidence was not offered.

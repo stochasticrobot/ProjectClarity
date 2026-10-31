@@ -6,7 +6,7 @@ other-source reads, coverage opportunities and saved restart state. Time and req
 limits must retain unread work instead of dispatching it as repeated failures.
 The scenarios verify scheduling, not a live model's extraction recall.
 """
-from tests.claim_review.mapping_fixtures import fixture_mappings
+from tests.claim_review.mapping_fixtures import fixture_mappings, fixture_eligibility
 import json
 import re
 import time
@@ -106,7 +106,7 @@ class DocumentContinuationCLITests(unittest.TestCase):
         if title == 'ClaimReviewBatch':
             assessments = [{'candidate_id': c['candidate_id'], 'verdict': 'supported',
                 'in_scope': True, 'rationale': 'Synthetic passage support for scheduling.',
-                'report_mappings': fixture_mappings(c, payload), 'evidence_quotes': [c['proposal']['evidence'][0]['quote']]} for c in payload['candidates']]
+                'report_mappings': fixture_mappings(c, payload), 'eligibility_assessments': fixture_eligibility(c, payload), 'evidence_quotes': [c['proposal']['evidence'][0]['quote']]} for c in payload['candidates']]
             return self.flow.cli.response(text=json.dumps({'assessments': assessments}))
         return self.base_provider(request)
 

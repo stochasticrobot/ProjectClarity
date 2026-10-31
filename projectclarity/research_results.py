@@ -2,8 +2,13 @@
 
 Reports, dashboard projections and coverage call result_progress. A designed
 report uses its declared identity fields and per-field evidence; a legacy plan
-uses complete required-field tuples. For example, a name-only observation cannot
-fill a known person's affiliation merely because the names match. This module
+uses complete required-field tuples. Runs using separate inclusion review also
+require evidence-backed scope, date and section-requirement decisions before a
+field-supported entry counts as supported. Historical runs without that policy
+retain field-only counts, explicitly labelled as eligibility not assessed. A name-only observation cannot fill a known
+person's affiliation merely because the names match. Designed reports can route
+partial contributions through an unambiguous, supported identity for the same
+explicit subject in the same source-version and extraction batch. This module
 filters by recorded support/roles but does not reread source files: callers pass
 freshly verified candidate IDs when source-integrity checking is required.
 No model requests, file writes or cross-run identity matching occur here."""
@@ -228,8 +233,8 @@ def result_progress(session, valid_ids=None):
         record inventories when the
         plan defines a result shape. Fact counts are not target counts; record counts
         use explicit report identities when designed, otherwise legacy full-field
-        tuples. Report fields can combine across evidence only with identical complete
-        identities, and retain per-field support/conflicts. Unsupported, out-of-scope
+        tuples. Report fields combine by identical complete identities or explicit
+        same-source subject associations and retain per-field support/conflicts. Unsupported, out-of-scope
         and invalid proposals are never promoted. Explicit lead item records remain
         visible as pending in legacy inventories. Versioned answer runs instead
         retain pure leads in evidence without making them mandatory report entries.
@@ -255,7 +260,7 @@ def result_progress(session, valid_ids=None):
         structures = Counter(structure_status(c['proposal']) for c in supported)
         from projectclarity.answer_schema.inventory import report_inventory
         section = report_sections.get(goal['goal_id'])
-        inventory = (report_inventory(goal, relevant, section, answer_scope_only=scoped) if section and section['fields'] else
+        inventory = (report_inventory(goal, relevant, section, answer_scope_only=scoped, qualification_data=session) if section and section['fields'] else
                      result_inventory(goal, relevant, person_values, organization_values) if goal.get('result_shape') else None)
         rows.append({'goal_id': goal['goal_id'], 'question': goal['question'],
             'report_section': section is not None if session.get('answer_schema') else None,

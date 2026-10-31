@@ -6,7 +6,7 @@ scope drift, interrupt reading and exercise explicit source rejection. Assertion
 check that useful acquired documents still receive reading turns and that saved
 service counts survive restart. They do not certify live model relevance judgments.
 """
-from tests.claim_review.mapping_fixtures import fixture_mappings
+from tests.claim_review.mapping_fixtures import fixture_mappings, fixture_eligibility
 import json
 import random
 import re
@@ -136,14 +136,17 @@ class AnswerControllerCLITests(unittest.TestCase):
         elif title == 'ClaimReviewBatch':
             answer = dict(assessments=[dict(candidate_id=c['candidate_id'], verdict='supported', in_scope=True,
                 rationale='Fixture passage directly contains this qualified statement.',
-                report_mappings=fixture_mappings(c, payload), evidence_quotes=[c['proposal']['evidence'][0]['quote']]) for c in payload['candidates']])
+                report_mappings=fixture_mappings(c, payload), eligibility_assessments=fixture_eligibility(c, payload), evidence_quotes=[c['proposal']['evidence'][0]['quote']]) for c in payload['candidates']])
+        elif title == 'BoundedDigest':
+            from tests.research.bounded_transport_fixtures import digest_reply
+            answer = digest_reply(payload)
         elif title == 'CoverageAssessment':
             supported = payload['result_inventory']['G1']['supported']
             assessments = []
             for criterion in self.schema['completion_checks']:
                 auxiliary = criterion['criterion_id'] == 'A2'
-                ids = [c['candidate_id'] for c in payload['candidates']
-                       if ('G2' in c['goal_ids'] if auxiliary else 'answer_evidence' in c['roles'])]
+                ids = [c['candidate_id'] for c in payload.get('evidence_registry', payload['candidates'])
+                       if ('G2' in c['goal_ids'] if auxiliary else 'G1' in c['goal_ids'])]
                 satisfied = bool(ids) if auxiliary else supported == self.count
                 assessments.append(dict(criterion_id=criterion['criterion_id'],
                     judgment='satisfied' if satisfied else 'partial', items=[],
@@ -219,6 +222,8 @@ class AnswerControllerCLITests(unittest.TestCase):
         Returns:
             None; proves sustained reads, explicit rejection, auxiliary evidence,
             preserved historical leads, contract stopping and unused budget.
+            Persisted search/coverage diagnostics also retain backlog, queue outcomes
+            and controller admission reasons without claiming a suggestion executed.
         """
         for seed, reverse in [(19, False), (83, True)]:
             with self.subTest(seed=seed, reverse=reverse):
@@ -232,7 +237,10 @@ class AnswerControllerCLITests(unittest.TestCase):
                 self.assertLess(saved['usage']['requests_attempted'], 100)
                 self.assertGreaterEqual(len(case.snapshots), 2)
                 rounds = {s['search']['round']: s for s in case.snapshots}
-                self.assertGreaterEqual(len(rounds), 2)
+                # Adaptive reading may satisfy this finite task before a second
+                # discovery round. Requiring needless searches would test the old
+                # cadence instead of coverage; sustained fairness has larger cases.
+                self.assertGreaterEqual(len(rounds), 1)
                 primary_counts = [sum(a['source_id'] == case.primary and a['status'] == 'completed'
                     for a in s['extraction']['attempts']) for s in rounds.values()]
                 self.assertGreaterEqual(primary_counts[0], 3)
@@ -248,12 +256,29 @@ class AnswerControllerCLITests(unittest.TestCase):
                 self.assertEqual(supporting['cross_goal_candidate_ids'], [])
                 self.assertTrue(supporting['evidence_candidate_ids'])
                 coverage = [p for title,p in case.inputs if title == 'CoverageAssessment']
-                self.assertTrue(any(r['unread_passages'] > 0
-                    and r['source_context']['url'] == 'https://example.org/research'
-                    and r['source_context']['acquired_at']
-                    for p in coverage for r in p['acquired_work']))
+                self.assertTrue(any(p['work_counts']['unread_passages'] > 0 for p in coverage))
+                self.assertTrue(all('acquired_work' not in p for p in coverage))
                 self.assertNotIn('document_focus', saved['workflow'])
                 self.assertNotIn('exploration_cycle', saved['workflow'])
+                allocations = [d['reading_allocation']
+                    for task in saved['workflow']['tasks'].values()
+                    if task['action'] == 'extract_knowledge'
+                    for d in task.get('decision_history', [])
+                    if d.get('phase') == 'read' and d.get('reading_allocation')]
+                self.assertTrue(any(a['limit'] > 4 for a in allocations))
+                self.assertTrue(all(a['limit'] <= 8 for a in allocations))
+                diagnostics = [row['diagnostics'] for row in saved['coverage']['history']
+                    if 'diagnostics' in row]
+                self.assertTrue(any('search_proposed_with_local_backlog' in d['warnings'] for d in diagnostics))
+                self.assertTrue(any(d['search_decisions'] for d in diagnostics))
+                searches = [task for task in saved['workflow']['tasks'].values()
+                    if task['action'] == 'web_search' and task['attempts']]
+                self.assertTrue(searches)
+                for task in searches:
+                    decision = task['decision_history'][-1]
+                    self.assertGreater(decision['eligible_actions']['web_search'], 0)
+                    self.assertEqual(decision['controller_policy'], 'answer-cycle-v2')
+                    self.assertTrue(decision['reason'])
                 self.assertTrue(completion_status(ResearchSession.model_validate(saved), case.cli.output)['ready'])
 
     def test_dry_source_and_uncertain_read_do_not_reset_or_replay_service(self):

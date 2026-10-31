@@ -6,7 +6,7 @@ enters projectclarity.__main__. The real workflow, parsing and file persistence
 remain in use. Replies are handwritten fixture data, not findings from a live model;
 users launch the normal dashboard rather than this helper.
 """
-from tests.claim_review.mapping_fixtures import fixture_mappings
+from tests.claim_review.mapping_fixtures import fixture_mappings, fixture_eligibility
 import json
 import runpy
 import sys
@@ -61,7 +61,7 @@ def reply(request):
         payload = json.loads(body['messages'][0]['content'])
         answer = {'assessments': [dict(candidate_id=c['candidate_id'], verdict='supported',
             in_scope=True, rationale='Synthetic test: the saved quotation supports this statement.',
-            report_mappings=fixture_mappings(c, payload), evidence_quotes=['Alice works at Lab X.']) for c in payload['candidates']]}
+            report_mappings=fixture_mappings(c, payload), eligibility_assessments=fixture_eligibility(c, payload), evidence_quotes=['Alice works at Lab X.']) for c in payload['candidates']]}
     elif title == 'CoverageAssessment':
         payload = json.loads(body['messages'][0]['content'])
         answer = dict(assessments=[dict(criterion_id=c['criterion_id'], judgment='satisfied',

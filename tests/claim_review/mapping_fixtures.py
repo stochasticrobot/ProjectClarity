@@ -31,3 +31,24 @@ def fixture_mappings(candidate, payload):
         rows.append(dict(goal_id=goal['goal_id'], status='mapped' if fields else 'not_applicable',
             field_names=fields, rationale='Authored offline fixture mapping, not a live semantic judgment.'))
     return rows
+
+
+def fixture_eligibility(candidate, payload):
+    """Supply explicit positive inclusion judgments for existing transport fixtures.
+
+    Args:
+        candidate: Handwritten fixture claim whose answer records are intended to qualify.
+        payload: Actual review request containing the application-generated requirements.
+    Returns:
+        One authored met judgment per answer-record requirement, with an exact fixture
+        quotation. Dedicated qualification tests replace these judgments with unknown,
+        incompatible or malformed decisions. This is not a semantic reviewer and must
+        never be imported by production code or used to claim live model accuracy.
+    """
+    if 'answer_evidence' not in candidate['proposal'].get('research_roles', []):
+        return []
+    return [dict(record_index=index, goal_id=record['goal_id'], requirement_id=requirement['requirement_id'],
+        verdict='met', rationale='Authored fixture inclusion judgment, not live semantic verification.',
+        evidence_quotes=[candidate['proposal']['evidence'][0]['quote']], context_keys=[])
+        for index, record in enumerate(candidate['proposal'].get('result_records', []))
+        for requirement in payload.get('report_requirements', {}).get(record['goal_id'], [])]

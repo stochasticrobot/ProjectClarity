@@ -191,18 +191,35 @@ separate session journal. Existing checkpoint history is not automatically remov
   `11 / ~8–200`. Entries can be unfinished; `?` means the total is unknown. Estimates
   are not exact percentage denominators or stopping targets.
 - **Coverage assessments** judge evidence against answer requirements. Large evidence
-  collections may be summarized in batches before a whole-answer assessment. A
-  completed batch is not a completed answer; all calls share the same allowance.
+  collections use a bounded summary tree; final requests contain inventory counts,
+  not every report row. A completed summary is not a completed answer; all calls
+  share the same allowance. See [bounded inputs and limitations](docs/bounded-coverage.md).
 - **Usage** distinguishes model requests from tokens. Missing token usage remains
   unknown; displayed known subtotals are not exact bills.
 
 ### Known limitations
 
-Supported claims do not always become complete report entries. Partial identities
-can keep useful facts separate. The claim-to-report mapping checks can impose
-unhelpful obligations on background information or leads, and useful repairs can
-fail strict completion checks or remain queued until the time allowance runs out.
-These defects are unresolved, not fixed by passing offline tests.
+Supported facts are separate from eligibility for the requested answer. New
+designed-report runs check each entry's scope and requested date separately.
+Section-wide evidence requirements, such as reconciling a complete roster, remain
+whole-answer completion checks rather than conditions imposed on each person. An entry with supported fields remains pending if its
+inclusion checks are unknown, unmet or conflicting. Older runs retain their
+historical field-support counts and are labelled as not having these inclusion
+checks; they are not silently re-reviewed. Runs created under an earlier inclusion
+policy retain that policy until explicitly migrated; fresh runs use the corrected
+entry-level checks. The dashboard distinguishes field-supported and qualified targets.
+
+Partial observations can join when they share an explicit subject in the same
+source version and extraction batch, with one supported, unambiguous identity.
+Matching names alone do not establish identity. Background claims do not require
+report rows. Structured repairs can close despite rewording when original field
+values, qualifications and source evidence remain intact. More general paraphrase
+resolution and timely execution of every useful repair remain limitations.
+
+Review batches reserve response space based on claims, records, evidence size and
+the configured output-token limit. This is an estimate, not a guarantee against
+truncation. A single claim too large for that allowance is retained with an explicit
+review failure without making a predictably oversized request.
 
 Broad questions can produce overly restrictive answer requirements. Search fallback
 can be narrower than the failed provider; zero results do not establish absence

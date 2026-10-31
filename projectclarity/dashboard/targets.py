@@ -49,6 +49,8 @@ def target_groups(progress):
         rows.sort(key=lambda r: normalized(r['label']))
         goals.append(dict(goal_id=goal['goal_id'], question=goal['question'], unit=inventory['unit'],
             fields=fields, name_field=name_field, count_basis=inventory['count_basis'],
+            qualification_policy=inventory.get('qualification_policy', 'legacy_field_support'),
+            field_supported=inventory.get('field_supported', inventory['supported']),
             measurement=goal.get('measurement', {}),
             identified=inventory['identified'], supported=inventory['supported'],
             pending=inventory['pending'], disputed=inventory['disputed'], identity_pending=inventory['identity_pending'],
@@ -68,7 +70,7 @@ def target_counts(data):
         projections independently recheck source evidence before displaying counts.
     """
     return {g['goal_id']: {k: g[k] for k in
-            ('identified', 'supported', 'pending', 'disputed', 'identity_pending', 'count_basis')}
+            ('identified', 'field_supported', 'supported', 'pending', 'disputed', 'identity_pending', 'count_basis', 'qualification_policy')}
             for g in target_groups(result_progress(data))}
 
 

@@ -18,8 +18,36 @@ from projectclarity.claim_review.review_queue import pending_candidates, MAX_REV
 from projectclarity.nodes.schedule_work.source_priority import source_priority, task_source_priority
 from projectclarity.nodes.schedule_work.source_yield import document_yields
 
-POLICY = 'answer-cycle-v1'
+POLICY = 'answer-cycle-v2'
 READ_QUANTUM = 4
+MAX_READ_QUANTUM = 8
+
+
+def reading_allowance(session, source_id, used, yields):
+    """Extend useful reading one attempt at a time without starving peer service.
+
+    Args:
+        session: Run whose saved controller policy selects adaptive or legacy turns.
+        source_id: Focus document, or None before one is selected.
+        used: Attempts charged to this reading turn, including failed attempts.
+        yields: Existing source-version-checked gain summaries in reservation order.
+    Returns:
+        Diagnostic dictionary with an absolute turn limit and supporting recent
+        observations. V2 extends only when all three recent attempts are finalized,
+        at least two earned gain and the latest earned gain. Extension is capped at
+        eight attempts and reevaluated after every extra attempt. No model call,
+        evidence approval, budget change or session mutation occurs.
+    """
+    recent = yields.get(source_id, {}).get('recent_passages', [])
+    productive = (len(recent) == 3 and all(r['finalized'] for r in recent)
+        and sum(r['gain'] > 0 for r in recent) >= 2 and recent[-1]['gain'] > 0)
+    adaptive = session.workflow.get('controller_policy') == POLICY
+    extended = adaptive and productive and READ_QUANTUM <= used < MAX_READ_QUANTUM
+    return dict(source_id=source_id, used=used, base_limit=READ_QUANTUM,
+        hard_limit=MAX_READ_QUANTUM if adaptive else READ_QUANTUM,
+        limit=used + 1 if extended else READ_QUANTUM,
+        reason='recent_productive_gain' if extended else 'fixed_turn_or_extension_not_earned',
+        recent_passages=recent)
 
 
 def enabled(session):
@@ -31,10 +59,11 @@ def enabled(session):
     Args:
         session: Run with its initialization-time policy marker and accepted schema.
     Returns:
-        True for new designed runs with explicit requirements. Legacy runs continue
-        through their old adapter, even when loaded by a newer application process.
+        True for versioned designed runs with explicit requirements. Saved V1 runs
+        retain fixed reading turns; V2 uses adaptive turns. Unversioned legacy runs
+        continue through their old adapter even when loaded by a newer process.
     """
-    return bool(session.workflow.get('controller_policy') == POLICY
+    return bool(session.workflow.get('controller_policy') in {POLICY, 'answer-cycle-v1'}
         and (session.answer_schema or {}).get('completion_checks'))
 
 
@@ -51,8 +80,9 @@ def choose_work(session, available):
         available: Tasks already admitted by permissions, budgets and retry gates.
     Returns:
         A subset for one action/source, or an empty list when none is eligible.
-        Four primary passage attempts separate discovery turns when productive work
-        exists. Newly inventoried peers each receive one explicit first-read grant;
+        Four primary passage attempts form the base turn; V2 may extend it to eight
+        using recent finalized gains, one extra attempt per decision. V1 retains four.
+        Newly inventoried peers each receive one explicit first-read grant;
         otherwise one previously read peer receives a bounded sample. Dry sources yield earlier. Review and
         evidence-digest dependencies do not reset reading credit. Search receives one
         transaction per cycle, never an unbounded stream of gap-priority interrupts.
@@ -137,7 +167,9 @@ def choose_work(session, available):
             sid = state.get('focus_source')
             limit = session.request.max_no_gain_passages
             dry = bool(sid and limit and yields.get(sid, {}).get('no_gain_passages', 0) >= limit)
-            if used >= READ_QUANTUM or dry or not readings:
+            allowance = reading_allowance(session, sid, used, yields)
+            state['reading_allocation'] = allowance
+            if used >= allowance['limit'] or dry or not readings:
                 state['phase'] = 'sample'
                 state.pop('sample_sources', None)
                 continue
@@ -149,7 +181,7 @@ def choose_work(session, available):
                     not bool(yields.get(candidate, {}).get('signal_count', 0)),
                     state['last_served'].get(candidate, 0), candidate))
                 state['focus_source'] = sid
-            return reading_tasks(sid, READ_QUANTUM - used)
+            return reading_tasks(sid, allowance['limit'] - used)
         if phase == 'sample':
             if 'sample_sources' not in state:
                 peers = {source(t) for t in readings if source(t) != state.get('focus_source')}
