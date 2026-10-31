@@ -239,6 +239,11 @@ __marimo__/
 /AUDIT*.md
 /evaluation/cases/reference_validation.md
 
-# Keep the public documentation to the root quick-start guide.
+# Ignore private Markdown by default; explicit public-guide exceptions follow.
 *.md
 !/README.md
+
+# Public component guides and third-party attribution shipped with the explorer.
+!/projectclarity/dashboard/README.md
+!/projectclarity/dashboard/static/vendor/README.md
+!/benchmarks/canadian_parliament/README.md

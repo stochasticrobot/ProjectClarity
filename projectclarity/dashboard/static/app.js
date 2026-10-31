@@ -486,6 +486,7 @@ function render(force=false) {
   $('#now').textContent=d.now;$('#why').textContent=d.why;$('#state').textContent=d.status.status.replaceAll('_',' ');
   $('#now-dot').classList.toggle('finished',!d.status.worker_running);$('#stop').hidden=!d.status.worker_running;$('#stop').disabled=!!d.status.cancel_requested;
   $('#stop').textContent=d.status.cancel_requested?'Stopping…':'Stop research';$('#report').href=`/api/runs/${d.id}/report`;
+  $('#graph-link').href=`/graph?run=${encodeURIComponent(d.id)}`;
   const targets=targetGoal(d);
   $('#stats').innerHTML=[['Results identified',targets?num(targets.identified):'—',targets?`${targets.goal_id} · ${targets.unit}`:'Evidence-based goal; no population count'],...targetSupportStats(targets),['Pending targets',targets?num(targets.pending):'—','Awaiting review or stronger evidence'],['Supported claims',num(d.metrics.supported_claims),'All research evidence, not a target count']].map(([l,v,n])=>`<div class="stat"><div class="stat-label">${l}</div><div class="stat-value">${v}</div><div class="stat-note">${n}</div></div>`).join('');
   document.querySelectorAll('[data-tab]').forEach(b=>b.classList.toggle('selected',b.dataset.tab===state.tab));

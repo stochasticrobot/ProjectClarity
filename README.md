@@ -3,7 +3,8 @@
 ProjectClarity is an experimental AI research tool for questions that require
 information from several documents or websites. You give it a question and can
 supply documents or web addresses to start from. It can also search the web for
-additional sources.
+additional sources. Output is a report containing discoveries in CSV format,
+notes, and an explorable relationship graph made of entities and relationships.
 
 It breaks the question into research tasks, reads source material, and organizes
 what it finds into a report with links to supporting evidence. You can inspect the
@@ -29,6 +30,7 @@ you examine the basis for a finding before relying on it.
 - [Run the tests — no API key needed](#run-the-tests--no-api-key-needed)
 - [Live evaluations](#live-evaluations)
 - [Code orientation](#code-orientation)
+- [Run knowledge explorer](#run-knowledge-explorer)
 
 ## Installation
 
@@ -197,7 +199,7 @@ separate session journal. Existing checkpoint history is not automatically remov
   explicit correction; original caveats and uncertainty flags are preserved.
   Interrupted outcomes are not automatically replayed. Exhausted corrections
   leave coverage visibly blocked rather than repeatedly retrying unchanged work.
-  See [bounded inputs and limitations](docs/bounded-coverage.md).
+  These bounds limit request size; they do not establish semantic completeness.
 - **Usage** distinguishes model requests from tokens. Missing token usage remains
   unknown; displayed known subtotals are not exact bills.
 
@@ -436,3 +438,55 @@ remain in force. Search-provider errors and actual page HTTP failures remain
 visible; removing robots checks does not guarantee that a site returns readable
 content. Historical robots-related failure receipts and charged traffic are
 preserved; existing failed sources are not automatically replayed.
+
+
+### Run knowledge explorer
+
+Click **Explore graph** beside **View report** on a run page. The explorer combines
+all saved extraction entities, candidate relationships, structured record fields
+and standalone claims with that run's broader-knowledge SQLite sightings. It is
+not filtered to accepted report rows. Incidental entities and invalid/unreviewed
+claims remain inspectable, with status and source quotations. Opening or refreshing
+it makes no model calls and does not alter the original records or enable paid capture.
+
+Search, filter by type/status, drag nodes, zoom, and click a node or connection.
+**Focus this neighborhood** reveals adjacent discoveries; **Show all / reset filters**
+restores the complete view. The node list is pageable, not a first-N graph cutoff.
+Names appear on hover or selection, with **Show all names** available. Relationship
+labels appear only on selected edges. **Layout** offers automatic, radial and
+hierarchical views; hierarchy means connection distance, not organizational rank.
+**Expand connections** adds neighbors to the current view; **Collapse this expansion**
+removes only that expansion, preserving overlapping paths. **Back** restores scope,
+filters, positions and viewport (up to 30 steps; refresh clears history).
+The **Connection** filter uses exact saved labels, with record-field associations
+separate from extracted relationships; it does not infer equivalent wording.
+
+Solid edges are saved relationship proposals. Dashed edges are associations from
+raw structured records, not inferred facts. Green connections are source-supported,
+amber are unreviewed/other, and red dotted connections have invalid evidence
+(overriding the association dash). Node colors/icons indicate entity type, not truth.
+The inspector reports each evidence status separately, including mixed groups. Nodes include extracted entities,
+record values and statements, so the node count is **not** a unique-entity count.
+By default, matching organization labels group across sources and record formats.
+Abbreviations require an explicit, unambiguous expansion in a saved intact quotation.
+Complete structured records group within a goal only when every field agrees after
+the existing name-format normalization; conflicting context and name-only people
+stay separate. A person and structured records can share a node when an explicit
+person-name field, source and claim reference identify exactly one matching person.
+Complete-record matching composes with these attachments; names alone never bridge
+people across sources. Original fields, even conflicting affiliations or invalid
+records, stay individually inspectable and do not inherit a stronger review status.
+The ×N badge counts original representations. Grouping is a reversible display
+projection, not canonical identity
+resolution. Expand a group to see its original records and sources, or turn off
+**Consolidate matching nodes** to inspect the ungrouped graph. All original edge
+IDs, evidence, review states and source records remain intact. The explorer cannot invent relationships
+not captured in the saved evidence, nor display discoveries never extracted from a page.
+
+The endpoint `/api/runs/RUN_ID/graph` is a read-only projection over the authoritative
+saved session and run-scoped database sightings. Historical capture-disabled runs
+still expose their extraction receipts without a database migration or paid replay.
+Cytoscape.js is MIT licensed and bundled locally with its version/license/hash under
+`projectclarity/dashboard/static/vendor`; the browser does not load a CDN dependency.
+
+For graph ownership, data flow and developer checks, see the [dashboard guide](projectclarity/dashboard/README.md).

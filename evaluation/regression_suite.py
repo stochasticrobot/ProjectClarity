@@ -28,6 +28,7 @@ import unittest
 
 ROOT = Path(__file__).resolve().parents[1]
 REQUIRED_MODULES = (
+    'tests.dashboard.test_graph',
     'tests.extraction.test_size_profiles',
     'tests.research.test_summary_recovery',
     'tests.claim_review.test_parallel_review_cli',

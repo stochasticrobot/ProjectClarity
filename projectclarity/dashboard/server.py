@@ -19,10 +19,11 @@ import threading
 import time
 from http.server import BaseHTTPRequestHandler, ThreadingHTTPServer
 from pathlib import Path
-from urllib.parse import urlsplit, unquote
+from urllib.parse import urlsplit, unquote, parse_qs
 from uuid import uuid4
 
 from projectclarity.dashboard.projection import list_runs, read_json, snapshot
+from projectclarity.dashboard.graph import run_graph
 from projectclarity.extraction.settings import DEFAULT_EXTRACTION_PROFILE
 from projectclarity.nodes.plan_research.research_planner import ResearchError
 from projectclarity.provisional_answer import read_saved_answer, render_provisional_answer
@@ -336,7 +337,10 @@ class Handler(BaseHTTPRequestHandler):
             self: Bound HTTP request handler.
         Returns:
             None. Sends data or a bounded error; never serves arbitrary run files,
-            raw model traces, credentials or uploaded documents.
+            raw model traces, credentials or uploaded documents. The graph route
+            projects all saved discoveries; group=none disables display grouping.
+            The legacy group=organizations mode also includes provenance-linked
+            person records and complete-record groups, not only organizations.
         """
         if not self.allowed():
             return
@@ -349,6 +353,12 @@ class Handler(BaseHTTPRequestHandler):
                 return self.send(200, list_runs(app.root))
             if path == '/api/jobs':
                 return self.send(200, app.jobs())
+            graph_match = re.fullmatch(r'/api/runs/([A-Za-z0-9_-]+)/graph', path)
+            if graph_match:
+                mode = parse_qs(urlsplit(self.path).query).get('group', ['organizations'])[0]
+                if mode not in {'organizations', 'none'}:
+                    raise ValueError('Invalid graph grouping mode')
+                return self.send(200, run_graph(app.root, graph_match.group(1), consolidate=mode != 'none'))
             match = re.fullmatch(r'/api/runs/([A-Za-z0-9_-]+)(/report)?', path)
             if match:
                 run_id, report = match.groups()
@@ -357,7 +367,9 @@ class Handler(BaseHTTPRequestHandler):
                     return self.send(200, text.encode(), 'text/plain; charset=utf-8')
                 return self.send(200, app.view(run_id))
             files = {'/': 'index.html', '/app.js': 'app.js', '/style.css': 'style.css',
-                     '/discoveries.js': 'discoveries.js'}
+                     '/discoveries.js': 'discoveries.js', '/graph': 'graph.html',
+                     '/graph.js': 'graph.js', '/graph.css': 'graph.css',
+                     '/vendor/cytoscape.min.js': 'vendor/cytoscape.min.js'}
             if path in files:
                 file = ASSETS / files[path]
                 return self.send(200, file.read_bytes(), mimetypes.guess_type(file.name)[0] + '; charset=utf-8')
