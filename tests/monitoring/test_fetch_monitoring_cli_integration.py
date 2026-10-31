@@ -67,8 +67,9 @@ class FetchMonitoringCLIIntegrationTests(unittest.TestCase):
         events = [json.loads(line) for line in progress.splitlines()]
         self.assertEqual(events, [json.loads(line) for line in (directory / "events.jsonl").read_text().splitlines()])
         names = [event["event"] for event in events]
-        for name in ("run_started", "planning_started", "robots_check", "request_started", "source_parsing", "source_saving", "source_finished", "run_finished"):
+        for name in ("run_started", "planning_started", "request_started", "source_parsing", "source_saving", "source_finished", "run_finished"):
             self.assertIn(name, names)
+        self.assertNotIn("robots_check", names)
         self.assertLess(names.index("source_parsing"), names.index("source_finished"))
         snapshot = json.loads((directory / "run_status.json").read_text())
         self.assertEqual(snapshot["metrics"]["http_requests"], session["retrieval_usage"]["http_requests"])

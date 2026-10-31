@@ -123,6 +123,7 @@ def save_trace(directory: Path, trace: dict, secret: str | None) -> None:
 def start_trace(directory: Path, session, attempt, messages, secret: str) -> dict:
     """Save application input before invocation, with any credential redaction labelled.
 
+    The trace includes the resolved extraction profile and its independent output cap.
     A prepared trace proves input was assembled, not that a request reached the provider.
     The node reserves the attempt separately; finish_trace adds the result. The recorded
     schema precedes LangChain's wire-format transformation.
@@ -147,7 +148,8 @@ def start_trace(directory: Path, session, attempt, messages, secret: str) -> dic
         "messages": [{"role": role, "content": content} for role, content in messages],
         "output_schema": ExtractionBatch.model_json_schema(),
         "schema_boundary": "Pydantic schema supplied to LangChain, not the SDK-transformed wire schema",
-        "requested_model": session.request.model, "max_output_tokens": session.request.budget.max_output_tokens,
+        "requested_model": session.request.model, "max_output_tokens": session.request.extraction_settings.max_output_tokens,
+        "extraction_settings": session.request.extraction_settings.model_dump(mode="json"),
         "effort": "low", "timeout_seconds": session.request.model_timeout_seconds,
         "max_retries": 0, "application_retries": session.request.model_retries,
         "status": "prepared", "response_text": None, "response_text_truncated": False,
@@ -160,7 +162,9 @@ def start_trace(directory: Path, session, attempt, messages, secret: str) -> dic
 def capture_answer(trace: dict, raw) -> None:
     """Copy answer text into the in-memory trace, omitting non-text provider blocks.
 
-    Long text is capped at 128,000 characters with a visible flag. Multiple text blocks are
+    Long text is capped at the larger of 128,000 characters or sixteen characters
+    per configured output token, with a visible truncation flag. This diagnostic
+    bound grows with experimental output allowances; it is not a tokenizer. Multiple text blocks are
     joined with newlines, so this is selected answer text, not the raw HTTP body. save_trace
     performs redaction before the trace reaches disk.
 
@@ -179,8 +183,9 @@ def capture_answer(trace: dict, raw) -> None:
         blocks = [block for block in content if isinstance(block, dict) and block.get("type") == "text"]
         answer = "\n".join(str(block.get("text", "")) for block in blocks)
         trace["non_text_blocks_omitted"] = len(blocks) != len(content)
-    trace["response_text"] = answer[:128_000]
-    trace["response_text_truncated"] = len(answer) > 128_000
+    limit = max(128_000, 16 * (trace.get("max_output_tokens") or 0))
+    trace["response_text"] = answer[:limit]
+    trace["response_text_truncated"] = len(answer) > limit
 
 
 def finish_trace(directory: Path, trace: dict, attempt, secret: str) -> None:

@@ -30,7 +30,7 @@ def retrieve_sources(state: ResearchState, output_root: Path, monitor=None, runt
     remain inspectable.
 
     One invocation shares a web reader across rounds, including byte/request/time counters,
-    robots policies and per-origin pacing. Runtime clients remain outside durable
+    application-owned per-origin pacing. Runtime clients remain outside durable
     checkpoints.
 
     Args:

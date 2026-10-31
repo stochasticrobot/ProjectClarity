@@ -23,6 +23,7 @@ from urllib.parse import urlsplit, unquote
 from uuid import uuid4
 
 from projectclarity.dashboard.projection import list_runs, read_json, snapshot
+from projectclarity.extraction.settings import DEFAULT_EXTRACTION_PROFILE
 from projectclarity.nodes.plan_research.research_planner import ResearchError
 from projectclarity.provisional_answer import read_saved_answer, render_provisional_answer
 from projectclarity.research_schemas import DEFAULT_MODEL
@@ -97,7 +98,8 @@ class Dashboard:
 
         Args:
             self: Dashboard instance owning the run root, job receipts and cache.
-            payload: JSON form values; uploads are base64 content, never server paths.
+            payload: JSON form values including an optional extraction profile
+                (defaults to medium); uploads are base64 content, never server paths.
         Returns:
             New job receipt. Writes private inputs and launches the real production
             command. Invalid forms raise ValueError without contacting a model.
@@ -109,6 +111,9 @@ class Dashboard:
         concurrency = bounded_integer(payload.get('model_concurrency', 3), 1, 16, 'Model concurrency')
         seconds = bounded_integer(payload.get('max_seconds', 1800), 1, 7200, 'Time limit')
         depth = bounded_integer(payload.get('explore_depth', 1), 0, 10, 'Exploration depth')
+        profile = payload.get('extraction_profile', DEFAULT_EXTRACTION_PROFILE)
+        if not isinstance(profile, str) or profile not in ('small', 'medium', 'large'):
+            raise ValueError('Invalid extraction profile.')
         model = payload.get('model', DEFAULT_MODEL)
         if not isinstance(model, str) or not re.fullmatch(r'[A-Za-z0-9_.:-]{1,120}', model):
             raise ValueError('Invalid model identifier.')
@@ -148,7 +153,8 @@ class Dashboard:
         args = ['research', '--question', question.strip(), '--extract', '--review-claims',
             '--non-interactive', '--progress-json', '--output-dir', str(self.root),
             '--max-requests', str(calls), '--model-concurrency', str(concurrency), '--max-fetch-seconds', str(seconds),
-            '--explore-before-search-depth', str(depth), '--model', model]
+            '--explore-before-search-depth', str(depth), '--model', model,
+            '--extraction-profile', profile]
         if payload.get('design_answer', False):
             args.append('--design-answer')
         if urls:

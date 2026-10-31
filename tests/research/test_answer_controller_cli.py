@@ -198,12 +198,13 @@ class AnswerControllerCLITests(unittest.TestCase):
         return [dict(url='https://example.org/unrelated-country', title='Unrelated country', snippet='Not the requested population.'),
                 dict(url='https://example.org'+path, title='Collection scope', snippet='Specific scope evidence.')][:max_results]
 
-    def run_case(self, budget=100):
+    def run_case(self, budget=100, profile=None):
         """Invoke the genuine terminal entry and graph under transport-only fixtures.
 
         Args:
             self: Fixture with registered source inputs and model replies.
             budget: Ordinary shared model allowance; no test-only controller settings.
+            profile: Explicit extraction preset, or None to exercise the current CLI default.
         Returns:
             Terminal outcome, run folder, saved state and progress output.
         """
@@ -212,10 +213,11 @@ class AnswerControllerCLITests(unittest.TestCase):
                     side_effect=AssertionError('Versioned run entered legacy arbitration'))):
             return self.flow.run_workflow('--design-answer', '--assess-coverage', '--stop-when-satisfied',
                 *(['--coverage-study'] if self.study else []),
+                *(['--extraction-profile', profile] if profile else []),
                 '--search', '--max-search-queries', '20', '--max-requests', str(budget), '--model-concurrency', '1')
 
     def test_productive_reading_survives_continuing_gaps_and_scope_drift(self):
-        """Verify combined failure invariants on two unseen source/row orderings.
+        """Verify sustained Small-profile work on two unseen source/row orderings.
 
         Args:
             self: Production-entry fixture, not a helper-only scheduling simulation.
@@ -231,7 +233,9 @@ class AnswerControllerCLITests(unittest.TestCase):
                 case.setUp()
                 self.addCleanup(case.doCleanups)
                 case.install_sources(seed, reverse)
-                code, directory, saved, err = case.run_case()
+                # Small keeps enough work queued to exercise search fairness;
+                # Medium can complete this population before needing a search.
+                code, directory, saved, err = case.run_case(profile='small')
                 self.assertEqual(code, 0, err)
                 self.assertEqual(saved['workflow']['stop_reason'], 'criteria_satisfied')
                 self.assertLess(saved['usage']['requests_attempted'], 100)

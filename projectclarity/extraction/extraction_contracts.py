@@ -27,6 +27,7 @@ from typing import Annotated, Literal
 from pydantic import Field, StringConstraints
 
 from projectclarity.research_schemas import Contract, Identifier, Text
+from projectclarity.extraction.settings import ExtractionSettings
 
 
 class ExtractedEntity(Contract):
@@ -164,6 +165,7 @@ class ExtractionRecord(Contract):
 
     schema_version: Literal["1.0", "1.1", "1.2", "1.3", "1.4"] = "1.4"
     prompt_version: Literal["knowledge-extraction-v1", "knowledge-extraction-v2", "knowledge-extraction-v3", "knowledge-extraction-v4", "knowledge-extraction-v5"] = "knowledge-extraction-v5"
+    sizing: ExtractionSettings | None = None
     retrieval_incomplete: bool = False
     attempts: list[ExtractionAttempt] = Field(default_factory=list)
     # These are application-owned codes, not raw provider/file exception messages.

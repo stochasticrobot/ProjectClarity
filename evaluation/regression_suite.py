@@ -28,6 +28,8 @@ import unittest
 
 ROOT = Path(__file__).resolve().parents[1]
 REQUIRED_MODULES = (
+    'tests.extraction.test_size_profiles',
+    'tests.research.test_summary_recovery',
     'tests.claim_review.test_parallel_review_cli',
     'tests.research.test_adaptive_reading',
     'tests.research.test_bounded_inputs',
@@ -49,6 +51,7 @@ REQUIRED_MODULES = (
 # Require these individual test IDs as well as their modules, so removing an
 # important case cannot leave a passing gate merely because its file still exists.
 REQUIRED_TESTS = (
+    'tests.retrieval.test_retrieval_cli_integration.RetrievalCLIIntegrationTests.test_production_retrieval_omits_robots_before_and_after_redirect',
     'tests.research.test_contract_completion.ContractCompletionTests.test_summary_conflict_blocks_optimistic_global_completion',
     'tests.research.test_bounded_inputs.BoundedInputTests.test_scaling_has_complete_leaves_and_fixed_fan_in',
     'tests.research.test_coverage_diagnostics.CoverageDiagnosticsTests.test_fixture_preflight_rejects_the_observed_contract_and_attribution_faults',

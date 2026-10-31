@@ -77,7 +77,7 @@ class RetrievalBudgetTests(unittest.TestCase):
         self.assertEqual(budget.summary()["bytes_read"], 6)
 
     def test_stop_request_interrupts_a_long_pacing_wait_before_any_http_attempt(self):
-        """Robots waits remain cancellable instead of trapping a worker in one long sleep.
+        """Application pacing waits remain cancellable instead of trapping a worker in one long sleep.
 
         Args:
             self: This unittest case instance, holding its isolated fixtures and assertion

@@ -220,7 +220,8 @@ def snapshot(root, run_id):
     results = result_progress(data, set(valid)) if session.plan else {}
     targets = target_groups(results)
     current['targets'] = {g['goal_id']: {k: g[k] for k in
-        ('identified', 'supported', 'pending', 'disputed', 'identity_pending', 'count_basis')} for g in targets}
+        ('identified', 'field_supported', 'supported', 'pending', 'disputed', 'identity_pending',
+         'count_basis', 'qualification_policy')} for g in targets}
     events = read_lines(directory / 'events.jsonl')
     history = read_lines(directory / 'dashboard_metrics.jsonl')
     # Never mix superseded name-group counts into the corrected result graph.

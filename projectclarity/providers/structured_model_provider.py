@@ -10,7 +10,7 @@ Other providers are not implemented by this factory.
 from langchain_anthropic import ChatAnthropic
 
 
-def create_structured_model(api_key, session, schema, *, timeout_seconds=None):
+def create_structured_model(api_key, session, schema, *, timeout_seconds=None, max_output_tokens=None):
     """Return a no-retry LangChain runnable with parsed output and raw answer metadata.
 
     Args:
@@ -20,6 +20,8 @@ def create_structured_model(api_key, session, schema, *, timeout_seconds=None):
             accumulated results and status.
         schema: Pydantic response-model class defining the structured answer expected from
             the provider.
+        max_output_tokens: Optional task-specific output allowance; None preserves
+            the shared default for review, planning and coverage.
         timeout_seconds: Optional attempt-specific timeout capped by remaining run time;
             None uses the saved request's model timeout. Application retries live elsewhere.
 
@@ -28,7 +30,7 @@ def create_structured_model(api_key, session, schema, *, timeout_seconds=None):
         invoked; construction itself sends no request.
     """
     model = ChatAnthropic(model=session.request.model, api_key=api_key,
-        base_url="https://api.anthropic.com", max_tokens=session.request.budget.max_output_tokens,
+        base_url="https://api.anthropic.com", max_tokens=session.request.budget.max_output_tokens if max_output_tokens is None else max_output_tokens,
         timeout=session.request.model_timeout_seconds if timeout_seconds is None else timeout_seconds,
         max_retries=0, output_config={"effort": "low"})
     return model.with_structured_output(schema, method="json_schema", include_raw=True)

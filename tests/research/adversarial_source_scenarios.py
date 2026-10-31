@@ -82,13 +82,14 @@ class SourceScenario:
         with self.case.cli.urls.open('a') as stream:
             stream.write('\nhttps://example.org/Research\n')
 
-    def run(self, *, budget=120, search=True):
+    def run(self, *, budget=120, search=True, profile=None):
         """Run the public production entry point with normal resource controls.
 
         Args:
             self: Prepared source/provider scenario with temporary run storage.
             budget: Shared model-call allowance, never reset or enlarged.
             search: Enable continuing source discovery or use seeds only.
+            profile: Explicit extraction preset; None exercises the CLI default.
         Returns:
             Terminal code, run path, saved session and terminal diagnostics. Source
             pacing sleeps alone are disabled; controller/clock/budget logic is real.
@@ -96,6 +97,7 @@ class SourceScenario:
         with patch('projectclarity.retrieval.retrieval_limits.time.sleep'):
             return self.case.flow.run_workflow('--design-answer', '--assess-coverage',
                 '--stop-when-satisfied', *(['--search'] if search else []),
+                *(['--extraction-profile', profile] if profile else []),
                 '--max-search-queries', '12', '--max-requests', str(budget),
                 '--model-concurrency', str(self.concurrency))
 

@@ -2,7 +2,7 @@
 
 For example, text_pdf() builds a one-page PDF containing a chosen sentence; it
 does not download a PDF or pretend the sentence is research evidence. FakeHTTP
-stands in for the connection pool only: the real URL checks, robots handling,
+stands in for the connection pool only: the real URL checks, application pacing,
 byte accounting, parsers, graph, and file writes remain in the path under test.
 """
 

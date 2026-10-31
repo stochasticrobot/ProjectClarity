@@ -96,7 +96,7 @@ def url_denial(url, policy):
         match (even if also allowed), 'outside_whitelist' for a missing required
         allow match, or None when permitted by this layer. Exact hosts and their
         subdomains match; unrelated substring matches do not. Public-address,
-        credential, scheme, robots and transport checks still belong to retrieval.
+        credential, scheme and transport checks still belong to retrieval.
     """
     try:
         host = normalize_domain(urlsplit(url).hostname or '')

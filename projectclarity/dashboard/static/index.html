@@ -51,6 +51,8 @@
         <label class="check"><input type="checkbox" name="automatic_stopping" checked> Stop when all evidence-backed completion checks pass</label>
         <label>Exploration depth before search<input name="explore_depth" type="number" min="0" max="10" value="1"></label>
         <p class="fine">The current scheduler may return to search at a call checkpoint before following a link. The dashboard does not change that policy.</p>
+        <label>Extraction size<select name="extraction_profile"><option value="small">Small</option><option value="medium" selected>Medium — default</option><option value="large">Large — experimental</option></select></label>
+        <p class="fine">Larger sizes read more text per extraction call and allow longer replies. Review and coverage settings stay unchanged. Larger sizes require model support and have not yet been live-benchmarked.</p>
         <label>Model<input name="model" required></label>
       </div></details>
       <p class="fine">Starting research makes model requests using your existing backend configuration. Budgets are shared across the whole run. No previous run’s findings are supplied.</p>

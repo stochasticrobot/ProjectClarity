@@ -7,6 +7,7 @@ IP, TLS hostname, headers, retries, and actual bytes read from each fake respons
 """
 
 import socket
+import time
 import unittest
 from unittest.mock import patch
 
@@ -19,7 +20,7 @@ class WebTests(unittest.TestCase):
     """No website or live DNS is needed to falsify the access-control assumptions."""
 
     def setUp(self):
-        """Replace DNS and HTTP pools and deny sockets, keeping URL/robots/budget code real.
+        """Replace DNS and HTTP pools and deny sockets, keeping URL, pacing and budget code real.
 
         Args:
             self: This unittest case instance, holding its isolated fixtures and assertion
@@ -59,7 +60,7 @@ class WebTests(unittest.TestCase):
         self.assertEqual(response.body, b"Source text")
         self.assertEqual(final_url, "https://example.org/page")
         self.assertEqual(chain, [final_url])
-        self.assertEqual(self.budget.http_requests, 2)  # Robots is a real budgeted request.
+        self.assertEqual(self.budget.http_requests, 1)  # Only the requested page is fetched.
         for ip, options in self.http.connections:
             self.assertEqual(ip, "93.184.216.34")
             self.assertEqual(options["server_hostname"], "example.org")
@@ -109,8 +110,8 @@ class WebTests(unittest.TestCase):
         self.assertEqual(caught.exception.code, "blocked_address")
         self.assertEqual(self.http.requests, [])
 
-    def test_robots_denial_and_unavailable_rules_do_not_fetch_page(self):
-        """Wildcard exclusions and robots failures stop acquisition before page access.
+    def test_robots_rules_and_failures_are_never_requested(self):
+        """Robots deny rules and endpoint failures cannot affect requested page access.
 
         Args:
             self: This unittest case instance, holding its isolated fixtures and assertion
@@ -124,12 +125,12 @@ class WebTests(unittest.TestCase):
             with self.subTest(status=status):
                 self.routes[("example.org", "/robots.txt")] = (status, {"Content-Type": "text/plain"}, body)
                 reader = PublicWebReader(self.budget)
-                with self.assertRaises(RetrievalError):
-                    reader.fetch("https://example.org/page")
-        self.assertTrue(all(path == "/robots.txt" for _, path, _ in self.http.requests))
+                reply, _, _ = reader.fetch("https://example.org/page")
+                self.assertEqual(reply.body, b"Source text")
+        self.assertEqual([path for _, path, _ in self.http.requests], ["/page"] * 3)
 
-    def test_missing_robots_allows_page_and_rules_are_cached(self):
-        """A missing rules file is allowed; the same origin need not refetch it for every source.
+    def test_repeated_fetches_do_not_probe_a_missing_robots_endpoint(self):
+        """Repeated page requests never introduce a robots-policy lookup.
 
         Args:
             self: This unittest case instance, holding its isolated fixtures and assertion
@@ -142,7 +143,7 @@ class WebTests(unittest.TestCase):
         self.routes[("example.org", "/robots.txt")] = (404, {}, b"")
         self.reader.fetch("https://example.org/page")
         self.reader.fetch("https://example.org/page")
-        self.assertEqual([path for _, path, _ in self.http.requests], ["/robots.txt", "/page", "/page"])
+        self.assertEqual([path for _, path, _ in self.http.requests], ["/page", "/page"])
 
     def test_redirect_is_rechecked_and_private_target_is_never_requested(self):
         """An allowed starting address cannot smuggle an internal target through a redirect.
@@ -159,7 +160,7 @@ class WebTests(unittest.TestCase):
         with self.assertRaises(RetrievalError) as caught:
             self.reader.fetch("https://example.org/page")
         self.assertEqual(caught.exception.code, "blocked_address")
-        self.assertEqual(len(self.http.requests), 2)
+        self.assertEqual(len(self.http.requests), 1)
 
     def test_public_redirect_chain_is_retained_and_loop_is_rejected(self):
         """Provenance keeps redirect hops; a loop does not spend unlimited requests.
@@ -204,7 +205,7 @@ class WebTests(unittest.TestCase):
                 self.assertEqual(caught.exception.code, expected)
 
     def test_request_and_total_byte_budgets_stop_work(self):
-        """Robots traffic counts against both limits, not just successful source pages.
+        """Document requests and bytes alone consume the configured shared limits.
 
         Args:
             self: This unittest case instance, holding its isolated fixtures and assertion
@@ -214,15 +215,15 @@ class WebTests(unittest.TestCase):
             None. Assertions fail if the documented behavior regresses; unittest records the
             result.
         """
-        for limits, expected in [(RetrievalLimits(max_http_requests=1, min_host_interval_seconds=0.0), "request_limit"),
+        for limits, expected in [(RetrievalLimits(max_http_requests=0, min_host_interval_seconds=0.0), "request_limit"),
                                  (RetrievalLimits(max_total_bytes=4, min_host_interval_seconds=0.0), "total_size_limit")]:
             with self.subTest(expected=expected):
                 with self.assertRaises(RetrievalError) as caught:
                     PublicWebReader(RetrievalBudget(limits)).fetch("https://example.org/page")
                 self.assertEqual(caught.exception.code, expected)
 
-    def test_crawl_delay_and_rate_limit_are_respected(self):
-        """Honor the site's delay; after HTTP 429, do not repeatedly hit the origin.
+    def test_application_pacing_and_http_429_are_retained_without_robots(self):
+        """Keep application pacing and stop after HTTP429 without reading robots crawl delays.
 
         Args:
             self: This unittest case instance, holding its isolated fixtures and assertion
@@ -232,14 +233,16 @@ class WebTests(unittest.TestCase):
             None. Assertions fail if the documented behavior regresses; unittest records the
             result.
         """
-        self.routes[("example.org", "/robots.txt")] = (200, {}, b"User-agent: *\nCrawl-delay: 2\n")
+        self.routes[("example.org", "/robots.txt")] = (200, {}, b"User-agent: *\nDisallow: /\nCrawl-delay: 99999\n")
         self.routes[("example.org", "/page")] = (429, {}, b"")
+        self.budget.limits = RetrievalLimits(min_host_interval_seconds=2.0)
+        self.reader.last_request["https://example.org"] = time.monotonic()
         with patch("projectclarity.retrieval.public_url_fetcher.time.sleep") as sleep:
             with self.assertRaises(RetrievalError):
                 self.reader.fetch("https://example.org/page")
             self.assertTrue(sleep.called)
             # Pacing is now split into short cancellable waits. Their combined
-            # duration still honors the site's requested delay.
+            # duration honors the application interval, not the robots declaration.
             self.assertGreater(sum(call.args[0] for call in sleep.call_args_list), 1)
             self.assertTrue(all(0 < call.args[0] <= 0.25 for call in sleep.call_args_list))
         before = len(self.http.requests)

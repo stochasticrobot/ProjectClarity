@@ -17,7 +17,7 @@ RECORD_KEYS = {
     'review_claims': COMMON | {'report_requirements', 'source_id', 'source_context', 'passage',
         'entities', 'candidates', 'passages'},
 }
-TREE_KEYS = {'stage', 'context', 'inputs', 'sources'}
+TREE_KEYS = {'stage', 'context', 'inputs', 'sources', 'correction'}
 FINAL_KEYS = COMMON | {'assessment_policy', 'criteria', 'result_inventory', 'candidates',
     'sources', 'evidence_batches', 'evidence_registry', 'candidate_total', 'intact_anchored_total',
     'offered_total', 'inventory_truncated', 'context_inventory', 'candidate_status_counts',
@@ -25,13 +25,15 @@ FINAL_KEYS = COMMON | {'assessment_policy', 'criteria', 'result_inventory', 'can
     'previous_searches', 'search_outcomes', 'work_counts', 'search_history_counts'}
 
 
-def input_receipt(task, messages, schema):
+def input_receipt(task, messages, schema, *, extraction_settings=None):
     """Measure a task input and detect unexpected fields or oversized envelopes.
 
     Args:
         task: Application task identifier, never a model-provided routing choice.
         messages: Actual ordered role/text messages about to be sent.
         schema: Pydantic response schema class, included in the measured envelope.
+        extraction_settings: Optional resolved extraction bounds; ignored for other
+            tasks. None preserves the historical envelope-only preflight.
     Returns:
         JSON receipt with component sizes, contract, limit and explicit errors.
         Unknown tasks retain their existing executor policy and return None.
@@ -40,6 +42,8 @@ def input_receipt(task, messages, schema):
     if task not in {*RECORD_KEYS, 'bounded_evidence', 'bounded_coverage'}:
         return None
     limit = 128_000 if task == 'bounded_evidence' else 64_000
+    if task == 'extract_knowledge' and extraction_settings is not None:
+        limit = extraction_settings.max_input_characters
     message_size = len(json.dumps(messages, ensure_ascii=False))
     schema_size = len(json.dumps(schema.model_json_schema(), ensure_ascii=False))
     errors, payload = [], {}
@@ -61,6 +65,9 @@ def input_receipt(task, messages, schema):
             errors.append('input_contract_invalid_inventory')
         elif any('items' in ledger or 'records' in ledger for ledger in inventory.values()):
             errors.append('input_contract_full_inventory_forbidden')
+    if task == 'extract_knowledge' and extraction_settings is not None:
+        if message_size > extraction_settings.max_message_characters:
+            errors.append('extraction_input_too_large')
     if message_size + schema_size > limit:
         errors.append('input_contract_too_large')
     return dict(contract='task-input-v1', task=task, message_characters=message_size,

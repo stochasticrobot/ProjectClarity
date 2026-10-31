@@ -389,6 +389,8 @@ def resume_research(run_id: str, output_root: Path, key_reader=read_api_key, *, 
         uncertain; completed saved evidence can still be finalized. A worker lock
         prevents concurrent resumptions. Interrupted early studies are not replayed;
         started wire attempts keep their charge and have unknown token usage.
+        Reserved bounded summaries, including corrections, become uncertain before
+        scheduling so neither unchanged nor repartitioned work can replay them.
         Existing budgets and breaker states stay. Recovery reads session.json, not
         intermediate graph checkpoints; the resumed invocation saves its graph
         checkpoint only when it exits or pauses.
@@ -404,6 +406,12 @@ def resume_research(run_id: str, output_root: Path, key_reader=read_api_key, *, 
         if session.pending_review or session.status in {'cancelled', 'rejected'}:
             raise ResearchError('Plan review or cancellation prevents automatic workflow resume.')
         active = session.workflow.get('active')
+        for batch_id, receipt in session.coverage.get('evidence_batches', {}).items():
+            if batch_id.startswith('BT_') and receipt.get('status') == 'reserved':
+                receipt.update(status='uncertain', error_code='interrupted_outcome_unknown')
+                if receipt.get('attempt_history'):
+                    receipt['attempt_history'][-1].update(status='uncertain',
+                        error_code='interrupted_outcome_unknown')
         if session.coverage_study.get('status') == 'running':
             if not active and session.retrieval_usage:
                 saved_at = session.retrieval_usage.get('checkpoint_wall_time', time.time())

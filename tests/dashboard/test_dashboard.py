@@ -214,6 +214,8 @@ class DashboardTests(unittest.TestCase):
         """
         view = self.wait_view(self.launch('Target inventory'), lambda v: v['status']['finished'])
         goal = view['targets'][0]
+        for field in ('identified', 'field_supported', 'supported', 'qualification_policy', 'count_basis'):
+            self.assertEqual(view['metrics']['targets'][goal['goal_id']][field], goal[field])
         self.assertEqual((goal['identified'], goal['supported']), (1, 1))
         self.assertEqual([r['label'] for r in goal['rows']], ['Alice'])
         self.assertTrue(goal['rows'][0]['candidate_ids'])
@@ -275,6 +277,29 @@ class DashboardTests(unittest.TestCase):
         self.assertEqual(second['claims'], [])
         self.assertEqual(second['tokens']['calls'], 2)
 
+    def test_medium_profile_launch_reaches_production_worker(self):
+        """Route the default dashboard profile through CLI validation to saved extraction.
+
+        Args:
+            self: Isolated HTTP dashboard using synthetic provider transport.
+        Returns:
+            None. Checks actual worker configuration and trace, not a mocked
+            launcher command alone; no live provider call is made.
+        """
+        status, job, _ = self.request('/api/jobs', dict(question='Profile experiment',
+            max_requests=8, max_seconds=60, search=False, follow_links=False,
+            coverage_study=False, files=[dict(name='example.txt',
+                content=base64.b64encode(SOURCE_TEXT.encode()).decode())]))
+        self.assertEqual(status, 202, job)
+        view = self.wait_view(job, lambda v: v['status']['finished'])
+        directory = self.root / view['id']
+        saved = json.loads((directory / 'session.json').read_text())
+        self.assertEqual(saved['request']['extraction_settings']['profile'], 'medium')
+        self.assertEqual(saved['extraction']['sizing']['max_output_tokens'], 16384)
+        trace = json.loads(next((directory / 'extraction_calls').glob('*.json')).read_text())
+        self.assertEqual(trace['max_output_tokens'], 16384)
+        self.assertEqual(saved['request']['budget']['max_output_tokens'], 8192)
+
     def test_http_boundaries_and_invalid_inputs_never_start_workers(self):
         """Reject cross-origin mutations, hostile Host names and arbitrary file paths.
 
@@ -288,6 +313,7 @@ class DashboardTests(unittest.TestCase):
         for path in ['/../.env', '/api/runs/../../.env', '/session.json']:
             self.assertEqual(self.request(path)[0], 404)
         for payload in [{'question': 'No', 'files': [False]}, {'question': 'No', 'search': 'false'},
+                        {'question': 'No', 'extraction_profile': 'huge'}, {'question': 'No', 'extraction_profile': []},
                         {'question': 'No', 'model_concurrency': 0}, {'question': 'No', 'model_concurrency': 17},
                         {'question': 'No', 'model_concurrency': True}, {'question': 'No', 'max_requests': True}, {'question': 'No', 'urls': 'file:///etc/passwd'}]:
             self.assertEqual(self.request('/api/jobs', payload)[0], 400)

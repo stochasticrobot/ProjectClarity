@@ -145,9 +145,9 @@ class ReviewDiscoveryIntegrationTests(unittest.TestCase):
         self.assertEqual(session["visited_nodes"].count("retrieve_sources"), 2)
         self.assertEqual(session["visited_nodes"].count("review_claims"), 2)
         self.assertEqual(session["visited_nodes"].count("select_followup_sources"), 2)
-        self.assertEqual([r[1] for r in self.http.requests], ["/robots.txt", "/research", "/team"])
-        self.assertEqual(session["retrieval_usage"]["http_requests"], 3)
-        expected_bytes = sum(len(self.routes[("example.org", path)][2]) for path in ["/robots.txt", "/research", "/team"])
+        self.assertEqual([r[1] for r in self.http.requests], ["/research", "/team"])
+        self.assertEqual(session["retrieval_usage"]["http_requests"], 2)
+        expected_bytes = sum(len(self.routes[("example.org", path)][2]) for path in ["/research", "/team"])
         self.assertEqual(session["retrieval_usage"]["bytes_read"], expected_bytes)
         self.assertEqual(len(session["extraction"]["attempts"]), 2)
         candidates = session["extraction"]["candidates"]
@@ -195,7 +195,7 @@ class ReviewDiscoveryIntegrationTests(unittest.TestCase):
         """
         code, _, err, _, session = self.run_research(follow=False)
         self.assertEqual(code, 0, err)
-        self.assertEqual(len(self.http.requests), 2)
+        self.assertEqual(len(self.http.requests), 1)
         self.assertEqual(len(self.cli.requests), 3)
         self.assertFalse(session["discovery"])
 
@@ -246,7 +246,7 @@ class ReviewDiscoveryIntegrationTests(unittest.TestCase):
             "stop_reason": "Investigate."}))
         code, _, _, _, session = self.run_research()
         self.assertEqual(code, 1)
-        self.assertEqual(len(self.http.requests), 2)
+        self.assertEqual(len(self.http.requests), 1)
         self.assertEqual(len(session["sources"]), 1)
         self.assertEqual(session['workflow']['stop_reason'], 'blocked')
         failures = [h for h in session['discovery']['history'] if h.get('stop_reason') == 'invalid_selection_references']
@@ -286,11 +286,11 @@ class ReviewDiscoveryIntegrationTests(unittest.TestCase):
         code, _, _, _, session = self.run_research()
         self.assertEqual(code, 1)
         self.assertEqual(session["documents"][1]["error_code"], "discovery_origin_denied")
-        self.assertEqual([r[2]["headers"]["Host"] for r in self.http.requests], ["example.org"] * 3)
+        self.assertEqual([r[2]["headers"]["Host"] for r in self.http.requests], ["example.org"] * 2)
         self.assertEqual(len(session["extraction"]["candidates"]), 1)
 
     def test_http_budget_is_not_reset_for_discovery(self):
-        """The first round's robots/page requests exhaust a two-request allowance.
+        """The first round's page request exhausts a one-request allowance.
 
         Args:
             self: This unittest case instance, holding its isolated fixtures and assertion
@@ -300,12 +300,12 @@ class ReviewDiscoveryIntegrationTests(unittest.TestCase):
             None. Assertions fail if the documented behavior regresses; unittest records the
             result.
         """
-        code, _, err, _, session = self.run_research("--max-http-requests", "2")
+        code, _, err, _, session = self.run_research("--max-http-requests", "1")
         self.assertEqual(code, 1, err)
         self.assertEqual(session['workflow']['stop_reason'], 'budget_exhausted')
         self.assertIn('request_limit', session['workflow']['stop_details'])
         self.assertEqual(len(self.cli.requests), 3)
-        self.assertEqual(len(self.http.requests), 2)
+        self.assertEqual(len(self.http.requests), 1)
 
     def test_truncated_review_is_preserved_but_not_adjudicated_as_supported(self):
         """Answer text remains inspectable even when the provider stops at its output cap.
@@ -475,7 +475,7 @@ class ReviewDiscoveryIntegrationTests(unittest.TestCase):
         self.assertEqual(code, 130)
         self.assertEqual(session["status"], "cancelled")
         self.assertEqual(len(self.cli.requests), 3)
-        self.assertEqual(len(self.http.requests), 2)
+        self.assertEqual(len(self.http.requests), 1)
         self.assertEqual(len(session["extraction"]["candidates"]), 1)
 
     def test_no_links_stops_without_a_discovery_model_call(self):
@@ -506,7 +506,7 @@ class ReviewDiscoveryIntegrationTests(unittest.TestCase):
             None. Assertions fail if the documented behavior regresses; unittest records the
             result.
         """
-        seed_bytes = sum(len(self.routes[("example.org", path)][2]) for path in ["/robots.txt", "/research"])
+        seed_bytes = sum(len(self.routes[("example.org", path)][2]) for path in ["/research"])
         code, _, _, _, session = self.run_research("--max-total-bytes", str(seed_bytes + 1))
         self.assertEqual(code, 1)
         self.assertEqual(session["documents"][1]["error_code"], "total_size_limit")
@@ -586,7 +586,7 @@ class ReviewDiscoveryIntegrationTests(unittest.TestCase):
         self.assertIn('run_time_limit', session['workflow']['stop_details'])
         self.assertGreaterEqual(session["retrieval_usage"]["elapsed_seconds"], 181)
         self.assertEqual(len(self.cli.requests), 3)
-        self.assertEqual(len(self.http.requests), 2)
+        self.assertEqual(len(self.http.requests), 1)
 
     def test_review_budget_exhaustion_leaves_explicit_unfinished_work(self):
         """A three-call cap permits one reviewed passage; the second source stays explicitly queued.
@@ -627,5 +627,5 @@ class ReviewDiscoveryIntegrationTests(unittest.TestCase):
         code, _, err, _, session = self.run_research()
         self.assertEqual(code, 0, err)
         self.assertEqual(session["sources"][1]["url"], "https://archive.example.net/team")
-        self.assertEqual([r[2]["headers"]["Host"] for r in self.http.requests], ["archive.example.net"] * 3)
+        self.assertEqual([r[2]["headers"]["Host"] for r in self.http.requests], ["archive.example.net"] * 2)
         self.assertEqual(session["discovery"]["stop_reason"], "link_depth_limit")

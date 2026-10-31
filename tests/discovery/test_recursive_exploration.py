@@ -162,7 +162,7 @@ class RecursiveExplorationTests(unittest.TestCase):
 
         Returns:
             None. Assert denied direct links never enter selection and redirect targets never
-            receive robots/document requests; other permitted work remains recorded.
+            receive document requests; other permitted work remains recorded.
         """
         blacklist = self.base.cli.directory / 'deny.txt'
         blacklist.write_text('join.example\n')

@@ -193,7 +193,11 @@ separate session journal. Existing checkpoint history is not automatically remov
 - **Coverage assessments** judge evidence against answer requirements. Large evidence
   collections use a bounded summary tree; final requests contain inventory counts,
   not every report row. A completed summary is not a completed answer; all calls
-  share the same allowance. See [bounded inputs and limitations](docs/bounded-coverage.md).
+  share the same allowance. Known-complete invalid summaries can receive one
+  explicit correction; original caveats and uncertainty flags are preserved.
+  Interrupted outcomes are not automatically replayed. Exhausted corrections
+  leave coverage visibly blocked rather than repeatedly retrying unchanged work.
+  See [bounded inputs and limitations](docs/bounded-coverage.md).
 - **Usage** distinguishes model requests from tokens. Missing token usage remains
   unknown; displayed known subtotals are not exact bills.
 
@@ -374,3 +378,61 @@ understand how a question moves through the application:
 Model response classes and field descriptions can become part of the schema sent
 to the model. They are not interchangeable with developer-only comments. Private
 run data and local investigation reports are excluded from version control by default.
+
+### Experimental extraction sizes
+
+New runs default to **Medium**, with **Small** and **Large** also available in the
+dashboard's Research settings, or use `--extraction-profile medium` on a research
+command. These settings affect extraction only, not review/coverage output caps,
+concurrency, source permissions, or the shared request/time budget.
+
+| Extraction setting | Small | Medium | Large |
+| --- | ---: | ---: | ---: |
+| Maximum structured records/passage | 8 | 16 | 32 |
+| Structured-text target (characters) | 3,000 | 6,000 | 12,000 |
+| Hard passage ceiling (characters) | 12,000 | 24,000 | 48,000 |
+| Serialized messages ceiling (characters) | 48,000 | 80,000 | 112,000 |
+| Messages + response schema ceiling (characters) | 64,000 | 96,000 | 128,000 |
+| Extraction output cap (tokens) | 8,192 | 16,384 | 32,768 |
+
+These are application limits, **not verified model capabilities or proven quality
+improvements**. Character counts are not tokens. Select settings supported by your
+model; provider rejections retain their normal private error receipts and do not
+silently downgrade or increase allowances. The final serialized input is checked;
+overflow fails visibly without dropping source text or sending a partial request.
+
+Omitting the profile selects Medium; an explicitly supplied `--max-output-tokens`
+still caps extraction unless an extraction-specific cap is supplied. Saved runs
+keep their resolved settings; older requests without settings retain legacy Small
+packing and their saved output cap. Explicit profiles select their own extraction output
+cap; `--max-output-tokens` still controls other tasks. Optional extraction-only
+numeric overrides are `--extraction-records`, `--extraction-record-characters`,
+`--extraction-passage-characters`, `--extraction-message-characters`,
+`--extraction-input-characters`, and `--extraction-output-tokens`. The last option
+can lower a preset's output cap for a different model. Smaller output caps may
+require smaller passages too; no adaptive tuning is implied.
+
+For example, add `--extraction-profile medium --extraction-output-tokens 8192`
+to an existing research command to test medium packing with the original output
+allowance. CLI help lists all controls. Python callers may supply an immutable
+`ExtractionSettings.for_profile('medium', max_output_tokens=8192)` as the
+`ResearchRequest.extraction_settings` field.
+
+Resolved settings persist in the request, extraction inventory, configuration,
+input receipts and call traces. Restart preserves the recorded partition and
+rejects changed sizing against an existing inventory; use a new run for a different
+profile. A shared deployment must restart its dashboard server after updating code
+before the new selector can launch profile-aware workers. No live-model benchmark
+is implied by the offline production-path tests.
+
+### Source access policy
+
+ProjectClarity does **not fetch or interpret robots.txt as an access policy**. Robots disallow rules,
+crawl delays, and unavailable robots endpoints do not block source retrieval,
+including redirect targets. There is no robots-policy opt-in or fallback lookup.
+Domain allow/deny settings, public-network address checks, TLS verification,
+application-owned pacing, HTTP rate-limit handling, and request/time/size budgets
+remain in force. Search-provider errors and actual page HTTP failures remain
+visible; removing robots checks does not guarantee that a site returns readable
+content. Historical robots-related failure receipts and charged traffic are
+preserved; existing failed sources are not automatically replayed.

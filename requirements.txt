@@ -818,12 +818,6 @@ primp==2.0.1 \
     --hash=sha256:e5f8d170c69b4afbe61d854b3f0cf27a0c0e557f0e54ebe595dad4db0f72127d \
     --hash=sha256:f0806c7653ee05bbe3c7b28f97f19bd5d763d7da1366026d5cb85cd8713f5c33
     # via ddgs
-protego==0.7.0 \
-    --hash=sha256:2c032d9736a1f4f0c4318f3558353ae34da5cd038f1a5e064ded7548df315e5a \
-    --hash=sha256:944638aaee608f6c83fcad442695f3f9381a60be8d5007248f46b00f201fa5fc
-    # via
-    #   -c requirements.txt
-    #   -r requirements.in
 pydantic==2.14.1 \
     --hash=sha256:9195d967ec791692a04438115466764fb8b9a27b31f14a760437694f40d6b454 \
     --hash=sha256:94f478203dd03404682a1ada216965651dd74b1d2d5ffd62e00e0837caab5c26

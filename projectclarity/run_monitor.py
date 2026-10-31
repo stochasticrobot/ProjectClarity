@@ -160,7 +160,7 @@ class RunMonitor:
 
         Returns:
             None. Claim the new run, initialize status/event files and register its starting
-            source IDs.
+            source IDs, including independent extraction limits.
         """
         self.directory = self.output_root / session.session_id
         self.lock = (self.directory / "worker.lock").open("a")
@@ -172,6 +172,7 @@ class RunMonitor:
             "waiting_for_input": False,
             "limits": session.request.fetch_limits.model_dump(), "metrics": {}, "sources": [],
             "llm_limits": session.request.budget.model_dump(),
+            "extraction_limits": session.request.extraction_settings.model_dump(),
         }
         for source in session.sources:
             # IDs map back to the private source list in session.json. Logging

@@ -424,7 +424,7 @@ class ResearchConsole:
         tokens = usage.get("total_tokens")
         token_text = f"{tokens:,}" if tokens is not None else "unknown/incomplete"
         self.say(f"    Reported tokens: {token_text} (no run-wide token cap; "
-            f"{budget['max_output_tokens']:,} output tokens/reply); bytes: "
+            f"{budget['max_output_tokens']:,} default output tokens/reply); bytes: "
             f"{byte_count:,}/{limits['max_total_bytes']:,} "
             f"({max(0, limits['max_total_bytes'] - byte_count):,} left).")
         if request.get("web_search"):

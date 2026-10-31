@@ -1,7 +1,7 @@
 """Prove larger/deeper crawling through the terminal interface, not a helper-only simulation.
 
 HTTP/DNS/model transports and pacing sleep are synthetic; graph scheduling,
-selection validation, robots, parsing, budgets and saved receipts remain real.
+selection validation, public-address checks, parsing, budgets and saved receipts remain real.
 This proves capacity, not model judgment, live throughput or research coverage.
 """
 import unittest
@@ -85,7 +85,7 @@ class CrawlCapacityCLITests(unittest.TestCase):
         self.assertEqual(max(s['depth'] for s in saved['sources']), 8)
         self.assertEqual(len({urlsplit(s['url']).hostname for s in saved['sources']}), 2)
         usage = saved['retrieval_usage']
-        self.assertEqual(usage['http_requests'], 59)
+        self.assertEqual(usage['http_requests'], 57)
         self.assertGreater(usage['bytes_read'], 25 * 1024 * 1024)
         request = saved['request']
         self.assertEqual(request['max_sources'], 250)
@@ -99,6 +99,7 @@ class CrawlCapacityCLITests(unittest.TestCase):
         self.assertEqual(len(first['capacity_deferred_ids']), 2)
         counts = Counter((r[2]['headers']['Host'], r[1]) for r in self.flow.http.requests)
         self.assertTrue(all(count == 1 for count in counts.values()))
+        self.assertFalse(any(path == '/robots.txt' for _, path in counts))
         self.assertIn('website hostnames: 2', err)
         self.assertIn('Pages/documents registered: 57/250', err)
         # Loading the actual saved run checks persistence, not just in-memory graph state.

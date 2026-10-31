@@ -26,6 +26,9 @@ from pydantic import BaseModel, ConfigDict, Field, StringConstraints, field_vali
 from pydantic_core import PydanticCustomError
 
 
+from projectclarity.extraction.settings import ExtractionSettings
+
+
 DEFAULT_MODEL = "claude-haiku-5-5"
 Text = Annotated[str, StringConstraints(strip_whitespace=True, min_length=1, max_length=1600)]
 Identifier = Annotated[str, StringConstraints(pattern=r"^[A-Za-z][A-Za-z0-9_-]{0,31}$")]
@@ -54,7 +57,7 @@ class FetchLimits(Contract):
 
     terminal interface options select crawl-scale allowances within hard ceilings. Legacy/API
     defaults remain unchanged. These settings are saved with the request; the
-    model cannot change them. Per-file parser bounds and robots delays remain.
+    model cannot change them. Per-file parser bounds and application pacing remain.
     """
 
     model_config = ConfigDict(frozen=True)
@@ -153,6 +156,7 @@ class ResearchRequest(Contract):
     # Operator-designated institutions supplement the conservative government-domain hints.
     official_domains: list[str] = Field(default_factory=list, max_length=100)
     model_timeout_seconds: float = Field(default=60.0, gt=0, le=300)
+    extraction_settings: ExtractionSettings | None = None
     budget: Budget = Field(default_factory=Budget)
     fetch_limits: FetchLimits = Field(default_factory=FetchLimits)
 
@@ -194,6 +198,7 @@ class ResearchRequest(Contract):
 
         Check search selection, extraction, claim review, link discovery and coverage
         requirements together. Semantic stopping requires coverage and claim review.
+        Legacy requests resolve small extraction settings with their saved output cap.
         The preliminary study needs its shared request allowance; its optional
         fallback requires study opt-in. Plan-only mode cannot also extract documents.
 
@@ -205,6 +210,11 @@ class ResearchRequest(Contract):
             This request after cross-option validation; incompatible stage flags or limits raise
             ValueError.
         """
+        # Legacy requests preserve their recorded per-call cap. Resolved settings
+        # are serialized with the request, not chosen again at dispatch/restart.
+        if self.extraction_settings is None:
+            object.__setattr__(self, 'extraction_settings', ExtractionSettings.for_profile(
+                'small', max_output_tokens=self.budget.max_output_tokens))
         if self.design_answer and self.budget.max_requests < 2:
             raise PydanticCustomError('answer_design_budget', 'Answer design requires two shared requests including planning')
         if self.accumulate_knowledge and not self.extract_knowledge:

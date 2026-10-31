@@ -259,14 +259,18 @@ function targetSupportStats(target) {
  * Returns:
  *   Chart and goal-selector markup. Uses state.targetGoal; historical samples
  *   with another count basis or inclusion policy are omitted. Missing historical
- *   field-support samples are not invented. If no compatible history exists, shows
- *   a current-only point rather than inventing a historical curve.
+ *   field-support samples are not invented. Appends the authoritative current goal
+ *   when recorded history lags or differs, without rewriting historical samples.
+ *   If no compatible history exists, shows a current-only point. Finished runs use
+ *   their saved update time, not the time someone happens to open the dashboard.
  */
 function targetChart(data) {
   const g=targetGoal(data);if(!g)return '<p class="muted">No list of targets has been defined for this question.</p>';
   const history=data.history.filter(r=>r.values.targets?.[g.goal_id]?.count_basis===g.count_basis&&(r.values.targets[g.goal_id].qualification_policy||'legacy_field_support')===(g.qualification_policy||'legacy_field_support'));
-  const current={timestamp:Date.now()/1000,values:data.metrics};
-  const samples=history.length?history:[current];
+  const updated=Date.parse(data.status?.updated_at||data.status?.finished_at||'')/1000;
+  const current={timestamp:Math.max(history.at(-1)?.timestamp||0,Number.isFinite(updated)?updated:Date.now()/1000),values:{...data.metrics,targets:{[g.goal_id]:g},tokens:data.tokens||data.metrics?.tokens}};
+  const last=history.at(-1)?.values.targets[g.goal_id];
+  const samples=last&&['identified','field_supported','supported'].every(k=>last[k]===g[k])?history:[...history,current];
   return `<div class="target-selector">${targetSelector(data)}</div><div class="legend"><span>Candidate targets identified</span><span class="field-support">Field-supported targets</span><span class="amber">${g.qualification_policy&&g.qualification_policy!=='legacy_field_support'?'Qualified targets':'Field-supported targets (legacy)'}</span></div>${chart(samples,[{value:r=>r.values.targets?.[g.goal_id]?.identified,color:'#12796c'},{value:r=>r.values.targets?.[g.goal_id]?.field_supported,color:'#3568ac'},{value:r=>r.values.targets?.[g.goal_id]?.supported,color:'#c28b37'}],'Target discovery and support')}<p class="fine">${esc(g.unit)}. Counts use the shared goal-shaped result inventory, not claim mentions. Qualifications and unresolved identities remain in the Targets view. Counts can decrease when evidence is disputed or identities become uncertain.${history.length?' Historical points use the evidence status recorded at the time.':' No target history was recorded by this worker; showing the current count only. New runs record the curve.'}</p><button data-tab="targets">Explore these targets →</button>`;
 }
 /** Compose the activity, target-history, claim-preview and usage overview.
@@ -591,7 +595,7 @@ function upload(file) {return new Promise((resolve,reject)=>{if(file.size>5*1024
  */
 async function startResearch(event) {
   event.preventDefault();$('#launch').disabled=true;$('#form-error').textContent='';
-  try {const form=$('#new-form'),f=new FormData(form);const payload={question:f.get('question'),urls:f.get('urls'),model:f.get('model'),max_requests:Number(f.get('max_requests')),model_concurrency:Number(f.get('model_concurrency')),max_seconds:Number(f.get('minutes'))*60,explore_depth:Number(f.get('explore_depth')),files:await Promise.all([...$('#uploads').files].map(upload))};for(const k of ['search','follow_links','coverage_study','estimate_fallback','automatic_stopping','design_answer'])payload[k]=form.elements[k].checked;
+  try {const form=$('#new-form'),f=new FormData(form);const payload={question:f.get('question'),urls:f.get('urls'),model:f.get('model'),extraction_profile:f.get('extraction_profile'),max_requests:Number(f.get('max_requests')),model_concurrency:Number(f.get('model_concurrency')),max_seconds:Number(f.get('minutes'))*60,explore_depth:Number(f.get('explore_depth')),files:await Promise.all([...$('#uploads').files].map(upload))};for(const k of ['search','follow_links','coverage_study','estimate_fallback','automatic_stopping','design_answer'])payload[k]=form.elements[k].checked;
     const job=await api('/api/jobs',payload);state.pendingJob=job.id;$('#new-dialog').close();notice('Starting your investigation…');await refresh();
   } catch(e){$('#form-error').textContent=e.message;}finally{$('#launch').disabled=false;}
 }

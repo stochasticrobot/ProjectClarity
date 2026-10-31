@@ -6,7 +6,7 @@ a time. Offsets refer to that normalized text, not HTML bytes or PDF pages.
 Both extraction and evidence validation use the same reader so edited text
 cannot quietly become the evidence for an earlier model response.
 
-Passages are non-overlapping, at most 12,000 characters. Parser-labelled HTML
+Passages are non-overlapping and bounded by the selected extraction settings. Parser-labelled HTML
 records stay intact within that ceiling and use smaller groups; ordinary prose
 prefers newline boundaries. Oversized records and long paragraphs can still split.
 No text is silently truncated or ranked away:
@@ -20,11 +20,10 @@ import re
 from bisect import bisect_left, bisect_right
 from pathlib import Path
 
+from projectclarity.extraction.settings import ExtractionSettings
 
-MAX_PASSAGE_CHARACTERS = 12_000
+
 MAX_SAVED_TEXT_BYTES = 8 * 1024 * 1024
-MAX_RECORDS_PER_PASSAGE = 8
-RECORD_PASSAGE_CHARACTERS = 3000
 RECORD_START = re.compile(r'^\[Record (?:T\d+R\d+|C\d+)\]\n', re.MULTILINE)
 
 
@@ -66,20 +65,22 @@ def read_verified_text(directory: Path, document) -> str:
         raise EvidenceInputError("saved_text_unreadable") from None
 
 
-def iter_passages(text: str):
+def iter_passages(text: str, settings=None):
     """Yield stable passage IDs and exact offsets covering all the supplied text.
 
     Args:
         text: Complete normalized source text to divide into bounded extraction passages.
+        settings: Resolved extraction settings; None preserves the small legacy partition.
 
     Returns:
         Successive (passage ID, start, end) tuples covering every character once.
-        Parser-labelled records are grouped up to eight at a time, aiming for 3,000
-        characters; a single larger record stays intact up to the hard 12,000 cap.
+        Parser-labelled records use the configured record count and character target;
+        a single larger record stays intact up to the configured hard passage cap.
         This is input accounting, not a claim that a model extracted every fact.
     """
     # Record boundaries are structural formatting, never instructions or evidence
     # of relevance. Old saved inventories retain their original offsets on restart.
+    settings = settings or ExtractionSettings()
     records = list(RECORD_START.finditer(text))
     record_starts = [match.start() for match in records]
     boundaries = {match.start() for match in records}
@@ -89,15 +90,15 @@ def iter_passages(text: str):
     boundaries = sorted(boundaries)
     start, number = 0, 1
     while start < len(text):
-        end = min(len(text), start + MAX_PASSAGE_CHARACTERS)
+        end = min(len(text), start + settings.max_passage_characters)
         upcoming = records[bisect_left(record_starts, start):bisect_left(record_starts, end)]
         if upcoming:
             if upcoming[0].start() > start:
                 # Do not pack a large prose prefix with the first dense record.
                 end = upcoming[0].start()
             else:
-                target = min(end, start + RECORD_PASSAGE_CHARACTERS,
-                             upcoming[MAX_RECORDS_PER_PASSAGE].start() if len(upcoming) > MAX_RECORDS_PER_PASSAGE else end)
+                target = min(end, start + settings.record_target_characters,
+                             upcoming[settings.max_records_per_passage].start() if len(upcoming) > settings.max_records_per_passage else end)
                 first = bisect_right(boundaries, start)
                 after = bisect_right(boundaries, target)
                 if after > first:
@@ -105,7 +106,7 @@ def iter_passages(text: str):
                 else:
                     end = min(end, boundaries[first]) if first < len(boundaries) else end
         elif end < len(text):
-            boundary = text.rfind("\n", start + MAX_PASSAGE_CHARACTERS // 2, end)
+            boundary = text.rfind("\n", start + settings.max_passage_characters // 2, end)
             if boundary >= 0:
                 end = boundary + 1
         yield f"P{number}", start, end

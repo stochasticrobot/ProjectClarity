@@ -57,7 +57,7 @@ class ContractCompletionTests(unittest.TestCase):
     """Separate positive mechanics, adversarial gates and model-quality limitations."""
 
     def run_contract(self, *, count=2, format='records', large=False, fault=None, budget=220,
-                     repeated_scope=False):
+                     repeated_scope=False, digest_transform=None):
         """Run a designed report through the actual terminal entry point.
 
         Args:
@@ -67,7 +67,7 @@ class ContractCompletionTests(unittest.TestCase):
             large: Include long complete quotations and qualifications so final
                 evidence really exceeds the production aggregate input allowance.
             fault: Optional wrong_unit, missing_field, conflict, unknown_target,
-                digest_invalid, digest_crash, coverage_crash, provider_failure,
+                digest_invalid, digest_crash, digest_correction_crash, coverage_crash, provider_failure,
                 row_reference, or satisfied_gaps fault
                 at the provider boundary.
                 budget accepts an ordinary incomplete outcome under a lower allowance.
@@ -75,6 +75,8 @@ class ContractCompletionTests(unittest.TestCase):
             repeated_scope: Use long but valid scope/question text repeated by actual
                 qualification receipts, exercising transport normalization rather
                 than requiring longer source quotations or live model judgments.
+            digest_transform: Optional synthetic reply callback(payload, answer, fixture)
+                at the digest SDK boundary; production code remains unchanged.
         Returns:
             Fixture, typed saved session, run directory and captured SDK payloads.
             Network/model transports alone are synthetic; all production nodes run.
@@ -159,6 +161,8 @@ class ContractCompletionTests(unittest.TestCase):
                     unresolved_conflict=fault == 'summary_conflict', unresolved_identity=False, requires_detail=False)
                 if fault == 'digest_invalid':
                     answer['covered_input_ids']=['invented_candidate']
+                if digest_transform:
+                    answer = digest_transform(payload, answer, fixture)
             elif title == 'CoverageAssessment':
                 if fault == 'coverage_crash':
                     raise SystemExit(77)
@@ -207,7 +211,7 @@ class ContractCompletionTests(unittest.TestCase):
         fixture.provider = provider
         fixture.flow.provider = provider
         fixture.cli.run_cli = run
-        if fault in {'digest_crash', 'coverage_crash'}:
+        if fault in {'digest_crash', 'coverage_crash', 'digest_correction_crash'}:
             code, _, _ = fixture.cli.run_cli(provider, '--extract', '--review-claims',
                 '--max-requests', str(budget), '--question', 'List the source items and their associated values.',
                 plan_only=False, details=False, source_dns=public_dns)
@@ -469,13 +473,13 @@ class ContractCompletionTests(unittest.TestCase):
             self: Test owner injecting invalid model output, not bypassing its validator.
         Returns:
             None; every rejected batch retains its receipts, consumes the ordinary
-            allowance and is not automatically replayed. Completion stays blocked.
+            allowance and receives at most one explicit correction. Completion stays blocked.
         """
         fixture,session,_,seen=self.run_contract(count=36,large=True,fault='digest_invalid')
         receipts=session.coverage['evidence_batches']
         self.assertTrue(receipts)
         self.assertTrue(all(r['status']=='failed' and r['attempts']<=2 for r in receipts.values()))
-        self.assertTrue(all(r['attempts']==1 for r in receipts.values()))
+        self.assertTrue(all(r['attempts']==2 for r in receipts.values()))
         self.assertFalse(completion_status(session,fixture.cli.output)['ready'])
         self.assertLessEqual(session.usage.requests_attempted,session.request.budget.max_requests)
         self.assertTrue(any(t=='BoundedDigest' for t,_ in seen))

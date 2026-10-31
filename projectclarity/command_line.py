@@ -163,12 +163,19 @@ def argument_parser() -> argparse.ArgumentParser:
     research.add_argument('--design-answer', action='store_true', help='Design an answer schema before planning (one shared-budget call, plus at most one correction if needed and budget allows); old runs are unchanged')
     research.add_argument("--max-requests", type=int, default=None, help="Total model-request ceiling (0–1000; default 100 with --extract, --search or --coverage-study outside plan-only, otherwise 2 with --design-answer or 1 without)")
     research.add_argument("--max-output-tokens", type=int, default=None, help="Output cap per request (128–8192; default 8192 with --extract or --coverage-study, otherwise 2048)")
+    research.add_argument('--extraction-profile', choices=['small', 'medium', 'large'], default=None,
+        help='Extraction-only sizing preset (default medium); an explicit global output cap is preserved when the profile is omitted')
+    for flag, field in [('records', 'max_records_per_passage'), ('record-characters', 'record_target_characters'),
+            ('passage-characters', 'max_passage_characters'), ('message-characters', 'max_message_characters'),
+            ('input-characters', 'max_input_characters'), ('output-tokens', 'max_output_tokens')]:
+        research.add_argument('--extraction-' + flag, dest='extraction_' + field, type=int, default=None,
+            help='Override the extraction preset ' + field.replace('_', ' ') + ' (other tasks unchanged)')
     research.add_argument("--output-dir", type=Path, default=Path(".projectclarity/runs"), help="Local session directory (default: .projectclarity/runs)")
     research.add_argument("--max-fetch-seconds", type=float, default=1800.0, help="Shared acquisition wall time from first search/retrieval, including intervening model work (>0 to 7200 seconds; default 1800)")
     research.add_argument("--fetch-timeout-seconds", type=float, default=10.0, help="Per-HTTP connect/read timeout (greater than 0, at most 10 seconds)")
     research.add_argument("--max-source-bytes", type=int, default=5 * 1024 * 1024, help="Per-source byte cap (1–5242880)")
-    research.add_argument("--max-total-bytes", type=int, default=250 * 1024 * 1024, help="Total download byte allowance, including robots (default 250 MiB; maximum 1 GiB)")
-    research.add_argument("--max-http-requests", type=int, default=1000, help="HTTP attempt allowance, including robots/redirects/retries (default 1000; maximum 10000)")
+    research.add_argument("--max-total-bytes", type=int, default=250 * 1024 * 1024, help="Total download byte allowance, including failed downloads (default 250 MiB; maximum 1 GiB)")
+    research.add_argument("--max-http-requests", type=int, default=1000, help="HTTP attempt allowance, including redirects/retries (default 1000; maximum 10000)")
     progress = research.add_mutually_exclusive_group()
     progress.add_argument("--quiet-progress", action="store_true", help="Disable live stderr progress; final summary/answer still print and files are saved")
     progress.add_argument("--progress-json", action="store_true", help="Write live progress events as JSON lines to stderr")
@@ -279,7 +286,18 @@ def main(argv: list[str] | None = None) -> int:
             raise ResearchError('--no-knowledge conflicts with --knowledge-max-requests')
         if args.knowledge_max_requests and not args.extract:
             raise ResearchError('--knowledge-max-requests requires --extract')
+        from projectclarity.extraction.settings import DEFAULT_EXTRACTION_PROFILE, ExtractionSettings
+        extraction_overrides = {field: getattr(args, 'extraction_' + field) for field in
+            ('max_records_per_passage', 'record_target_characters', 'max_passage_characters',
+             'max_message_characters', 'max_input_characters', 'max_output_tokens')
+            if getattr(args, 'extraction_' + field) is not None}
+        if (args.extraction_profile is None and args.max_output_tokens is not None
+                and 'max_output_tokens' not in extraction_overrides):
+            extraction_overrides['max_output_tokens'] = args.max_output_tokens
+        extraction_settings = ExtractionSettings.for_profile(
+            args.extraction_profile or DEFAULT_EXTRACTION_PROFILE, **extraction_overrides)
         request = ResearchRequest(
+            extraction_settings=extraction_settings,
             question=args.question,
             urls_file=args.urls,
             document_paths=args.document,
@@ -320,6 +338,9 @@ def main(argv: list[str] | None = None) -> int:
                 request_timeout_seconds=args.fetch_timeout_seconds, max_source_bytes=args.max_source_bytes,
                 max_total_bytes=args.max_total_bytes, max_http_requests=args.max_http_requests),
         )
+        if request.extract_knowledge:
+            sizing = request.extraction_settings
+            print(f"Extraction profile: {sizing.profile} | records/chunk: {sizing.max_records_per_passage} | passage cap: {sizing.max_passage_characters} characters | extraction output cap: {sizing.max_output_tokens} tokens", flush=True)
         if request.plan_only:
             print("Planning only — no sources will be fetched or searches executed.", flush=True)
             print("Document references are checked locally; document contents are not read.", flush=True)
@@ -336,7 +357,7 @@ def main(argv: list[str] | None = None) -> int:
                 scope = 'seed origins only' if request.same_origin_links else 'public sites subject to URL policy'
                 depth = str(request.max_link_depth) if request.max_link_depth is not None else 'no separate depth cap'
                 print(f"Discovery enabled: up to {request.max_followup_sources} new pages per round, {request.max_sources} total pages/documents (not websites); {scope}; depth: {depth}.", flush=True)
-        print(f"Model: {terminal_text(request.model)} | output cap: {request.budget.max_output_tokens} tokens | concurrency: {request.model_concurrency} | retries: {request.model_retries} | timeout: {request.model_timeout_seconds:g}s", flush=True)
+        print(f"Model: {terminal_text(request.model)} | default output cap: {request.budget.max_output_tokens} tokens | concurrency: {request.model_concurrency} | retries: {request.model_retries} | timeout: {request.model_timeout_seconds:g}s", flush=True)
         progress_event = progress_sink(args)
 
         session = run_research(request, args.output_dir, on_event=None if args.quiet_progress else progress_event)

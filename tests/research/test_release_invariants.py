@@ -29,11 +29,12 @@ class ReleaseInvariantTests(unittest.TestCase):
         Returns:
             None; fails on a stalled long source while more discovery happens.
             Preconditions prove multiple rounds and remaining work actually exist.
+            Explicit Small packing keeps enough passages for sustained admissions.
             The 240-call test allowance funds three adaptive reading/discovery
             cycles; it changes no production default or saved-run allowance.
         """
         scenario = SourceScenario(self, concurrency=concurrency, arrivals=arrivals, seed=seed)
-        _, _, saved, _ = scenario.run(budget=240)
+        _, _, saved, _ = scenario.run(budget=240, profile='small')
         self.assertLessEqual(saved['usage']['requests_attempted'], 240)
         rounds = {s['search']['round']: s for s in scenario.snapshots}
         counts = []

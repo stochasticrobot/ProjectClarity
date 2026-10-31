@@ -129,6 +129,8 @@ def work_inventory(session):
         waits at that boundary so it cannot invalidate the terminal assessment.
         All coverage identities include evidence revisions and durable
         batch advancement, permitting bounded continuation without resetting retries.
+        Terminal summary failures block only still-required content-addressed nodes;
+        unknown outcomes remain blocked globally, including after repartitioning.
     """
     request = session.request
     tasks = []
@@ -201,7 +203,9 @@ def work_inventory(session):
         from projectclarity.coverage.stopping import evidence_revision as current_revision
         from projectclarity.coverage.contract_assessment import batch_schedule_key
         coverage_key = [current_revision(session), batch_schedule_key(session)]
-        add('coverage', 'assess_research_gaps', coverage_key, blocked=model_reason,
+        from projectclarity.coverage.summary_recovery import scheduling_blocker
+        coverage_block = scheduling_blocker(session)
+        add('coverage', 'assess_research_gaps', coverage_key, blocked=coverage_block or model_reason,
             attempts=2)
 
     if request.web_search:

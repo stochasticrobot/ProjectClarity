@@ -26,6 +26,7 @@ SYSTEM_PROMPT = load_prompt('extract_knowledge.txt')
 def create_extractor(api_key: str, session, *, timeout_seconds=None):
     """Build, but do not invoke, the bounded Anthropic structured-output adapter.
 
+    The saved extraction settings choose the output cap independently of other tasks.
     include_raw gives the node answer text and usage even when schema parsing fails. The
     node saves selected fields privately; it never dumps the SDK object. No tool permissions
     or SDK retries are attached to this call; the shared executor owns bounded recovery.
@@ -41,7 +42,8 @@ def create_extractor(api_key: str, session, *, timeout_seconds=None):
         A configured structured-output runnable; no request is sent until the caller invokes
         it.
     """
-    return create_structured_model(api_key, session, ExtractionBatch, timeout_seconds=timeout_seconds)
+    return create_structured_model(api_key, session, ExtractionBatch, timeout_seconds=timeout_seconds,
+        max_output_tokens=session.request.extraction_settings.max_output_tokens)
 
 
 def extraction_messages(session, attempt, text: str) -> list[tuple[str, str]]:

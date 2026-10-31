@@ -209,7 +209,9 @@ class CompetingDocumentsCLITests(unittest.TestCase):
             self: Two documents with a misleading G1 background signal in the first.
         Returns:
             None; verifies saved complete pairs, review inputs, provenance and bounded
-            calls, including the additional final coverage opportunity.
+            calls, including the additional final coverage opportunity. All base
+            roster passages must finish; optional refinements may remain queued
+            after every expected pair has already been extracted and supported.
         """
         with patch('projectclarity.retrieval.retrieval_limits.time.sleep'):
             _, directory, saved, _ = self.flow.run_workflow('--search', '--max-search-queries', '1',
@@ -225,7 +227,8 @@ class CompetingDocumentsCLITests(unittest.TestCase):
         self.assertFalse(any(call['task'] == 'bounded_evidence' for call in saved['model_attempts']))
         self.assertEqual(saved['model_attempts'][-1]['task'], 'bounded_coverage')
         roster = [a for a in saved['extraction']['attempts'] if a['source_id'] == 'S2']
-        self.assertTrue(all(a['status'] == 'completed' for a in roster if a['start'] >= 2000))
+        self.assertTrue(all(a['status'] == 'completed' for a in roster
+                            if a['start'] >= 2000 and not a['refinement_parent']))
         self.assertLess(sum(sid == 'S1' for sid, _ in self.calls), 10)
         self.assertTrue(self.review_payloads)
 
@@ -233,14 +236,15 @@ class CompetingDocumentsCLITests(unittest.TestCase):
         """The final coverage reservation cannot erase results awaiting claim review.
 
         Args:
-            self: Same competing-document fixture with one fewer model call.
+            self: Small-profile competing-document fixture with one fewer model call.
         Returns:
             None. Assert all 64 pairs remain in the final answer, eight explicitly
             pending, and coverage runs instead of silently approving the unreviewed tail.
         """
         with patch('projectclarity.retrieval.retrieval_limits.time.sleep'):
             _, directory, saved, _ = self.flow.run_workflow('--search', '--max-search-queries', '1',
-                '--explore-before-search-depth', '1', '--max-requests', '28')
+                '--explore-before-search-depth', '1', '--max-requests', '28',
+                '--extraction-profile', 'small')
         answer = json.loads((directory / 'answer.json').read_text())
         result = answer['progress']['goals'][0]['results']
         expected = {(f'Item{i:03d}', f'Place{i:03d}') for i in range(64)}

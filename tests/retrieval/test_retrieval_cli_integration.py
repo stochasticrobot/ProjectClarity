@@ -44,6 +44,29 @@ class RetrievalCLIIntegrationTests(unittest.TestCase):
         pool.start()
         self.addCleanup(pool.stop)
 
+    def test_production_retrieval_omits_robots_before_and_after_redirect(self):
+        """Fetch selected pages despite disallow rules without ever requesting them.
+
+        Args:
+            self: Real CLI/parser fixture with synthetic source/provider transports.
+        Returns:
+            None. Verifies only source and redirect requests are charged, text is
+            saved and no robots events exist. Private-network guards remain real.
+        """
+        self.routes[("example.org", "/robots.txt")] = (200, {}, b"User-agent: *\nDisallow: /\nCrawl-delay: 99999\n")
+        self.routes[("other.example", "/robots.txt")] = (503, {}, b"")
+        self.routes[("example.org", "/research")] = (302, {"Location": "https://other.example/final"}, b"")
+        self.routes[("other.example", "/final")] = (200, {"Content-Type": "text/plain"}, b"Research evidence.")
+        code, _, err = self.cli.run_cli(lambda request: self.cli.response(), plan_only=False, source_dns=public_dns)
+        self.assertEqual(code, 0, err)
+        directory, saved = self.cli.saved_session()
+        self.assertEqual([r[1] for r in self.http.requests], ["/research", "/final"])
+        self.assertEqual(saved['retrieval_usage']['http_requests'], 2)
+        self.assertEqual(saved['retrieval_usage']['bytes_read'], len(b"Research evidence."))
+        self.assertEqual(saved['documents'][0]['status'], 'retrieved')
+        events = [json.loads(line) for line in (directory / 'events.jsonl').read_text().splitlines()]
+        self.assertFalse(any(e['event'] == 'robots_check' or e.get('request_kind') == 'robots' for e in events))
+
     def test_real_cli_retrieves_url_and_pdf_with_inspectable_provenance(self):
         """The retrieval node must produce both artifacts after planning/review, not just log its
         name.
@@ -75,7 +98,7 @@ class RetrievalCLIIntegrationTests(unittest.TestCase):
         self.assertIn("## Question category\n" + category, stdout)
         self.assertIn("## Question category\n" + category, (directory / "plan.md").read_text())
         self.assertEqual(saved["usage"]["requests_attempted"], 1)
-        self.assertEqual(saved["retrieval_usage"]["http_requests"], 2)
+        self.assertEqual(saved["retrieval_usage"]["http_requests"], 1)
         manifest = json.loads((directory / "documents.json").read_text())
         self.assertEqual(manifest["documents"], saved["documents"])
         for record in saved["documents"]:

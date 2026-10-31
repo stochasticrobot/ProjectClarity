@@ -145,13 +145,14 @@ class DocumentContinuationCLITests(unittest.TestCase):
         """Cross the old crawl checkpoint and retain the target at the document end.
 
         Args:
-            self: Table with over twelve base passages and missing first-batch records.
+            self: Table with over twelve Small-profile base passages and missing first-batch records.
 
         Returns:
             None. Assert real candidate persistence, completed refinements, batching,
             bounded peer probes, search ordering and document priority at the production entry.
         """
-        _, directory, saved, progress = self.run_case('--max-no-gain-passages', '0')
+        _, directory, saved, progress = self.run_case('--max-no-gain-passages', '0',
+            '--extraction-profile', 'small')
         self.assertTrue(self.search_snapshots)
         first = self.search_snapshots[0]
         rows = [a for a in first['extraction']['attempts'] if a['source_id'] == 'S1']
@@ -235,7 +236,7 @@ class DocumentContinuationCLITests(unittest.TestCase):
         """A shared time limit must stop once, not drain hundreds of failed tasks.
 
         Args:
-            self: Long table whose first successful extraction consumes the time allowance.
+            self: Long Small-profile table whose first successful extraction consumes the time allowance.
 
         Returns:
             None. Assert unsent work remains unattempted, with no search, review,
@@ -266,7 +267,7 @@ class DocumentContinuationCLITests(unittest.TestCase):
         with patch('time.time', side_effect=lambda: real_time() + self.clock_offset), patch(
                 'time.monotonic', side_effect=lambda: real_monotonic() + self.clock_offset), patch.object(
                     RunMonitor, 'observe', new=watch):
-            _, _, saved, _ = self.run_case()
+            _, _, saved, _ = self.run_case('--extraction-profile', 'small')
         self.assertEqual(dispatched_after_deadline, [])
         self.assertEqual(len(saved['model_attempts']), 4)
         self.assertEqual(saved['workflow']['stop_reason'], 'budget_exhausted')

@@ -383,23 +383,23 @@ class WorkflowControlCLITests(unittest.TestCase):
             for d in saved['documents']))
         self.assertIn('retry_after_exceeds_time_budget', saved['workflow']['stop_details'])
 
-    def test_robots_526_and_missing_page_are_terminal_but_do_not_stop_peers(self):
+    def test_page_526_and_missing_page_are_terminal_but_do_not_stop_peers(self):
         """Certificate-related permission failure and 404 cannot stall independent sources.
 
         Args:
             self: Fixture with three supplied sources under two public hostnames.
 
         Returns:
-            None. Assert denied robots is never bypassed, 404 is not retried, and
+            None. Assert HTTP526 and404 are not retried, and
             the independent source still reaches extraction.
         """
         self.cli.urls.write_text('https://broken.example/page\nhttps://example.org/missing\nhttps://example.org/other\n')
-        self.routes[('broken.example', '/robots.txt')] = (526, {}, b'')
+        self.routes[('broken.example', '/page')] = (526, {}, b'')
         self.routes[('example.org', '/missing')] = (404, {}, b'')
         code, _, saved, _ = self.run_workflow()
         self.assertEqual(code, 1)
         self.assertEqual(sum(r[1] == '/missing' for r in self.http.requests), 1)
-        self.assertFalse(any(r[1] == '/page' for r in self.http.requests))
+        self.assertEqual(sum(r[1] == '/page' for r in self.http.requests), 1)
         self.assertTrue(any(t[0] == 'ExtractionBatch' and t[1] == 'S3' for t in self.tasks))
         self.assertEqual({d['error_code'] for d in saved['documents'] if d['status'] == 'failed'},
-            {'robots_unavailable', 'http_status'})
+            {'http_status'})

@@ -29,7 +29,8 @@ def render_plan(session: ResearchSession) -> str:
 
     This remains a plan display, not a findings report. Explicitly label what ran so a
     completed download or anchored candidate is not mistaken for an independently reviewed
-    answer. The caller chooses whether to save or print it.
+    answer. Extraction output limits are shown separately from other tasks.
+    The caller chooses whether to save or print it.
 
     Args:
         session: ResearchSession containing this run's request, plan, source records,
@@ -161,7 +162,8 @@ def render_plan(session: ResearchSession) -> str:
     lines.extend([
         "", "## Usage and limits",
         f"- LLM requests attempted: {usage.requests_attempted}/{session.request.budget.max_requests}",
-        f"- Maximum output tokens per request: {session.request.budget.max_output_tokens}",
+        f"- Default output tokens per request (non-extraction): {session.request.budget.max_output_tokens}",
+        f"- Extraction profile: {session.request.extraction_settings.profile}; output cap: {session.request.extraction_settings.max_output_tokens} tokens",
         f"- Reported input/output tokens: {usage.input_tokens if usage.input_tokens is not None else 'unknown'} / {usage.output_tokens if usage.output_tokens is not None else 'unknown'}",
         f"- Requested model: {session.request.model}",
         f"- Returned model: {usage.response_model or 'unknown'}",

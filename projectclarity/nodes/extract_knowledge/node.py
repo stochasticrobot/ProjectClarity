@@ -40,6 +40,8 @@ from projectclarity.extraction.extraction_call_tracing import start_trace, captu
 from projectclarity.extraction.extraction_contracts import ExtractionAttempt, ExtractionBatch, ExtractionRecord
 from projectclarity.extraction.knowledge_extraction_messages import SYSTEM_PROMPT, create_extractor, extraction_messages
 from projectclarity.extraction.saved_source_passages import EvidenceInputError, iter_passages, read_verified_text
+from projectclarity.extraction.settings import ExtractionSettings
+from projectclarity.nodes.plan_research.research_planner import ResearchError
 from projectclarity.extraction.local_identifier_recovery import recover_local_identifiers
 from projectclarity.extraction.record_refinement import record_followups
 from projectclarity.extraction.document_structure import section_probes, passage_order
@@ -56,6 +58,8 @@ from projectclarity.providers.model_failures import ModelCallFailure, describe_m
 def extract_knowledge(state: dict, output_root: Path, key_reader=read_api_key, monitor=None, *, max_batches=None) -> dict:
     """Prepare source passages and ask the model for claims from the scheduled passages.
 
+    Reject changes to saved sizing before inventory or dispatch; legacy inventories
+    retain small partitions and their saved output allowance.
     Read and hash-check saved documents, recording every passage so a budget stop
     leaves unread work visible. Each requested passage can produce claims and field
     values, an empty completed result, or a recorded failure. Several independent
@@ -97,6 +101,12 @@ def extract_knowledge(state: dict, output_root: Path, key_reader=read_api_key, m
     session.visited_nodes.append("extract_knowledge")
     directory = output_root / session.session_id
     record = ExtractionRecord.model_validate(session.extraction) if session.extraction else ExtractionRecord()
+    settings = session.request.extraction_settings
+    previous_sizing = record.sizing or ExtractionSettings.for_profile(
+        'small', max_output_tokens=session.request.budget.max_output_tokens)
+    if (record.sizing is not None or record.attempts) and previous_sizing != settings:
+        raise ResearchError('Extraction settings differ from the saved passage inventory; start a new run.')
+    record.sizing = settings
     # New requests use the current contract even when earlier receipts were loaded.
     record.prompt_version = "knowledge-extraction-v5"
     record.retrieval_incomplete = any(d.status != "retrieved" for d in session.documents) or len(session.documents) < len(session.sources)
@@ -109,11 +119,13 @@ def extract_knowledge(state: dict, output_root: Path, key_reader=read_api_key, m
     write_text(directory / "extraction_config.json", json.dumps({
         "schema_version": "1.0", "prompt_version": record.prompt_version,
         "system_prompt": SYSTEM_PROMPT, "model": session.request.model,
-        "max_output_tokens": session.request.budget.max_output_tokens,
+        "max_output_tokens": settings.max_output_tokens,
+        "sizing": settings.model_dump(mode="json"),
         "max_requests_including_planning": session.request.budget.max_requests,
         "effort": "low", "timeout_seconds": session.request.model_timeout_seconds,
         "max_retries": 0, "application_retries": session.request.model_retries,
-        "max_serialized_message_characters": 48_000,
+        "max_serialized_message_characters": settings.max_message_characters,
+        "max_input_characters_including_schema": settings.max_input_characters,
     }, indent=2) + "\n")
     from projectclarity.nodes.schedule_work.answer_controller import enabled as answer_controlled
     from projectclarity.extraction.content_identity import content_aliases
@@ -159,7 +171,7 @@ def extract_knowledge(state: dict, output_root: Path, key_reader=read_api_key, m
                             'source_id': canonical, 'text_sha256': document.text_sha256}
                         continue
                 canonical_versions.setdefault(document.text_sha256, document.source_id)
-                for passage_id, start, end in iter_passages(text):
+                for passage_id, start, end in iter_passages(text, settings):
                     record.attempts.append(ExtractionAttempt(
                         batch_id=f"{document.source_id}_{passage_id}", source_id=document.source_id,
                         text_sha256=document.text_sha256, passage_id=passage_id, start=start, end=end))
@@ -227,13 +239,13 @@ def extract_knowledge(state: dict, output_root: Path, key_reader=read_api_key, m
                 text = read_verified_text(directory, documents[current.source_id])
                 messages = extraction_messages(session, current, text)
                 from projectclarity.task_inputs import input_receipt, save_input_receipt
-                preflight = input_receipt('extract_knowledge', messages, ExtractionBatch)
+                preflight = input_receipt('extract_knowledge', messages, ExtractionBatch,
+                    extraction_settings=settings)
+                preflight['extraction_settings'] = settings.model_dump(mode='json')
                 save_input_receipt(directory, current.batch_id, preflight)
                 if preflight['errors']:
                     raise EvidenceInputError(preflight['errors'][0])
                 serialized = json.dumps(messages, ensure_ascii=False)
-                if len(serialized) > 48_000:
-                    raise EvidenceInputError("extraction_input_too_large")
                 current.input_sha256 = hashlib.sha256(serialized.encode()).hexdigest()
                 if api_key is None:
                     api_key = key_reader()

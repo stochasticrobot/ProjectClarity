@@ -87,3 +87,29 @@ vm.runInContext("data.history=[];data.metrics=data.metrics||{}",context);
 const targetChartHTML=vm.runInContext('targetChart(data)',context);
 assert.match(targetChartHTML,/<span class="field-support">Field-supported targets<\/span>/);
 assert.match(fs.readFileSync('projectclarity/dashboard/static/style.css','utf8'),/\.legend \.field-support:before\{background:#3568ac\}/);
+
+// A stale historical endpoint must not hide the same current count the header uses.
+vm.runInContext(`
+  state.targetGoal=data.targets[0].goal_id;
+  const chartGoal=data.targets[0];
+  chartGoal.identified=20;chartGoal.field_supported=12;chartGoal.supported=3;
+  data.status={updated_at:'2026-10-31T12:00:00Z'};
+  data.tokens={calls:10};
+  data.history=[{timestamp:1793447990,values:{tokens:{calls:9},targets:{[chartGoal.goal_id]:{
+    ...chartGoal,identified:8,field_supported:2,supported:1
+  }}}}];
+  const savedChartHistory=JSON.stringify(data.history);
+  const productionChart=chart;
+  let observedChartSamples;
+  chart=(samples,series,label)=>{observedChartSamples=samples;return productionChart(samples,series,label);};
+  targetChart(data);
+`,context);
+assert.equal(vm.runInContext('observedChartSamples.length',context),2);
+assert.equal(vm.runInContext('observedChartSamples.at(-1).values.targets[chartGoal.goal_id].identified',context),20);
+assert.equal(vm.runInContext('observedChartSamples.at(-1).values.targets[chartGoal.goal_id].field_supported',context),12);
+assert.equal(vm.runInContext('JSON.stringify(data.history)===savedChartHistory',context),true);
+vm.runInContext('data.history=[];targetChart(data)',context);
+assert.equal(vm.runInContext('observedChartSamples.length',context),1);
+assert.equal(vm.runInContext('observedChartSamples[0].values.targets[chartGoal.goal_id].identified',context),20);
+vm.runInContext('data.history=[observedChartSamples[0]];targetChart(data)',context);
+assert.equal(vm.runInContext('observedChartSamples.length',context),1);

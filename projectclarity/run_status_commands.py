@@ -96,7 +96,7 @@ def render_status(snapshot: dict) -> str:
              f"Worker: {'running' if snapshot['worker_running'] else 'stopped'} | last activity: {snapshot['activity_age_seconds']}s ago",
              f"Sources: {counts['completed']}/{counts['total']} completed; {counts['retrieved']} retrieved, "
              f"{counts['failed']} failed, {counts['cancelled']} cancelled, {counts['not_started']} not started",
-             f"HTTP requests: {metrics.get('http_requests', 0)} | bytes read (including robots): {metrics.get('bytes_read', 0)}",
+             f"HTTP requests: {metrics.get('http_requests', 0)} | bytes read (all charged traffic): {metrics.get('bytes_read', 0)}",
              f"Elapsed at last update: {snapshot['elapsed_seconds']}s | active source: {snapshot['active_source_id'] or 'none'}",
              f"Configured fetch limits: {json.dumps(snapshot['limits'], sort_keys=True)}"]
     if snapshot["interrupted"]:

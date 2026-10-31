@@ -141,53 +141,102 @@ def completion_blockers(session, last, valid):
 
 
 def run_summary(session, output_root, node, revision, entry, key_reader, monitor):
-    """Reserve and execute one tree node, refusing ambiguous automatic replay.
+    """Execute a summary and at most one durable correction of known-invalid output.
 
     Args:
-        session: Mutable run with shared budgets and receipt journal.
-        output_root: Parent directory of saved runs and evidence.
-        node: Current pending leaf or reduction descriptor.
-        revision: Evidence revision preceding dispatch.
-        entry: Current history row receiving status and trace link.
-        key_reader: Existing credential callback, invoked only after preflight.
+        session: Mutable run with shared budgets and persisted recovery history.
+        output_root: Parent of private run directories and immutable call traces.
+        node: Content-addressed leaf or reducer, rebuilt from current evidence.
+        revision: Evidence revision required to remain unchanged during calls.
+        entry: Current coverage history row receiving call IDs and error diagnostics.
+        key_reader: Existing credential callback used only by the shared executor.
         monitor: Optional cancellation observer.
     Returns:
-        None. Saves reservation before I/O and a validated result or explicit failure.
-        Failed/uncertain logical summaries are not silently resubmitted.
+        None. Saves each reservation before dispatch and each outcome afterwards.
+        A complete rejected response may receive one bounded correction. Original
+        caveats and true flags survive; all original validators still apply.
+        Missing/unknown outcomes never replay. Terminal failures block the current
+        node; changed input descriptors get their own independent identity.
     """
     from projectclarity.coverage.stopping import evidence_revision
     from projectclarity.nodes.assess_research_gaps.node import checked_candidates, save_coverage
+    from projectclarity.providers.response_recovery import correction_data
+    from projectclarity.coverage.summary_recovery import RECOVERABLE_ERRORS, preserve_caveats
     receipts = session.coverage.setdefault('evidence_batches', {})
-    if node['batch_id'] in receipts:
-        if receipts[node['batch_id']].get('status') == 'reserved':
-            receipts[node['batch_id']].update(status='uncertain', error_code='interrupted_outcome_unknown')
+    receipt = receipts.get(node['batch_id'])
+    if receipt and receipt.get('status') in {'reserved', 'uncertain'}:
+        receipt.update(status='uncertain', error_code='interrupted_outcome_unknown')
         raise ValueError('bounded_summary_requires_recovery')
-    call_id = 'bounded_' + node['batch_id'][3:43]
-    receipt = dict(batch_id=node['batch_id'], status='reserved', attempts=1,
-        input_ids=node['input_ids'], covered_candidate_ids=node['candidate_ids'],
-        assessment=None, error_code=None, call_id=call_id, input_contract=node['input_contract'])
-    receipts[node['batch_id']] = receipt
-    entry.update(batch_id=node['batch_id'], call_id=call_id)
-    save_coverage(session, output_root)
-    answer, call = invoke_structured(session, output_root, call_id=call_id, task='bounded_evidence',
-        prompt_version='bounded-evidence-v1', messages=payload_messages(SYSTEM_PROMPT, node['payload']),
-        schema=BoundedDigest, key_reader=key_reader, monitor=monitor)
-    error = call.get('error_code')
-    if answer is not None:
-        try:
-            tree.validate_summary(node, answer, BoundedDigest)
-            _, current = checked_candidates(session, output_root)
-            if evidence_revision(session) != revision or set(current) != set(session.coverage['active_candidate_ids']):
-                raise ValueError('evidence_changed_during_batch')
-        except ValueError as exc:
-            error = str(exc)
-        else:
-            receipt['assessment'] = answer.model_dump(mode='json')
-            receipt['output_sha256'] = fingerprint(receipt['assessment'])
-    receipt.update(status='failed' if error or answer is None else 'completed',
-        error_code=error or ('bounded_missing_answer' if answer is None else None))
-    entry.update(status='batch_reviewed' if receipt['status']=='completed' else 'not_assessed',
-        error_code=receipt['error_code'])
+    if receipt is None:
+        receipt = dict(batch_id=node['batch_id'], status='pending', attempts=0,
+            input_ids=node['input_ids'], covered_candidate_ids=node['candidate_ids'],
+            assessment=None, error_code=None, call_id=None, input_contract=node['input_contract'],
+            attempt_history=[])
+        receipts[node['batch_id']] = receipt
+    # Import old completed-failure journals without resetting their charged attempt.
+    if 'attempt_history' not in receipt:
+        receipt['attempt_history'] = [dict(call_id=receipt.get('call_id'),
+            status=receipt['status'], error_code=receipt.get('error_code'))]
+    while True:
+        previous, correction = {}, None
+        if receipt.get('attempts', 0):
+            if receipt.get('attempts', 0) >= 2 or receipt.get('recovery_state') == 'blocked':
+                receipt['recovery_state'] = 'blocked'
+                raise ValueError('bounded_summary_recovery_exhausted')
+            recovered = correction_data(output_root / session.session_id, receipt.get('call_id'),
+                receipt.get('error_code'), RECOVERABLE_ERRORS,
+                payload_messages(SYSTEM_PROMPT, node['payload']))
+            if recovered is None:
+                receipt['recovery_state'] = 'blocked'
+                raise ValueError('bounded_summary_requires_recovery')
+            correction, previous = recovered
+        attempt = receipt.get('attempts', 0) + 1
+        call_id = 'bounded_' + node['batch_id'][3:43] + ('_correction' if correction else '')
+        payload = dict(node['payload'])
+        if correction:
+            payload['correction'] = correction
+        messages = payload_messages(SYSTEM_PROMPT, payload)
+        measured = input_receipt('bounded_evidence', messages, BoundedDigest)
+        # Store the correction's full envelope diagnostics; no oversized clipping.
+        receipt.update(status='reserved', attempts=attempt, call_id=call_id,
+            recovery_state='correcting' if correction else 'initial')
+        attempt_record = dict(call_id=call_id, status='reserved', error_code=None,
+            input_contract=measured, correction_of=correction['previous_call_id'] if correction else None)
+        receipt['attempt_history'].append(attempt_record)
+        entry.update(batch_id=node['batch_id'], call_id=call_id)
+        entry.setdefault('summary_call_ids', []).append(call_id)
+        save_coverage(session, output_root)
+        answer, call = invoke_structured(session, output_root, call_id=call_id, task='bounded_evidence',
+            prompt_version='bounded-evidence-v1', messages=messages,
+            schema=BoundedDigest, key_reader=key_reader, monitor=monitor)
+        error = call.get('error_code')
+        if answer is not None:
+            try:
+                tree.validate_summary(node, answer, BoundedDigest)
+                if correction:
+                    answer = preserve_caveats(answer, previous)
+                    tree.validate_summary(node, answer, BoundedDigest)
+                _, current = checked_candidates(session, output_root)
+                if evidence_revision(session) != revision or set(current) != set(session.coverage['active_candidate_ids']):
+                    raise ValueError('evidence_changed_during_batch')
+            except ValueError as exc:
+                error = str(exc)
+            else:
+                receipt['assessment'] = answer.model_dump(mode='json')
+                receipt['output_sha256'] = fingerprint(receipt['assessment'])
+        receipt.update(status='failed' if error or answer is None else 'completed',
+            error_code=error or ('bounded_missing_answer' if answer is None else None))
+        attempt_record.update(status=receipt['status'], error_code=receipt['error_code'],
+            trace_path=call.get('trace_path'), validation_issues=call.get('validation_issues', []))
+        retry = receipt['status'] == 'failed' and attempt == 1 and correction_data(
+            output_root / session.session_id, call_id, receipt['error_code'], RECOVERABLE_ERRORS,
+            payload_messages(SYSTEM_PROMPT, node['payload'])) is not None
+        receipt['recovery_state'] = ('eligible' if retry else 'accepted' if receipt['status']=='completed' else 'blocked')
+        entry.update(status='batch_reviewed' if receipt['status']=='completed' else 'not_assessed',
+            error_code=receipt['error_code'])
+        save_coverage(session, output_root)
+        if not retry:
+            return
 
 
 def validate_final(answer, session, offered, ledgers, criteria=None):
@@ -212,6 +261,35 @@ def validate_final(answer, session, offered, ledgers, criteria=None):
     return validate_assessment(answer, session, offered, result_ledgers=ledgers, criteria_override=criteria)
 
 
+def initial_payload(session, candidate_count, valid, fixed, ledgers):
+    """Build the same bounded base projection for execution and scheduling checks.
+
+    Args:
+        session: Current run owning search history, scope estimates and source work.
+        candidate_count: Full candidate count, including rejected candidates.
+        valid: Candidate mapping used for this projection; execution source-checks it.
+        fixed: Accepted scope/criteria context from context().
+        ledgers: Full report inventories; only counts and hashes are transmitted.
+    Returns:
+        Base payload and source-work diagnostics without model calls or mutation.
+        The direct-input path adds bounded candidates separately.
+    """
+    from projectclarity.answer_schema.requirements import work_inventory_context
+    queries = session.search.get('queries', [])
+    work = work_inventory_context(session)
+    payload = dict(**fixed, result_inventory=inventory_counts(ledgers), candidates=[], sources={},
+        candidate_total=candidate_count, intact_anchored_total=len(valid), offered_total=len(valid),
+        inventory_truncated=False, context_inventory=dict(total=len(valid), offered=len(valid), deferred=0),
+        candidate_status_counts=dict(Counter(c.adjudication_status for c in valid.values())),
+        search_allowed=session.request.web_search, current_scope_estimates=session.coverage.get('scope_estimates', []),
+        work_counts=dict(unread_passages=sum(row.get('unread_passages', 0) or 0 for row in work),
+            pending_reviews=sum(row.get('pending_review', 0) or 0 for row in work), sources=len(work)),
+        previous_searches=[q['query'] for q in queries[-8:]],
+        search_outcomes=[{k:q.get(k) for k in ('query','status','error_code','result_count')} for q in queries[-8:]],
+        search_history_counts=dict(total=len(queries), included=min(8, len(queries))))
+    return payload, work
+
+
 def assess(state, output_root, key_reader, monitor=None):
     """Advance the real production coverage path within fixed per-stage input bounds.
 
@@ -221,7 +299,8 @@ def assess(state, output_root, key_reader, monitor=None):
         key_reader: Existing credential callback, never retained in state.
         monitor: Optional cancellation/progress interface.
     Returns:
-        Session update after at most one logical shared-budget call. Direct inputs
+        Session update after one logical call, plus at most one correction for a
+        known-invalid summary under the same shared budget. Direct inputs
         contain at most 128 claims and must fit the small envelope; tree inputs
         contain at most 32 claims or four summaries;
         final tree calls contain at most 24 witnesses and no report rows. Oversized
@@ -234,7 +313,6 @@ def assess(state, output_root, key_reader, monitor=None):
     from projectclarity.coverage.stopping import evidence_revision
     from projectclarity.nodes.assess_research_gaps.node import (
         SYSTEM_PROMPT as FINAL_PROMPT, checked_candidates, save_coverage)
-    from projectclarity.answer_schema.requirements import work_inventory_context
     session = state['session']
     session.visited_nodes.append('assess_research_gaps')
     save_coverage(session, output_root)
@@ -256,18 +334,7 @@ def assess(state, output_root, key_reader, monitor=None):
     for receipt in receipts.values():
         if receipt.get('status') == 'reserved':
             receipt.update(status='uncertain', error_code='interrupted_outcome_unknown')
-    queries = session.search.get('queries', [])
-    work = work_inventory_context(session)
-    payload = dict(**fixed, result_inventory=inventory_counts(ledgers), candidates=[], sources={},
-        candidate_total=len(record.candidates), intact_anchored_total=len(valid), offered_total=len(valid),
-        inventory_truncated=False, context_inventory=dict(total=len(valid), offered=len(valid), deferred=0),
-        candidate_status_counts=dict(Counter(c.adjudication_status for c in valid.values())),
-        search_allowed=session.request.web_search, current_scope_estimates=coverage.get('scope_estimates', []),
-        work_counts=dict(unread_passages=sum(row.get('unread_passages', 0) or 0 for row in work),
-            pending_reviews=sum(row.get('pending_review', 0) or 0 for row in work), sources=len(work)),
-        previous_searches=[q['query'] for q in queries[-8:]],
-        search_outcomes=[{k:q.get(k) for k in ('query','status','error_code','result_count')} for q in queries[-8:]],
-        search_history_counts=dict(total=len(queries), included=min(8, len(queries))))
+    payload, work = initial_payload(session, len(record.candidates), valid, fixed, ledgers)
     diagnostics = entry['diagnostics'] = begin_assessment({**payload, 'acquired_work': work}, {})
     answer, checked = None, None
     try:

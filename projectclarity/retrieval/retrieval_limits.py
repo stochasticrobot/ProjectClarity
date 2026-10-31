@@ -2,7 +2,7 @@
 
 For example, a huge download must stop at the file limit, and several smaller
 downloads must still fit the whole-run limit. Both local reading and web fetching
-charge the same byte counter. Robots requests and redirects count as HTTP calls.
+charge the same byte counter. Redirects and failed attempts count as HTTP calls.
 The elapsed-time check stops new work and checks between chunks; OS DNS resolution
 is not a hard-deadline operation. Parser subprocesses have their own hard timeout.
 The graph passes the operator's validated FetchLimits into these defaults. Optional
@@ -26,8 +26,6 @@ class RetrievalLimits:
     request_timeout_seconds: float = 10.0
     max_run_seconds: float = 180.0
     min_host_interval_seconds: float = 1.0
-    max_robots_wait_seconds: float = 30.0
-    max_robots_bytes: int = 512 * 1024
     parser_timeout_seconds: float = 15.0
     max_text_characters: int = 1_000_000
     max_pdf_pages: int = 50
@@ -112,14 +110,13 @@ class RetrievalBudget:
     def charge_bytes(self, count: int) -> None:
         """Count bytes already read, then stop if all sources together exceeded the cap.
 
-        The counter includes the last over-limit chunk and robots.txt traffic; failed downloads
+        The counter includes the last over-limit chunk; failed downloads
         do not get their consumed bytes refunded.
 
         Args:
             self: Mutable retrieval-budget instance holding cumulative usage and optional
                 monitoring/control callbacks.
-            count: Number of bytes just consumed, including bytes from failed requests or robots
-                responses.
+            count: Number of bytes just consumed, including bytes from failed requests.
 
         Returns:
             None if the accumulated byte count remains allowed; raise RetrievalError after
