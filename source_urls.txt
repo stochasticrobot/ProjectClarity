@@ -1,6 +1,0 @@
-# Example starting points for Canadian AI-security research; contents may change.
-# See README.md for live search/review/crawling and optional broad graph capture.
-# Request/source limits are ceilings, not completion guarantees.
-# These explicit seeds do not require --use-default-sources; URL policy still applies.
-https://www.papernot.fr/
-https://aisafety.ca/research/

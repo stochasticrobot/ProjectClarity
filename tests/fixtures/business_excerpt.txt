@@ -1,0 +1,5 @@
+This is a fictional test passage.
+Acme is a business based in Toronto, Canada, that develops AI security software.
+In 2023, Acme received CAD 5 million from North Fund.
+Acme did not receive funding from South Fund.
+Acme may open an office in Ottawa in 2027.

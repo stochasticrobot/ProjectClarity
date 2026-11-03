@@ -1,0 +1,26 @@
+<!doctype html>
+<!--
+Provide the screen for watching documents being found and read.
+
+This file lays out the search details, progress counts, document list and source
+inspection area. document_pipeline.js fills those areas with saved progress while
+the application searches, downloads and extracts facts. The screen exists so the
+user can tell which sources worked, which failed and what information was obtained.
+-->
+
+<html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>Clarity — Research run</title><link rel="stylesheet" href="/assets/research_styles.css"><script src="/assets/model_usage.js" defer></script><script src="/assets/workflow_navigation.js" defer></script><script src="/assets/document_pipeline.js" defer></script></head>
+<body><main class="run-main"><header><a href="/">Clarity</a><span>Live research</span><a class="new-research-link" href="/?new=1">New research</a></header><nav id="stages" aria-label="Research stages"></nav>
+<div class="result-heading"><span id="activity-status" class="activity-pill" data-tone="idle" role="status" aria-live="polite" aria-atomic="true">Loading status…</span><button id="stop" class="secondary" type="button">Stop run</button></div>
+<h1 id="run-question"></h1><p id="run-message" role="status" aria-live="polite"></p>
+<div class="counts" id="counts"></div>
+<section class="selection-overview"><h2 id="work-title">Research progress</h2><p id="current-work"></p><p id="progress-description" class="muted"></p><label id="overall-progress-label" for="extraction-progress">Progress</label><progress id="extraction-progress" value="0" max="1" aria-label="Research progress"></progress>
+<div id="current-document" hidden><a id="document-link" target="_blank" rel="noopener noreferrer"></a><p id="document-progress-label"></p><progress id="document-progress" value="0" max="1" aria-label="Current document chunks finished"></progress><p id="document-facts" class="muted"></p></div>
+<p class="muted" id="prior-attempts" hidden></p></section>
+<section id="selection-next" hidden><h2>Evidence selection</h2><p class="muted">Review which extracted facts could help answer your question, with reasons and source quotes.</p><button id="select-evidence">Select evidence →</button><a id="view-evidence" hidden>View evidence selection →</a></section>
+<details id="search-summary"><summary id="search-summary-label">Search results</summary><ol id="queries"></ol></details>
+<h2>Sources & knowledge</h2><p class="muted">Every URL stays visible, including blocked and failed sources. Extracted facts are source assertions—not verified answers.</p>
+<div class="table-scroll"><table><thead><tr><th>Source</th><th>Status</th><th>Chunks</th><th>Facts</th><th></th></tr></thead><tbody id="sources"></tbody></table></div>
+<section id="inspector" hidden><div class="result-heading"><h2 id="inspect-title">Source knowledge</h2><button id="close-inspector" class="secondary" type="button">Close</button></div><p id="inspect-status"></p><details><summary>Downloaded document text</summary><pre id="document-text"></pre></details><div id="facts"></div></section>
+<details><summary>Activity log</summary><ol id="events" class="events"></ol></details>
+<footer><a href="/?new=1" id="new-research">Start a new research question</a></footer>
+</main></body></html>

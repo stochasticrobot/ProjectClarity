@@ -1,0 +1,20 @@
+[Unit]
+Description=ProjectClarity research web application
+After=network.target
+StartLimitIntervalSec=60
+StartLimitBurst=5
+
+[Service]
+Type=simple
+WorkingDirectory=%h/ProjectClarity
+ExecStart=%h/ProjectClarity/.venv/bin/python -m projectclarity.ux.web_app --port 8775 --env-file %h/ProjectClarity/.env
+Restart=on-failure
+RestartSec=3
+TimeoutStopSec=300
+UMask=0077
+Environment=PYTHONUNBUFFERED=1
+StandardOutput=journal
+StandardError=journal
+
+[Install]
+WantedBy=default.target

@@ -1,0 +1,293 @@
+{
+  "version": "research-packet-v1",
+  "assertions": [
+    {
+      "id": "C1A1",
+      "chunk": "01_companies.txt",
+      "assertion": "Northlight Analytics is a company headquartered in Toronto, Canada.",
+      "quote": "Northlight Analytics is a company headquartered in Toronto, Canada.",
+      "relevance": {
+        "companies": "required",
+        "researchers": "irrelevant",
+        "funding": "irrelevant"
+      },
+      "rationale": "Identifies a company and its Canadian headquarters."
+    },
+    {
+      "id": "C1A2",
+      "chunk": "01_companies.txt",
+      "assertion": "Northlight Analytics develops ScanAid, an AI product for reviewing medical scans.",
+      "quote": "Northlight Analytics develops ScanAid, an AI product for reviewing medical scans.",
+      "relevance": {
+        "companies": "required",
+        "researchers": "optional",
+        "funding": "optional"
+      },
+      "rationale": "Connects the company to a named AI product and its medical use."
+    },
+    {
+      "id": "C1A3",
+      "chunk": "01_companies.txt",
+      "assertion": "Northlight Analytics did not open an office in Vancouver in 2025.",
+      "quote": "Northlight Analytics did not open an office in Vancouver in 2025.",
+      "relevance": {
+        "companies": "required",
+        "researchers": "irrelevant",
+        "funding": "irrelevant"
+      },
+      "rationale": "Rules out a claimed company office and preserves the date and negation."
+    },
+    {
+      "id": "C1A4",
+      "chunk": "01_companies.txt",
+      "assertion": "Harbour Tools is a company headquartered in Halifax, Canada.",
+      "quote": "Harbour Tools is a company headquartered in Halifax, Canada.",
+      "relevance": {
+        "companies": "required",
+        "researchers": "irrelevant",
+        "funding": "irrelevant"
+      },
+      "rationale": "Provides Canadian company identity for a candidate whose AI status must be checked."
+    },
+    {
+      "id": "C1A5",
+      "chunk": "01_companies.txt",
+      "assertion": "Harbour Tools manufactures manual wrenches and does not develop AI products.",
+      "quote": "Harbour Tools manufactures manual wrenches and does not develop AI products.",
+      "relevance": {
+        "companies": "required",
+        "researchers": "irrelevant",
+        "funding": "irrelevant"
+      },
+      "rationale": "Explicitly disqualifies a candidate as an AI product developer."
+    },
+    {
+      "id": "C2A1",
+      "chunk": "02_researchers.txt",
+      "assertion": "Dr. Mira Chen is a researcher at Maple University in Ottawa, Canada.",
+      "quote": "Dr. Mira Chen is a researcher at Maple University in Ottawa, Canada.",
+      "relevance": {
+        "companies": "irrelevant",
+        "researchers": "required",
+        "funding": "irrelevant"
+      },
+      "rationale": "Supplies the medical AI researcher's institution and Canadian location."
+    },
+    {
+      "id": "C2A2",
+      "chunk": "02_researchers.txt",
+      "assertion": "Dr. Mira Chen leads the medical AI project ClearScan.",
+      "quote": "Dr. Mira Chen leads the medical AI project ClearScan.",
+      "relevance": {
+        "companies": "irrelevant",
+        "researchers": "required",
+        "funding": "required"
+      },
+      "rationale": "Connects a named researcher to a medical AI project and leadership role."
+    },
+    {
+      "id": "C2A3",
+      "chunk": "02_researchers.txt",
+      "assertion": "ClearScan studies AI detection of lung disease in medical scans.",
+      "quote": "ClearScan studies AI detection of lung disease in medical scans.",
+      "relevance": {
+        "companies": "irrelevant",
+        "researchers": "required",
+        "funding": "required"
+      },
+      "rationale": "Establishes the project's medical AI scope."
+    },
+    {
+      "id": "C2A4",
+      "chunk": "02_researchers.txt",
+      "assertion": "Dr. Owen Bell studies medieval poetry at Maple University and does not work on medical AI.",
+      "quote": "Dr. Owen Bell studies medieval poetry at Maple University and does not work on medical AI.",
+      "relevance": {
+        "companies": "irrelevant",
+        "researchers": "required",
+        "funding": "irrelevant"
+      },
+      "rationale": "Explicitly rules out a researcher as working on medical AI."
+    },
+    {
+      "id": "C3A1",
+      "chunk": "03_funding.txt",
+      "assertion": "On 12 March 2025, the Cedar Foundation announced a planned grant of CAD 2 million to ClearScan.",
+      "quote": "On 12 March 2025, the Cedar Foundation announced a planned grant of CAD 2 million to ClearScan.",
+      "relevance": {
+        "companies": "irrelevant",
+        "researchers": "irrelevant",
+        "funding": "required"
+      },
+      "rationale": "Gives the grant announcer, recipient project, amount, date and planned status."
+    },
+    {
+      "id": "C3A2",
+      "chunk": "03_funding.txt",
+      "assertion": "On 13 March 2025, Maple University said no money from the announced Cedar Foundation grant had been received.",
+      "quote": "On 13 March 2025, Maple University said no money from the announced Cedar Foundation grant had been received.",
+      "relevance": {
+        "companies": "irrelevant",
+        "researchers": "irrelevant",
+        "funding": "required"
+      },
+      "rationale": "Attributes a dated denial of receipt to the university."
+    },
+    {
+      "id": "C3A3",
+      "chunk": "03_funding.txt",
+      "assertion": "The Cedar Foundation said payment of the ClearScan grant depended on ethics approval.",
+      "quote": "The Cedar Foundation said payment of the ClearScan grant depended on ethics approval.",
+      "relevance": {
+        "companies": "irrelevant",
+        "researchers": "irrelevant",
+        "funding": "required"
+      },
+      "rationale": "Preserves the grant's condition and the source of that qualification."
+    },
+    {
+      "id": "C3A4",
+      "chunk": "03_funding.txt",
+      "assertion": "Northlight Analytics sponsors the annual Toronto chess festival.",
+      "quote": "Northlight Analytics sponsors the annual Toronto chess festival.",
+      "relevance": {
+        "companies": "irrelevant",
+        "researchers": "irrelevant",
+        "funding": "irrelevant"
+      },
+      "rationale": "Chess sponsorship has no supported connection to AI products, researchers or medical AI project funding."
+    },
+    {
+      "id": "C4A1",
+      "chunk": "04_updates.txt",
+      "assertion": "On 20 March 2025, the Cedar Foundation disputed a newspaper report that its ClearScan grant had been cancelled.",
+      "quote": "On 20 March 2025, the Cedar Foundation disputed a newspaper report that its ClearScan grant had been cancelled.",
+      "relevance": {
+        "companies": "irrelevant",
+        "researchers": "irrelevant",
+        "funding": "required"
+      },
+      "rationale": "Records an attributed, dated dispute of the grant cancellation report, without asserting payment."
+    },
+    {
+      "id": "C4A2",
+      "chunk": "04_updates.txt",
+      "assertion": "Northlight Analytics plans to open an office in Montreal in 2027, but the opening is not confirmed.",
+      "quote": "Northlight Analytics plans to open an office in Montreal in 2027, but the opening is not confirmed.",
+      "relevance": {
+        "companies": "required",
+        "researchers": "irrelevant",
+        "funding": "irrelevant"
+      },
+      "rationale": "Distinguishes a possible future company office from an existing location."
+    },
+    {
+      "id": "C4A3",
+      "chunk": "04_updates.txt",
+      "assertion": "Northlight Analytics has not disclosed the price of ScanAid.",
+      "quote": "Northlight Analytics has not disclosed the price of ScanAid.",
+      "relevance": {
+        "companies": "optional",
+        "researchers": "irrelevant",
+        "funding": "irrelevant"
+      },
+      "rationale": "Product price disclosure is optional product context, not requested funding evidence."
+    },
+    {
+      "id": "C4A4",
+      "chunk": "04_updates.txt",
+      "assertion": "Dr. Lena Ortiz leads the medical AI project HeartMap.",
+      "quote": "Dr. Lena Ortiz leads the medical AI project HeartMap.",
+      "relevance": {
+        "companies": "irrelevant",
+        "researchers": "required",
+        "funding": "required"
+      },
+      "rationale": "Identifies a medical AI project and its lead, with affiliation supplied in a different chunk."
+    },
+    {
+      "id": "C5A1",
+      "chunk": "05_profiles.txt",
+      "assertion": "Dr. Lena Ortiz is a researcher at Harbour Institute in Halifax, Canada.",
+      "quote": "Dr. Lena Ortiz is a researcher at Harbour Institute in Halifax, Canada.",
+      "relevance": {
+        "companies": "irrelevant",
+        "researchers": "required",
+        "funding": "irrelevant"
+      },
+      "rationale": "Supplies institutional affiliation for the researcher whose project appears in another chunk."
+    },
+    {
+      "id": "C5A2",
+      "chunk": "05_profiles.txt",
+      "assertion": "On 2 April 2025, Harbour Institute confirmed receipt of CAD 500,000 from the Birch Trust for HeartMap.",
+      "quote": "On 2 April 2025, Harbour Institute confirmed receipt of CAD 500,000 from the Birch Trust for HeartMap.",
+      "relevance": {
+        "companies": "irrelevant",
+        "researchers": "irrelevant",
+        "funding": "required"
+      },
+      "rationale": "Provides an attributed confirmation of funding receipt with date, amount, funder and project."
+    },
+    {
+      "id": "C5A3",
+      "chunk": "05_profiles.txt",
+      "assertion": "Mira Chen, a chef unrelated to Dr. Mira Chen, operates a restaurant in Vancouver.",
+      "quote": "Mira Chen, a chef unrelated to Dr. Mira Chen, operates a restaurant in Vancouver.",
+      "relevance": {
+        "companies": "irrelevant",
+        "researchers": "irrelevant",
+        "funding": "irrelevant"
+      },
+      "rationale": "The chef is explicitly unrelated to the researcher and contributes no medical AI evidence."
+    },
+    {
+      "id": "C5A4",
+      "chunk": "05_profiles.txt",
+      "assertion": "No institutional affiliation is stated for Dr. Amir Vale, a researcher working on medical AI project SkinLens.",
+      "quote": "No institutional affiliation is stated for Dr. Amir Vale, a researcher working on medical AI project SkinLens.",
+      "relevance": {
+        "companies": "irrelevant",
+        "researchers": "required",
+        "funding": "required"
+      },
+      "rationale": "Identifies a medical AI researcher and project while explicitly leaving affiliation unknown."
+    },
+    {
+      "id": "C6A1",
+      "chunk": "06_garden.txt",
+      "assertion": "The Willow Garden Club meets every Tuesday in Kingston.",
+      "quote": "The Willow Garden Club meets every Tuesday in Kingston.",
+      "relevance": {
+        "companies": "irrelevant",
+        "researchers": "irrelevant",
+        "funding": "irrelevant"
+      },
+      "rationale": "Garden meeting logistics do not contribute to any of the three questions."
+    },
+    {
+      "id": "C6A2",
+      "chunk": "06_garden.txt",
+      "assertion": "The Willow Garden Club planted 40 tulips in April 2025.",
+      "quote": "The Willow Garden Club planted 40 tulips in April 2025.",
+      "relevance": {
+        "companies": "irrelevant",
+        "researchers": "irrelevant",
+        "funding": "irrelevant"
+      },
+      "rationale": "Tulip planting does not contribute to any of the three questions."
+    },
+    {
+      "id": "C6A3",
+      "chunk": "06_garden.txt",
+      "assertion": "The Willow Garden Club sells postcards for CAD 3 each.",
+      "quote": "The Willow Garden Club sells postcards for CAD 3 each.",
+      "relevance": {
+        "companies": "irrelevant",
+        "researchers": "irrelevant",
+        "funding": "irrelevant"
+      },
+      "rationale": "Postcard sales are unrelated to medical AI grants or the other requested information."
+    }
+  ]
+}

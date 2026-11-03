@@ -1,0 +1,1 @@
+Answer the research question as a set of items using the requested fields. Use only the supplied evidence. Keep useful partial answers; do not invent missing details. Preserve attribution, uncertainty and conflicting values. Do not write summaries, introductions or explanations.

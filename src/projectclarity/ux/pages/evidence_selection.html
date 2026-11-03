@@ -1,0 +1,33 @@
+<!doctype html>
+<!--
+Provide the screen for reviewing which facts are relevant to the question.
+
+This file lays out the selection progress, fact filters and space for facts and
+the reasons they were chosen. evidence_selection.js fills the page as the work
+progresses. Showing these decisions separately helps the user distinguish the
+information found in documents from the information that might answer the question.
+-->
+
+<html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>Clarity — Evidence selection</title><link rel="stylesheet" href="/assets/research_styles.css"><script src="/assets/model_usage.js" defer></script><script src="/assets/workflow_navigation.js" defer></script><script src="/assets/evidence_selection.js" defer></script></head>
+<body><main class="run-main evidence-main">
+<header><a href="/">Clarity</a><span>Evidence selection</span><a class="new-research-link" href="/?new=1">New research</a></header><nav id="stages" aria-label="Research stages"></nav>
+<nav class="stage-nav" aria-label="Research stages"><a id="extraction-link" href="/">← Sources & extraction</a><span aria-current="page">Evidence selection</span><span class="muted">Next: claim completeness</span></nav>
+<div class="result-heading"><span id="activity-status" class="activity-pill" data-tone="idle" role="status" aria-live="polite" aria-atomic="true">Loading status…</span><button id="stop" class="secondary" hidden>Stop selection</button></div>
+<h1 id="question">Loading your research…</h1>
+<p id="status" role="status" aria-live="polite"></p><p id="upstream" class="notice" hidden></p>
+<button id="start" hidden>Select evidence →</button>
+<section id="triage-next" hidden><button id="start-triage">Check claim completeness →</button><a id="view-triage" hidden>View triage →</a></section>
+<div class="counts evidence-counts" id="counts"></div>
+<section class="selection-overview" aria-label="Selection overview">
+<h2>Selecting relevant information</h2><p class="muted">Every accepted extraction chunk is considered in full. Selected facts may contribute to the answer; they have not been verified.</p>
+<div class="evidence-flow" id="flow"></div>
+<label for="batch-progress" id="progress-label">Chunks reviewed</label><progress id="batch-progress" max="1" value="0"></progress>
+<details><summary>Research requirements</summary><ul id="requirements"></ul></details>
+</section>
+<section><h2>Sources & progress</h2><div class="table-scroll"><table><thead><tr><th>Source / chunk</th><th>Status</th><th>Facts</th><th>Selected</th></tr></thead><tbody id="batches"></tbody></table></div></section>
+<section><div class="result-heading"><h2>Evidence explorer</h2><span class="muted" id="shown"></span></div>
+<div class="evidence-filters"><div><label for="filter">Show facts</label><select id="filter"><option value="selected">Selected</option><option value="unselected">Not selected</option><option value="all">All reviewed</option></select></div><div><label for="source-filter">Source</label><select id="source-filter"><option value="all">All sources</option></select></div><div><label for="find">Find in facts or reasons</label><input id="find" type="search" placeholder="Company, topic, or phrase"></div></div>
+<p class="muted">Unselected facts remain in the original knowledge store. The selector explains inclusions only; an exclusion is not a claim that a fact is false.</p><div id="evidence-facts"></div></section>
+<details><summary>Activity log</summary><ol id="events" class="events"></ol></details>
+<footer>This view summarizes selection, not a final research report. Next, triage checks missing information and source support. Independent verification and final reports are not performed.</footer>
+</main></body></html>

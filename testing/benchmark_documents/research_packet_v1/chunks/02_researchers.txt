@@ -1,0 +1,4 @@
+Dr. Mira Chen is a researcher at Maple University in Ottawa, Canada.
+Dr. Mira Chen leads the medical AI project ClearScan.
+ClearScan studies AI detection of lung disease in medical scans.
+Dr. Owen Bell studies medieval poetry at Maple University and does not work on medical AI.

@@ -1,0 +1,25 @@
+<!doctype html>
+<!--
+Provide the screen that explains which claims need further review.
+
+This file lays out claim-review progress, decision filters and the controls for
+stopping or resuming eligible work. claim_triage.js fills it with claims and their
+review reasons. The screen helps the user see why some relevant facts can proceed
+to the report while others still need better supporting information.
+-->
+<html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>Clarity — Claim completeness</title><link rel="stylesheet" href="/assets/research_styles.css"><script src="/assets/model_usage.js" defer></script><script src="/assets/workflow_navigation.js" defer></script><script src="/assets/claim_triage.js" defer></script></head>
+<body><main class="run-main"><header><a href="/">Clarity</a><span>Claim completeness</span><a class="new-research-link" href="/?new=1">New research</a></header><nav id="stages" aria-label="Research stages"></nav>
+<nav class="stage-nav"><a id="back" href="/">← Evidence selection</a></nav>
+<div class="result-heading"><span id="activity-status" class="activity-pill" data-tone="idle" role="status" aria-live="polite" aria-atomic="true">Loading status…</span><button id="stop" class="secondary" hidden>Stop triage</button></div>
+<h1 id="question">Loading research…</h1><p id="status" role="status" aria-live="polite"></p>
+<p class="muted">Identify missing details and incomplete supporting quotes. Complete, supported claims go to Report Knowledge; claims needing a closer look go to Needs verification.</p>
+<button id="resume" hidden>Resume research</button><p id="resume-note" class="muted" hidden>Reuses saved results and continues unfinished triage. A request without a saved response may need to be sent again.</p>
+<p id="upstream" class="notice" hidden></p><button id="start" hidden>Check claim completeness →</button>
+<section id="investigation-next" hidden><button id="investigate">Investigate flagged claims →</button><a id="view-investigation" hidden>View investigation →</a></section><div class="counts triage-counts" id="counts"></div>
+<label id="progress-label" for="progress">Selected facts checked</label><progress id="progress" value="0" max="1"></progress>
+<p id="current" class="muted"></p>
+<div class="evidence-filters"><div><label for="bucket">Show</label><select id="bucket"><option value="needs_verification">Needs verification</option><option value="report_knowledge">Report Knowledge</option><option value="all">All checked facts</option></select></div><div><label for="find">Find a fact</label><input id="find" type="search" placeholder="Text or missing information"></div></div>
+<p id="shown" class="muted"></p><div id="records"></div>
+<details><summary>Processing details</summary><ul id="batches"></ul></details>
+<footer>Report Knowledge means judged complete and supported by the saved source—not independently verified. This step does not repair claims or generate the final report.</footer>
+</main></body></html>

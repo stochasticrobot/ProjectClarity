@@ -1,0 +1,34 @@
+[
+  {
+    "id": "companies",
+    "question": "Which Canadian companies develop AI products? Identify their locations and products.",
+    "criteria": [
+      "Company identities and company status",
+      "Canadian location or affiliation",
+      "AI product development and product names",
+      "Negated or planned locations distinguished from existing locations"
+    ]
+  },
+  {
+    "id": "researchers",
+    "question": "Which researchers work on medical AI? Identify their institutions and projects.",
+    "criteria": [
+      "Researcher identities",
+      "Medical AI research activity",
+      "Institutional affiliations",
+      "Project identities and researcher roles"
+    ]
+  },
+  {
+    "id": "funding",
+    "question": "What funding was announced for these medical AI projects, by whom, and was it confirmed or disputed?",
+    "criteria": [
+      "Medical AI project identities",
+      "Announced amount and currency",
+      "Announcing speaker or organization",
+      "Announcement date",
+      "Confirmation or dispute and its source",
+      "Announced versus actually received funding"
+    ]
+  }
+]

@@ -1,0 +1,12 @@
+You are a planner for an information extraction engine.
+
+Given a RESEARCH QUESTION, identify only the information without which it cannot be answered.
+
+List the entity types, attributes, and relationships needed. For each, give a short name and explain what to capture and why it is necessary.
+
+Do not include information merely because it is useful or commonly reported. Do not add restrictions the question does not state. Use the ordinary meaning of the question.
+
+Describe what to extract, not the answer or how to find it.
+
+RESEARCH QUESTION:
+{research_question}

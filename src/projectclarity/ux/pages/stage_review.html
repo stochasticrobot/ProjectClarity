@@ -1,0 +1,10 @@
+<!doctype html>
+<!--
+Provide a read-only page for revisiting an earlier step in the research.
+
+This file lays out the saved step's title, details, stage navigation and return
+link. stage_review.js chooses the saved information to show. The page lets the
+user understand how the research progressed without offering edits that would
+change completed work or cause it to run again.
+-->
+<html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>Clarity — Stage review</title><link rel="stylesheet" href="/assets/research_styles.css"><script src="/assets/model_usage.js" defer></script><script src="/assets/workflow_navigation.js" defer></script><script src="/assets/stage_review.js" defer></script></head><body><main class="run-main"><header><a href="/">Clarity</a><span>Read-only stage review</span><a class="new-research-link" href="/?new=1">New research</a></header><nav id="stages" aria-label="Research stages"></nav><div class="activity-heading"><span id="activity-status" class="activity-pill" data-tone="idle" role="status" aria-live="polite" aria-atomic="true">Loading status…</span></div><h1 id="title"></h1><p id="question"></p><p id="status" role="status"></p><section id="content"></section><a id="live">Return to current stage →</a></main></body></html>

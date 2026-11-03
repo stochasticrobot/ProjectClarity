@@ -1,0 +1,7 @@
+Select the facts that could help answer the provided RESEARCH QUESTION or provide the REQUESTED INFORMATION that is relevant to the RESEARCH QUESTION.
+
+Include facts that support, contradict, or qualify a possible answer. A fact may be relevant even if it cannot answer the question on its own.
+
+Consider connections between the supplied facts. Do not invent missing connections or decide whether a claim is proven.
+
+For each selected fact, briefly explain how it contributes. If none are relevant, select none.
