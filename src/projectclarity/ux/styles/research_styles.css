@@ -64,3 +64,22 @@ header .new-research-link { white-space:nowrap; font-size:.95rem; font-weight:60
 .answer-items { width:100%; border-collapse:collapse; }
 .answer-items th,.answer-items td { text-align:left; vertical-align:top; padding:.65rem; border-bottom:1px solid #ddd; min-width:8rem; }
 .answer-items small { display:block; }
+
+/* Budget decisions interrupt new calls without hiding or discarding saved work. */
+#budget-dialog { max-width: 38rem; width: calc(100% - 3rem); border: 2px solid #d6a84b; border-radius: 1rem; padding: 1.5rem; color: inherit; background: #fff; }
+#budget-dialog::backdrop { background: rgb(0 0 0 / 45%); }
+#budget-dialog button { margin: .5rem .6rem 0 0; }
+#budget-error { color: #b42318; }
+
+/* Selection can contain hundreds of source chunks and evidence cards. Bound each
+   list independently so neither pushes the other far down the page. Headings and
+   filters remain outside; focusable, named regions support keyboard scrolling.
+   A maximum (not fixed) height keeps short lists compact on all screen sizes. */
+.evidence-main .selection-scroll { max-height:55vh; overflow:auto; scrollbar-gutter:stable; }
+.evidence-main .selection-scroll:focus-visible { outline:3px solid #31694c; outline-offset:3px; }
+.evidence-main .selection-scroll thead th { position:sticky; top:0; background:#f6f7f3; z-index:1; }
+.evidence-main #evidence-facts { padding:0 4px 4px; }
+
+/* Triage may contain thousands of facts; keep its filters outside the scroll area. */
+.triage-facts-scroll { max-height:55vh; overflow:auto; scrollbar-gutter:stable; padding:0 4px 4px; }
+.triage-facts-scroll:focus-visible { outline:3px solid #31694c; outline-offset:3px; }

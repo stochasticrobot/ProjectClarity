@@ -29,10 +29,13 @@ function currentStage(state){
 /** Render accessible workflow navigation with read-only links to reached stages.
  * Args: state — saved state or empty initial state; viewed — optional review stage.
  * Returns: nothing; highlights live stage, labels viewed stage, disables future
- * stages and omits clarification when no clarification was requested.
+ * stages and omits clarification when no clarification was requested. Also shows
+ * the shared budget decision dialog without granting allowance during polling.
  */
 function renderStages(state={},viewed=null){
  followCurrentRound(state,viewed);
+ if(typeof renderBudget==='function')renderBudget(state);
+ if(typeof renderRoundBudget==='function')renderRoundBudget(state);
  renderActivity(state,viewed);
  renderUsage(state);
  const nav=document.getElementById('stages');if(!nav)return;
@@ -63,9 +66,12 @@ function renderStages(state={},viewed=null){
  * Args: state — saved session; page — URL path; viewed — optional saved-review stage.
  * Returns: label, tone and busy flag. Rejected claims are research outcomes, not
  * application failures. Per-record errors and partial evidence stay in detail
- * panels and never change this progress signal. A saved view is never live.
+ * panels and never change this progress signal. A run-wide budget pause takes
+ * precedence on every screen; saved stage views otherwise never animate.
  */
 function activityPresentation(state={},page=location.pathname,viewed=null){
+ if(state.model_budget?.paused&&['working','search_working','run_running','selection_running','triage_running','investigation_running','link_ranking_running','report_running'].includes(state.status))return {label:'Research paused — budget approval needed',tone:'warning',busy:false};
+ if(state.status==='link_ranking_waiting')return {label:'Waiting for your next-round decision',tone:'warning',busy:false};
  const names={link_ranking:'Link ranking',run:'Research',selection:'Evidence selection',triage:'Claim review',investigation:'Claim investigation',report:'Report'};
  const working={link_ranking:'Ranking links',selection:'Selecting relevant information',triage:'Checking claims',investigation:'Investigating claims',report:'Preparing report'};
  const segment=page.split('/')[1];
@@ -86,6 +92,7 @@ function activityPresentation(state={},page=location.pathname,viewed=null){
  const progress=state[key],name=names[key];
  if(!progress)return {label:name+' — ready',tone:'idle',busy:false};
  const status=progress.status;
+ if(key==='report'&&status==='partial')return {label:'Partial report — unresolved work remains',tone:'warning',busy:false};
  if(status==='failed')return {label:name+' failed',tone:'error',busy:false};
  if(['cancelled','interrupted'].includes(status))return {label:name+(status==='cancelled'?' stopped':' interrupted'),tone:'warning',busy:false};
  if(status==='running'&&state.stop_requested)return {label:'Stopping '+name.toLowerCase()+'…',tone:'warning',busy:true};

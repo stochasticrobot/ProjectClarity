@@ -3,11 +3,14 @@
 Each worker owns one chunk and its optional repair. Workers report progress through
 an inbox; the document coordinator alone updates session state and the knowledge
 index. A worker never starts more than one model call at once, so the worker limit
-also bounds extraction and repair calls together. No new calls are retried here.
+also bounds extraction and repair calls together. Confirmed output truncation is
+reported to the coordinator, which may schedule smaller source pieces. This worker
+never repeats the same request.
 """
 from projectclarity.knowledge_extraction.knowledge_extraction import extraction_request
 from projectclarity.knowledge_extraction.fact_validation_and_repair import recover
 from projectclarity.model_access.model_ledger import mark_validation
+from projectclarity.model_access.model_outcomes import ModelOutputLimitError
 
 
 def extract_chunk(source, chunk, content, requirements, caller, sid, stop, inbox):
@@ -25,7 +28,9 @@ def extract_chunk(source, chunk, content, requirements, caller, sid, stop, inbox
     Returns:
         Receipt containing accepted facts or a recorded failure; None if stopped
         before initial dispatch. Completed responses are retained after a stop,
-        but optional repairs will not start. No source/chunk input is mutated.
+        but optional repairs will not start. Provider usage and a typed truncation
+        flag let the coordinator adapt without treating JSON/quote errors as output
+        limits. No source/chunk input is mutated.
     """
     if stop.is_set():
         return None
@@ -33,7 +38,9 @@ def extract_chunk(source, chunk, content, requirements, caller, sid, stop, inbox
     receipt = {'status': 'failed', 'request': request, 'source': source['final_url'],
                'document_id': source['id'], 'source_sha256': source['text_sha256'],
                'start_char': chunk['start'], 'end_char': chunk['end'],
-               'chunk_index': chunk['index'], 'pages': chunk.get('pages', [])}
+               'chunk_index': chunk['index'], 'pages': chunk.get('pages', []),
+               'sizing_level': chunk.get('sizing_level', 0),
+               'parent_chunk_index': chunk.get('parent_chunk_index')}
     label = f'extract-doc{source["id"]}-chunk{chunk["index"]}'
 
     def call(stage, payload, session_id):
@@ -41,12 +48,17 @@ def extract_chunk(source, chunk, content, requirements, caller, sid, stop, inbox
 
         Args: stage: Unique task label; payload: Exact request; session_id: Owner.
         Returns: Model text; cancellation or transport errors propagate to recovery
-            or the outer receipt handler. Queue notifications precede dispatch.
+            or the outer receipt handler. Count notifications follow completion so
+            budget-cancelled requests that were never sent do not count as calls.
         """
         if stop.is_set():
             raise InterruptedError('Stopped before model dispatch.')
-        inbox.put(('call', source['id'], chunk['index'], None))
-        return caller(stage, payload, session_id)
+        try:
+            return caller(stage, payload, session_id)
+        finally:
+            metadata = caller.call_metadata(stage, session_id) if hasattr(caller, 'call_metadata') else {}
+            if metadata.get('attempted', True):
+                inbox.put(('call', source['id'], chunk['index'], None))
 
     # Recovery uses the same bounded worker slot and the transport's ledger hooks.
     call.model = caller.model
@@ -76,6 +88,9 @@ def extract_chunk(source, chunk, content, requirements, caller, sid, stop, inbox
             return None
         raise
     except Exception as error:
+        receipt['output_truncated'] = isinstance(error, ModelOutputLimitError)
         mark_validation(caller, label, sid, False)
         receipt['error'] = {'type': type(error).__name__, 'message': str(error)[:1000]}
+    if hasattr(caller, 'call_metadata'):
+        receipt['provider'] = caller.call_metadata(label, sid)
     return receipt

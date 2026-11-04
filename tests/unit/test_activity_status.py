@@ -99,3 +99,20 @@ process.stdout.write(JSON.stringify(cases.map(args=>sandbox.activityPresentation
         self.assertEqual(results[2]["tone"], "working")
         self.assertFalse(results[3]["busy"])
         self.assertTrue(results[3]["label"].startswith("Saved "))
+
+    def test_global_budget_pause_overrides_every_live_view_but_not_restart(self):
+        """Make the stopped spending state visible regardless of the viewed step.
+
+        Args: None.
+        Returns: None; all live pages show a stationary warning; interrupted
+            sessions do not pretend that a vanished worker can be continued.
+        """
+        state = {"status": "report_running", "model_budget": {"paused": True},
+                 "report": {"status": "running"}}
+        paths = ["/", "/run/id", "/evidence/id", "/triage/id", "/investigation/id", "/links/id", "/report/id"]
+        for result in self.presentations([[state, path] for path in paths]):
+            self.assertEqual((result["tone"], result["busy"]), ("warning", False))
+            self.assertIn("budget", result["label"])
+        state.update(status="report_interrupted", report={"status": "interrupted"})
+        result = self.presentations([[state, "/report/id"]])[0]
+        self.assertNotIn("budget", result["label"])

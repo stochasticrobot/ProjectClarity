@@ -26,6 +26,7 @@ from langgraph.types import Command
 from projectclarity.model_access.model_client import ROOT, ModelCalls
 from projectclarity.workflow.research_graph import build_setup_graph, build_search_graph, build_research_graph
 from projectclarity.workflow.source_collection import SourceCollection
+from projectclarity.documents.web_acquisition import read_document_text
 
 ACTIVE_STATUSES = ('working', 'search_working', 'run_running', 'selection_running', 'triage_running', 'investigation_running', 'link_ranking_running', 'report_running')
 
@@ -94,12 +95,15 @@ class Sessions:
         Args:
             session_id: UUID string, never an arbitrary filesystem path.
         Returns:
-            Snapshot dictionary; missing or invalid IDs raise HTTP 404.
+            Snapshot dictionary including independently saved budget progress;
+            missing or invalid IDs raise HTTP 404. Reading never grants allowance.
         """
         try:
             path = self.root / str(UUID(str(session_id))) / 'session.json'
             state = json.loads(path.read_text())
             state['stop_requested'] = self.stops.get(str(session_id), Event()).is_set()
+            if hasattr(self.transport, 'budgets'):
+                state['model_budget'] = self.transport.budgets.snapshot(str(session_id))
             return state
         except (ValueError, OSError):
             raise HTTPException(404, 'Research setup not found.')
@@ -111,13 +115,15 @@ class Sessions:
             state: Session dictionary with validated ID and user-facing fields.
         Returns:
             None. Writes owner-only JSON via atomic replacement; errors propagate.
+            Budget overlays are omitted: their separate owner prevents stale workers
+            from overwriting allowance decisions.
         """
         directory = self.root / state['session_id']
         directory.mkdir(exist_ok=True, mode=0o700)
         temporary = directory / 'session.tmp'
         with temporary.open('w') as stream:
             os.chmod(temporary, 0o600)
-            json.dump(state, stream, ensure_ascii=False, indent=2)
+            json.dump({k: v for k, v in state.items() if k != 'model_budget'}, stream, ensure_ascii=False, indent=2)
         temporary.replace(directory / 'session.json')
 
     def work(self, state, payload, search=False):
@@ -132,7 +138,12 @@ class Sessions:
             sanitized failures with no automatic provider retry. Opted-in web sessions
             advance ready definitions to query preparation and prepared queries to
             acquisition; clarification still pauses and reopening pages never starts work.
+            Setup shares the run-wide budget and cancellation event; Quit prevents
+            automatic handoff even when an already-sent response completes.
         """
+        stop = self.stops.setdefault(state['session_id'], Event())
+        if hasattr(self.transport, 'budgets'):
+            self.transport.budgets.begin(state['session_id'], stop)
         try:
             graph = self.search_graph if search else self.graph
             config = {'configurable': {'thread_id': state['session_id'] + (':searches' if search else '')}}
@@ -146,6 +157,9 @@ class Sessions:
                               'The response did not match the required format. No definition was accepted. Start a new question to try again.')
             if search:
                 state['error'] = 'Search-query generation failed. Your research definition is preserved. No searches were run or retried.'
+        if stop.is_set():
+            state.update(status='search_failed' if search else 'failed',
+                         error='Research stopped at your request. Saved work is retained.')
         with self.lock:
             self.write(state)
         if state.get('auto_advance') and state['status'] in ('ready','queries_ready'):
@@ -170,7 +184,8 @@ class Sessions:
             auto_advance persists the requested automatic downstream handoffs;
             research_rounds bounds total collection/review passes (one to five).
             extraction_concurrency, selection_concurrency and triage_concurrency fix per-run
-            call limits for their respective stages.
+            call limits for their respective stages. model_request_budget and
+            model_token_budget apply cumulatively across the whole session.
         """
         sid, question = str(data.session_id), data.question.strip()
         if not question:
@@ -185,6 +200,8 @@ class Sessions:
                 raise HTTPException(409, 'Another setup is still running. Please wait for it to finish.')
             state = {'session_id': sid, 'original_question': question, 'status': 'working', 'auto_advance': data.auto_advance,
                      'research_rounds': data.research_rounds, 'current_round': 1,
+                     'model_request_budget': data.model_request_budget,
+                     'model_token_budget': data.model_token_budget,
                      'extraction_concurrency': data.extraction_concurrency,
                      'selection_concurrency': data.selection_concurrency,
                      'triage_concurrency': data.triage_concurrency,
@@ -289,8 +306,11 @@ class Sessions:
         Returns:
             None. Stage implementations publish progress and retain receipts. This
             does not replay earlier stages when starting from saved evidence.
+            Explicit resumes rebind cancellation without resetting run-wide usage.
             Unexpected graph infrastructure errors propagate to the worker future.
         """
+        if hasattr(self.transport, 'budgets'):
+            self.transport.budgets.begin(state['session_id'], stop)
         graph = build_research_graph(
             self.root / state['session_id'], state, self.publish_run,
             self.transport, stop, start_at=start_at, document_runner=runner, runner_factory=self.runner_factory)
@@ -309,8 +329,10 @@ class Sessions:
         """
         with self.lock:
             state=self.read(sid)
+            if state.get('round_budget_decision', {}).get('status') == 'pending':
+                return state
             prior=state.get('report')
-            if prior and (previous_started_at is None or prior.get('started_at')!=previous_started_at or prior['status'] not in ('failed','cancelled','interrupted')):return state
+            if prior and (previous_started_at is None or prior.get('started_at')!=previous_started_at or prior['status'] not in ('failed','cancelled','interrupted','partial')):return state
             if previous_started_at is not None and prior is None:raise HTTPException(409,'No matching failed report exists.')
             if state.get('investigation',{}).get('status') not in ('completed','partial','cancelled','interrupted'):
                 raise HTTPException(409,'Finish investigation before preparing a report.')
@@ -327,6 +349,33 @@ class Sessions:
             state[entry] = {'status': 'running'}
             self.write(state)
             self.executor.submit(self.execute_research, state, stop, entry);return state
+
+    def round_budget_decision(self, sid, decision_id, action):
+        """Resume only the displayed pre-ranking checkpoint after an explicit choice.
+
+        Args: sid: Session UUID; decision_id: Saved pending checkpoint UUID;
+            action: 'continue' for ranking and another round, or 'report' to skip.
+        Returns: Queued or unchanged state. Stale/duplicate clicks cannot replay
+            work. Other active research blocks admission with HTTP409. This does
+            not extend budget limits, replay upstream stages or auto-retry reports.
+        """
+        if action not in ('continue', 'report'):
+            raise HTTPException(422, 'Choose another round or prepare the report.')
+        with self.lock:
+            state = self.read(sid)
+            decision = state.get('round_budget_decision', {})
+            if (decision.get('id') != decision_id or decision.get('status') != 'pending'
+                    or state.get('status') != 'link_ranking_waiting'):
+                return state
+            if any(json.loads(p.read_text())['status'] in ACTIVE_STATUSES
+                   for p in self.root.glob('*/session.json')):
+                raise HTTPException(409, 'Another request is running.')
+            decision.update(status='decided', action=action)
+            stop = Event(); self.stops[sid] = stop
+            state.update(status='link_ranking_running', stop_requested=False)
+            self.write(state)
+            self.executor.submit(self.execute_research, state, stop, 'link_ranking')
+            return state
 
     def link_ranking_data(self, sid):
         """Read saved candidates without starting ranking or following any link.
@@ -345,13 +394,13 @@ class Sessions:
         return {'candidates': [], 'selected': [], 'issues': []}
 
     def report_data(self, sid):
-        """Read only a fully validated report, never an incomplete model response.
+        """Read a validated complete or explicitly partial report, never raw model output.
 
         Args: sid: Existing session UUID.
-        Returns: Report object or None while missing/failed/interrupted; no calls.
+        Returns: Report object (including partial coverage) or None while unavailable; no calls.
         """
         state=self.read(sid);report=state.get('report',{})
-        if report.get('status')!='completed':return None
+        if report.get('status') not in ('completed','partial'):return None
         return json.loads((self.root/sid/report['artifact_directory']/'report.json').read_text())
 
     def start_investigation(self, sid):
@@ -602,13 +651,31 @@ class Sessions:
         Returns:
             Current snapshot with stop_requested. Work stops at the next boundary;
             an in-flight model request can take up to its configured timeout.
+            Budget-paused workers wake immediately; no further calls are admitted.
         """
         with self.lock:
             state = self.read(sid)
-            if state['status'] in ('run_running', 'selection_running', 'triage_running', 'investigation_running', 'link_ranking_running', 'report_running') and sid in self.stops:
+            if state['status'] in ACTIVE_STATUSES and sid in self.stops:
                 self.stops[sid].set()
                 state['stop_requested'] = True
+                if hasattr(self.transport, 'budgets'):
+                    self.transport.budgets.cancel(sid)
             return state
+
+    def budget_decision(self, sid, revision, action):
+        """Continue or quit exactly the budget pause shown on any research page.
+
+        Args: sid: Existing session UUID; revision: Displayed pause revision;
+            action: Validated 'continue' or 'quit' choice.
+        Returns: Fresh public snapshot. Inactive sessions reject decisions with
+            HTTP409; duplicate clicks cannot add repeated allowances.
+        """
+        with self.lock:
+            state = self.read(sid)
+            if state['status'] not in ACTIVE_STATUSES or not hasattr(self.transport, 'budgets'):
+                raise HTTPException(409, 'This research is not waiting on an active budget.')
+            self.transport.budgets.decide(sid, revision, action)
+            return self.read(sid)
 
     def evidence(self, sid):
         """Read source-linked decisions and exact facts for the selection screen.
@@ -644,7 +711,8 @@ class Sessions:
             sid: Existing session UUID, validated by read.
             document_id: Positive ID belonging to the recorded run URL pool.
         Returns:
-            Source metadata, parsed document text, accepted chunk projections and
+            Source metadata, exact saved document text (line endings preserved),
+            accepted chunk projections and
             unresolved/withdrawn proposal details;
             unknown IDs raise HTTP404. This read performs no acquisition/model calls.
         """
@@ -659,7 +727,7 @@ class Sessions:
             if receipt['status'] in ('checks_pass','checks_partial'):
                 records.append({'chunk_index':receipt['chunk_index'],'pages':receipt.get('pages',[]),'grounding':receipt.get('grounding',[]),'unresolved':receipt.get('unresolved',[]),'withdrawn':receipt.get('withdrawn',[]),**receipt['parsed']})
         text_path=folder/'document.txt'
-        return {'source':source,'document_text':text_path.read_text() if text_path.exists() else None,'knowledge':records}
+        return {'source':source,'document_text':read_document_text(text_path) if text_path.exists() else None,'knowledge':records}
 
     def close(self):
         """Finish queued work and release the SQLite connection during shutdown/tests.
@@ -667,7 +735,10 @@ class Sessions:
         Args:
             None.
         Returns:
-            None. Waits for active work rather than abandoning an in-flight model call.
+            None. Cancels budget waits and waits for already-sent requests before
+            releasing SQLite; shutdown never approves additional allowance.
         """
+        if hasattr(self.transport, 'budgets'):
+            self.transport.budgets.close()
         self.executor.shutdown(wait=True)
         self.connection.close()

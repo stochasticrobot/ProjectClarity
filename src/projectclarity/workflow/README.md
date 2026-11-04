@@ -30,8 +30,9 @@ setting remain single-pass; deploying this feature does not restart them.
 `round_history`, retains the active `current_round` and immutable `round_paths`,
 excludes previously attempted original/final URLs, and builds content-addressed
 cumulative report inputs. New round source scores use **that round's** reviewed
-facts and source pages. Older pages are not re-ranked; the final round still
+facts and source pages. Older pages are not re-ranked; the final round normally
 produces a saved link selection, but does not fetch it beyond the configured limit.
+When over the budget checkpoint threshold, final-round ranking is skipped.
 Known destination aliases are excluded before acquisition. Unknown redirects may
 require another GET to discover the final destination; their receipts are kept
 but duplicate destination text is not extracted again.
@@ -54,3 +55,18 @@ Server restart marks active work interrupted and never silently replays it.
 All original round artifacts remain on disk. Live stage screens describe the
 current round; the report coverage lists every round. The round limit is a bound,
 not a promise of adequate coverage, a provider call budget or a spending cap.
+
+## Budget checkpoint before link ranking
+
+[round_budget_checkpoint.py](round_budget_checkpoint.py) checks settled run-wide
+usage before constructing a ranking worker. If **more than 50% of either current
+call or token allowance** has been used, it saves a choice: prepare the report now,
+or rank links and research another round. Exactly 50% proceeds normally. Estimated
+usage counts; unconfirmed usage also requires a choice. Continuing does not increase
+the hard budget. Reports still consume budget and may reach its ordinary pause.
+
+The checkpoint survives server restarts and page reloads without spending. Its
+single-use decision ID prevents duplicate clicks from granting multiple rounds.
+On the last configured round, high usage skips ranking and goes to reporting without
+asking to approve a nonexistent next round. Existing report-only retries stay
+report-only and do not replay the checkpoint or upstream research.

@@ -23,6 +23,7 @@ import uvicorn
 from projectclarity.model_access.model_client import ROOT
 from projectclarity.workflow.research_sessions import Sessions, ACTIVE_STATUSES
 from projectclarity.model_access.model_ledger import read_ledger
+from projectclarity.model_access.research_budget import DEFAULT_MODEL_REQUEST_BUDGET, DEFAULT_MODEL_TOKEN_BUDGET
 
 
 class StartInput(BaseModel):
@@ -31,6 +32,8 @@ class StartInput(BaseModel):
     session_id: UUID
     question: str = Field(min_length=1, max_length=8000)
     auto_advance: bool = False
+    model_request_budget: int = Field(default=DEFAULT_MODEL_REQUEST_BUDGET, ge=1, le=1_000_000, strict=True)
+    model_token_budget: int = Field(default=DEFAULT_MODEL_TOKEN_BUDGET, ge=1, le=1_000_000_000, strict=True)
     research_rounds: int = Field(default=2, ge=1, le=5, strict=True)
     extraction_concurrency: int = Field(default=6, ge=1, le=16, strict=True)
     selection_concurrency: int = Field(default=6, ge=1, le=16, strict=True)
@@ -38,6 +41,20 @@ class StartInput(BaseModel):
     investigation_concurrency: int = Field(default=6, ge=1, le=16, strict=True)
     link_ranking_concurrency: int = Field(default=6, ge=1, le=16, strict=True)
     report_selection_concurrency: int = Field(default=6, ge=1, le=16, strict=True)
+
+
+class BudgetDecisionInput(BaseModel):
+    """Bind an explicit budget choice to the pause displayed to the user."""
+    model_config = ConfigDict(extra='forbid', strict=True)
+    revision: int = Field(ge=1)
+    action: Literal['continue', 'quit']
+
+
+class RoundBudgetDecisionInput(BaseModel):
+    """Bind the next-round choice to a durable, displayed pre-ranking checkpoint."""
+    model_config = ConfigDict(extra='forbid', strict=True)
+    decision_id: str = Field(min_length=1, max_length=64)
+    action: Literal['continue', 'report']
 
 
 class SelectionResumeInput(BaseModel):
@@ -146,7 +163,7 @@ def create_app(sessions):
         Returns:
             Static response, or HTTP 404 for every other filename.
         """
-        if name not in ('research_setup.js', 'research_styles.css', 'document_pipeline.js', 'evidence_selection.js', 'claim_triage.js', 'workflow_navigation.js', 'model_usage.js', 'stage_review.js', 'claim_investigation.js', 'research_report.js', 'link_ranking.js'):
+        if name not in ('research_setup.js', 'research_styles.css', 'document_pipeline.js', 'evidence_selection.js', 'claim_triage.js', 'workflow_navigation.js', 'model_usage.js', 'research_budget.js', 'stage_review.js', 'claim_investigation.js', 'research_report.js', 'link_ranking.js'):
             raise HTTPException(404)
         return FileResponse(ROOT / 'ux' / ('styles' if name.endswith('.css') else 'scripts') / name)
 
@@ -171,6 +188,24 @@ def create_app(sessions):
             Saved public question, requirements and clarification state.
         """
         return sessions.read(str(sid))
+
+    @app.post('/api/setup/{sid}/budget')
+    def budget_decision(sid: UUID, data: BudgetDecisionInput):
+        """Apply an explicit allowance extension or quit without replaying work.
+
+        Args: sid: Session UUID; data: Displayed pause and user's decision.
+        Returns: Current public snapshot, or HTTP409 when no workflow is active.
+        """
+        return sessions.budget_decision(str(sid), data.revision, data.action)
+
+    @app.post('/api/setup/{sid}/round-budget', status_code=202)
+    def round_budget_decision(sid: UUID, data: RoundBudgetDecisionInput):
+        """Apply a clicked next-round choice without changing spending limits.
+
+        Args: sid: Session UUID; data: Displayed checkpoint ID and explicit action.
+        Returns: Queued or unchanged snapshot; another active run yields HTTP409.
+        """
+        return sessions.round_budget_decision(str(sid), data.decision_id, data.action)
 
     @app.post('/api/setup/{sid}/answers', status_code=202)
     def answers(sid: UUID, data: AnswerInput):

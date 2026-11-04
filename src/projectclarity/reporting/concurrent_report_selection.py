@@ -2,7 +2,8 @@
 
 Each worker retains the existing token checks, splitting and omitted-fact recovery.
 Only the coordinator writes task receipts and session progress. Findings are returned
-in original batch order; final report combination starts only after all batches pass.
+in original batch order. Item reports retain successful fragments even when other
+batches fail; legacy narrative reports retain their stricter all-batches requirement.
 """
 from concurrent.futures import ThreadPoolExecutor, wait, FIRST_COMPLETED
 from copy import copy, deepcopy
@@ -21,13 +22,15 @@ def assess_batch(builder, batch, inbox):
         batch: Disjoint whole facts assigned to this worker.
         inbox: Coordinator queue for progress deltas and durable checkpoint requests.
     Returns:
-        Ordered fragments and split count. Failures propagate after raw responses
+        Ordered fragments, split count and optional error. Item-mode failures retain
+        validated parent fragments; other failures propagate after raw responses
         are saved. Recursive splitting/recovery stays on this worker's single slot.
     """
     worker = copy(builder)
     owner = copy(builder.owner)
     worker.owner = owner
     worker.splits = 0
+    worker.retained_fragments = []
     owner.progress = deepcopy(builder.owner.progress)
     owner.state = {**builder.owner.state, 'report': owner.progress}
     previous = {key: owner.progress[key] for key in COUNTERS}
@@ -57,7 +60,14 @@ def assess_batch(builder, batch, inbox):
 
     owner.publish = publish
     worker.checkpoint = checkpoint
-    return worker.dispatch('facts', batch), worker.splits
+    try:
+        return worker.dispatch('facts', batch), worker.splits, None
+    except Exception as error:
+        if not getattr(builder, 'allow_partial', False):
+            raise
+        # Even a failed omitted-fact recovery can have a useful parent fragment.
+        # Return only independently validated fragments, never raw failed output.
+        return worker.retained_fragments, worker.splits, str(error)
 
 
 def select_report_batches(builder, batches):
@@ -68,7 +78,8 @@ def select_report_batches(builder, batches):
         batches: Deterministically ordered, disjoint whole-fact groups.
     Returns:
         Flattened findings in input order. Stop drains started work before raising;
-        failures retain sibling successes but prevent final report publication.
+        item-mode failures retain sibling successes for explicitly partial publication;
+        legacy reports still fail. Disk/publication errors always stop publication.
         No new batch is scheduled after stop, and no merge runs in this pool.
     """
     owner = builder.owner
@@ -97,6 +108,8 @@ def select_report_batches(builder, batches):
                     builder.checkpoint(receipt)
                 except Exception as error:
                     errors.append(error)
+                    publication_errors.append(error)
+                    owner.stop.set()
                 finally:
                     ready.set()
             else:
@@ -125,7 +138,9 @@ def select_report_batches(builder, batches):
             for future in done:
                 index = active.pop(future)
                 try:
-                    outputs[index], splits = future.result()
+                    outputs[index], splits, issue = future.result()
+                    if issue:
+                        failures.append(issue)
                     builder.splits += splits
                 except Exception as error:
                     failures.append(str(error))
@@ -134,6 +149,7 @@ def select_report_batches(builder, batches):
         raise publication_errors[0]
     if owner.stop.is_set():
         raise InterruptedError('Stopped before report combination; completed work retained.')
-    if failures:
+    owner.progress['failed_batches'] = len(failures)
+    if failures and not getattr(builder, 'allow_partial', False):
         raise ValueError(f'{len(failures)} evidence batch(es) failed. Validated batches are saved for retry. First issue: {failures[0]}')
-    return [output for index in range(len(batches)) for output in outputs[index]]
+    return [output for index in sorted(outputs) for output in outputs[index]]

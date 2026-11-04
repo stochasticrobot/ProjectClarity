@@ -3,6 +3,7 @@
 The model selects supported field values. Code checks reference integrity and
 accounts for omitted facts. Irrelevant facts need only their IDs, not explanations.
 """
+import json
 from pathlib import Path
 from typing import Literal
 from pydantic import BaseModel, ConfigDict
@@ -69,21 +70,57 @@ def validate_selection(text, packet, facts):
         packet: Frozen answer requirements.
         facts: Exact facts offered to this task.
     Returns:
-        Report-compatible fragments plus item tags and omission metadata. Unknown
-        IDs and uncited values fail. Repeated field contributions are combined
+        Report-compatible fragments plus item tags and omission metadata.
+        Invalid item identities fail. Invalid or uncited fields are withheld and
+        recorded as retryable issues, never published as supported values. Uncited fields marked
+        insufficient are withheld in the audit, not published or given invented
+        citations; other cited fields survive. Repeated contributions are combined
         without losing distinct values or citations. Unused facts
         are explicit exclusions; omitted facts enter the existing bounded recovery.
     """
-    result=SelectedItems.model_validate_json(text).model_dump()
+    raw=json.loads(text)
+    if not isinstance(raw,dict) or not isinstance(raw.get('items'),list):
+        raise ValueError('Expected an answer item list.')
+    # Validate item identities separately from fields: one malformed/missing field
+    # must not discard otherwise attributable items or their batch siblings.
+    result=SelectedItems.model_validate({**raw,'items':[]}).model_dump()
+    invalid=[]
+    for raw_item in raw['items']:
+        if not isinstance(raw_item,dict):
+            raise ValueError('Expected an answer item object.')
+        item=SelectedItem.model_validate({**raw_item,'fields':[]}).model_dump()
+        raw_fields=raw_item.get('fields',[])
+        if not isinstance(raw_fields,list):
+            invalid.append({'label':item['label'],'error':'Fields were not a list.'})
+            raw_fields=[]
+        for raw_field in raw_fields:
+            try:
+                field=SelectedField.model_validate(raw_field).model_dump()
+                field=normalize_references(field,[f['id'] for f in facts],
+                    [r['id'] for r in packet['requirements']])
+                if (not field['value'].strip() or not field['fact_ids']) and not (
+                        field['status']=='insufficient' and not field['fact_ids']):
+                    raise ValueError('Selected value needs text and supporting facts.')
+                item['fields'].append(field)
+            except ValueError as error:
+                invalid.append({'label':item['label'],'field':raw_field,'error':str(error)[:500]})
+        result['items'].append(item)
     # Reuse the same exact/unique case-and-space matching for every ID list.
     result['fact_ids']=result.pop('unused_fact_ids')
     result=normalize_references(result,[f['id'] for f in facts],[r['id'] for r in packet['requirements']])
-    unused=set(result.pop('fact_ids'));used=set();entries=[]
+    unused=set(result.pop('fact_ids'));used=set();entries=[];withheld=[]
     for item in result['items']:
         if not item['label'].strip() or not item['fact_ids']:
             raise ValueError('Selected item needs a label and supporting facts.')
         fields={};references=set(item['fact_ids'])
         for field in item['fields']:
+            # Models sometimes describe a missing value despite the instruction to
+            # omit unsupported fields. Rejecting the entire batch loses its useful
+            # cited items. Withhold only explicitly insufficient, uncited fields;
+            # never publish their prose or borrow the item's citations as support.
+            if field['status']=='insufficient' and not field['fact_ids']:
+                withheld.append({'label':item['label'], **field})
+                continue
             if not field['value'].strip() or not field['fact_ids']:raise ValueError('Selected value needs supporting facts.')
             field['fact_ids']=list(dict.fromkeys(field['fact_ids']))
             prior=fields.get(field['requirement_id'])
@@ -108,5 +145,7 @@ def validate_selection(text, packet, facts):
     unused-=used
     return {'summary':[],'entries':entries,'gaps':[],
         'exclusions':[{'fact_id':fid,'reason':'Not selected for the requested answer fields.'} for fid in sorted(unused)],
+        **({'_issues':invalid} if invalid else {}),
         '_recovery':{'missing_fact_ids':[f['id'] for f in facts if f['id'] not in used|unused],
-                     'withheld_uncited_summary':[]}}
+                     'withheld_uncited_summary':[],
+                     **({'withheld_insufficient_fields':withheld} if withheld else {})}}

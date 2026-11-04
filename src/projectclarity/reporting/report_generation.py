@@ -129,7 +129,7 @@ def report_csv(report):
         Incomplete entries are explicitly labeled, never silently dropped.
     """
     stream=StringIO();writer=csv.writer(stream)
-    writer.writerow(['Entry','Completeness',*[csv_value(r['name']) for r in report['requirements']],*[csv_value(r['name']+' — status / citations') for r in report['requirements']], 'Source URLs'])
+    writer.writerow(['Entry','Completeness',*[csv_value(r['name']) for r in report['requirements']],*[csv_value(r['name']+' — status / citations') for r in report['requirements']], 'Source URLs','Report coverage'])
     fact_map={f['id']:f for f in report.get('facts',[])}
     for entry in report['entries']:
         cited=set(entry.get('label_fact_ids',[]))|{i for f in entry['fields'] for i in f['fact_ids']}
@@ -137,7 +137,7 @@ def report_csv(report):
         fields={f['requirement_id']:f for f in entry['fields']};complete=all(f['status']=='supported' for f in entry['fields'])
         writer.writerow([csv_value(entry['label']),'Supported match' if complete else 'Incomplete candidate',
             *[csv_value(fields[r['id']]['value'] or fields[r['id']]['status']) for r in report['requirements']],
-            *[csv_value(fields[r['id']]['status']+' / '+', '.join(fields[r['id']]['fact_ids'])) for r in report['requirements']], '; '.join(urls)])
+            *[csv_value(fields[r['id']]['status']+' / '+', '.join(fields[r['id']]['fact_ids'])) for r in report['requirements']], '; '.join(urls), 'Partial report' if report.get('coverage',{}).get('unreviewed_report') or report.get('coverage',{}).get('withheld_invalid_fields') else 'Reviewed input accounted for'])
     return stream.getvalue()
 
 
@@ -204,7 +204,7 @@ class ReportRun:
         Explicit legacy fixtures retain the previous narrative/merge path.
         
         The final requirements define the answer fields. Each input fact must be
-        used or explicitly excluded so an apparently tidy report cannot silently
+        used, explicitly excluded, or listed as unreviewed in a partial report so it cannot silently
         hide dropped evidence. These checks enforce coverage and references, not
         semantic accuracy or independent truth.
         
@@ -217,8 +217,9 @@ class ReportRun:
             findings without a model call. generation.json records success or failure,
             with a safe failure reason. Individual task receipts retain raw replies,
             token counts, request hashes and reuse provenance even on rejection.
-            Cancellation before dispatch raises InterruptedError. Provider, validation
-            and file errors propagate to execute. Only an explicit retry can reuse
+            Cancellation before dispatch raises InterruptedError. Item-mode batch errors
+            permit explicitly partial output; unusable input and file errors propagate
+            to execute. Only an explicit retry can reuse
             earlier validated tasks and resend failed work; input is never truncated.
         """
         if self.stop.is_set():raise InterruptedError('Stopped before report request.')
@@ -238,7 +239,7 @@ class ReportRun:
             save(self.root/'report.json',report,'')
             path=self.root/'report.csv';path.write_text(report_csv(report),encoding='utf-8-sig');path.chmod(0o600)
             complete=sum(all(f['status']=='supported' for f in e['fields']) for e in result['entries'])
-            self.progress.update(facts_accounted=len(self.packet['facts']),entries=len(result['entries']),complete_entries=complete,incomplete_entries=len(result['entries'])-complete)
+            self.progress.update(facts_accounted=len(self.packet['facts'])-self.progress.get('unreviewed_facts',0),entries=len(result['entries']),complete_entries=complete,incomplete_entries=len(result['entries'])-complete)
             receipt['status']='checks_pass'
         except Exception as error:
             receipt['error']={'type':type(error).__name__,'message':str(error)[:500]};raise
@@ -251,11 +252,11 @@ class ReportRun:
         """Run the report stage once, publishing only validated results.
 
         Args: None.
-        Returns: None; completed/failed/cancelled state. No automatic retries or dropped input.
+        Returns: None; completed/partial/failed/cancelled state. No automatic retries or dropped input.
             A finished in-flight result is retained if stop was requested mid-call.
         """
         try:
-            self.prepare({'session_id':self.state['session_id']});self.progress['status']='completed'
+            self.prepare({'session_id':self.state['session_id']});self.progress['status']='partial' if self.progress.get('partial') else 'completed'
         except InterruptedError:self.progress['status']='cancelled'
         except Exception as error:
             self.progress.update(status='failed',error='Report preparation stopped. '+str(error)[:700]+' Saved evidence and completed batches are retained.')

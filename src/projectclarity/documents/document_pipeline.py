@@ -19,9 +19,10 @@ from uuid import uuid4
 from concurrent.futures import ThreadPoolExecutor, wait, FIRST_COMPLETED
 from queue import Queue, Empty
 from projectclarity.knowledge_extraction.concurrent_extraction import extract_chunk
+from projectclarity.knowledge_extraction.adaptive_chunk_sizing import AdaptiveChunkSizing, CHUNK_SIZES
 
 
-from projectclarity.documents.web_acquisition import RobotsReader, SourceError, parse_document, split_text, canonical_url
+from projectclarity.documents.web_acquisition import RobotsReader, SourceError, parse_document, split_text, canonical_url, read_document_text
 from projectclarity.documents.document_pool import DocumentPool
 from projectclarity.knowledge_extraction.knowledge_extraction import save
 
@@ -52,10 +53,12 @@ class DocumentPipeline:
         self.state,self.publish,self.caller,self.stop=state,publish,caller,stop
         self.run={'artifact_directory':self.root.name,'status':'running','stage':'downloading',
                   'events':[],'sources':[], 'model_calls':0,'chunks_total':0,'chunks_finished':0,
-                  'chunks_passed':0,'chunks_partial':0,'facts':0,'facts_unresolved':0,
+                  'chunks_passed':0,'chunks_partial':0,'chunks_split':0,'recovery_calls':0,'facts':0,'facts_unresolved':0,
                   'facts_withdrawn':0,'facts_awaiting_repair':0,
                   'limits':{'document_bytes':3000000,'document_characters':None,
-                            'chunk_characters':3000,'extraction_concurrency':state.get('extraction_concurrency',6),'robots_policy_version':2,
+                            'chunk_characters':3000,'extraction_chunk_ladder':list(CHUNK_SIZES),
+                            'extraction_promotion_successes':2,'extraction_promotion_output_fraction':0.60,
+                            'extraction_concurrency':state.get('extraction_concurrency',6),'robots_policy_version':2,
                             'robots_max_attempts':3,'robots_max_retry_wait_seconds':30},
                   'started_at':datetime.now(timezone.utc).isoformat()}
         self.state['run']=self.run
@@ -82,7 +85,8 @@ class DocumentPipeline:
         save(self.root/'manifest.tmp',{'research_question':self.state['research_question'],
              'information_needed':self.state['information_needed'],'paths':pool.entries,
              'limits':{k:v for k,v in self.run['limits'].items() if k in
-                       ('document_bytes','document_characters','chunk_characters','extraction_concurrency','robots_policy_version','robots_max_attempts','robots_max_retry_wait_seconds')},
+                       ('document_bytes','document_characters','chunk_characters','extraction_chunk_ladder',
+                        'extraction_promotion_successes','extraction_promotion_output_fraction','extraction_concurrency','robots_policy_version','robots_max_attempts','robots_max_retry_wait_seconds')},
              'user_agent':'ClarityResearchBot/0.1',
              'prompt_sha256':hashlib.sha256((Path(__file__).resolve().parents[1]/'prompts/structured_information_extraction.txt').read_bytes()).hexdigest()},'')
         (self.root/'manifest.tmp').replace(self.root/'manifest.json')
@@ -121,7 +125,8 @@ class DocumentPipeline:
             graph_state: Session identity passed by the graph.
         Returns:
             Unchanged state. Every source receives an acquired, blocked or failed
-            outcome. Parsed text is saved whole or rejected explicitly, never trimmed.
+            outcome. Parsed text is saved whole with original line endings, or
+            rejected explicitly, never trimmed.
             In linked rounds, a redirect to a collected destination retains its
             acquisition receipt but skips repeat extraction; the initial alias GET
             cannot be avoided when its redirect destination was not previously known.
@@ -155,7 +160,7 @@ class DocumentPipeline:
                 parsed=parse_document(body,headers.get('content-type',''))
                 text,parser=parsed['text'],parsed['parser']
                 save(folder/'parsing.json',{k:v for k,v in parsed.items() if k!='text'},'')
-                path=folder/'document.txt';path.write_text(text);path.chmod(0o600)
+                path=folder/'document.txt';path.write_text(text, encoding='utf-8', newline='');path.chmod(0o600)
                 source.update(status='downloaded',parsed=True,characters=len(text),parser=parser,pages=parsed['pages'],warnings=parsed['warnings'],
                               text_sha256=hashlib.sha256(text.encode()).hexdigest())
                 chunks=split_text(text)
@@ -203,22 +208,25 @@ class DocumentPipeline:
             events and the deterministically ordered knowledge index. Workers own
             isolated receipts and one extraction/repair call at a time. On stop,
             no further chunks are scheduled; in-flight results are drained and
-            saved before InterruptedError. Failed chunks do not discard siblings.
+            saved before InterruptedError. Each document starts at 3000 characters;
+            confirmed truncation splits down to 1500, 750, then 325, while two small
+            successful replies can promote pending ordinary work one level. Failed
+            parents remain auditable but only successful children enter knowledge.
+            Attempt counts include split parents; totals adjust as pending work is
+            repartitioned. Other failures never trigger splitting.
         """
         limit = self.run['limits']['extraction_concurrency']
         if type(limit) is not int or not 1 <= limit <= 16:
             raise ValueError('Extraction concurrency must be an integer from 1 to 16.')
         self.run['stage'] = 'extracting'
         self.event(f'Knowledge extraction: {self.run["chunks_total"]} chunks, up to {limit} concurrent calls.')
-        knowledge, jobs, lookup = [], [], {}
+        knowledge, documents, lookup = [], [], {}
         for source in self.run['sources']:
             if not source['parsed']:
                 continue
             folder = self.root / f'document-{source["id"]:03d}'
-            text = (folder/'document.txt').read_text()
-            for chunk in source['chunks']:
-                jobs.append((source, chunk, text[chunk['start']:chunk['end']], folder))
-                lookup[(source['id'], chunk['index'])] = chunk
+            text = read_document_text(folder/'document.txt')
+            documents.append((source, AdaptiveChunkSizing(source, text), text, folder))
         self.write_knowledge(knowledge)
         inbox = Queue()
 
@@ -237,6 +245,8 @@ class DocumentPipeline:
                 chunk = lookup[(document, index)]
                 if kind == 'call':
                     self.run['model_calls'] += 1
+                    if chunk.get('parent_chunk_index') is not None:
+                        self.run['recovery_calls'] += 1
                 else:
                     accepted, pending = values
                     chunk.update(accepted=accepted, awaiting_repair=pending)
@@ -245,23 +255,28 @@ class DocumentPipeline:
                 self.run['facts_awaiting_repair'] = sum(c.get('awaiting_repair', 0) for c in lookup.values())
                 self.publish(self.state)
 
-        next_job, active = 0, {}
+        active = {}
         with ThreadPoolExecutor(max_workers=limit, thread_name_prefix='clarity-extraction') as pool:
-            while active or (next_job < len(jobs) and not self.stop.is_set()):
-                while len(active) < limit and next_job < len(jobs) and not self.stop.is_set():
-                    source, chunk, content, folder = jobs[next_job]
-                    next_job += 1
+            while active or (any(policy.pending() for _, policy, _, _ in documents) and not self.stop.is_set()):
+                while len(active) < limit and not self.stop.is_set():
+                    chosen = next((item for item in documents if item[1].pending()), None)
+                    if chosen is None:
+                        break
+                    source, policy, text, folder = chosen
+                    chunk = policy.pending()
+                    content = text[chunk['start']:chunk['end']]
+                    lookup[(source['id'], chunk['index'])] = chunk
                     source['status'] = 'extracting'; chunk['status'] = 'extracting'
                     future = pool.submit(extract_chunk, dict(source), dict(chunk), content,
                         self.state['information_needed'], self.caller, self.state['session_id'], self.stop, inbox)
-                    active[future] = (source, chunk, folder)
-                    self.event(f'Extracting source {source["id"]}, chunk {chunk["index"]+1}/{len(source["chunks"])}.')
+                    active[future] = (source, chunk, folder, policy)
+                    self.event(f'Extracting source {source["id"]}, chunk {chunk["index"]+1} ({len(content)} characters).')
                 if not active:
                     break
                 done, _ = wait(active, timeout=0.1, return_when=FIRST_COMPLETED)
                 updates()
-                for future in done:
-                    source, chunk, folder = active.pop(future)
+                for future in sorted(done, key=lambda f: (active[f][0]['id'], active[f][1]['start'])):
+                    source, chunk, folder, policy = active.pop(future)
                     receipt = future.result()
                     # A worker can enqueue its last notification between wait and
                     # result collection. Drain it before clearing pending repairs.
@@ -280,25 +295,36 @@ class DocumentPipeline:
                         self.run['facts_withdrawn'] += withdrawn
                         self.run['chunks_partial' if unresolved else 'chunks_passed'] += 1
                     else:
-                        chunk.update(status='failed', error='Extraction response failed or did not pass schema/source-quote checks.')
+                        chunk.update(status='failed', error=('Model output reached its token limit.' if receipt.get('output_truncated')
+                                     else 'Extraction response failed or did not pass schema/source-quote checks.'))
+                    previous_splits = sum(c['status'] == 'split' for c in source['chunks'])
+                    policy_event = policy.observe(chunk, receipt, self.stop.is_set())
+                    self.run['chunks_split'] += sum(c['status'] == 'split' for c in source['chunks']) - previous_splits
+                    self.run['chunks_total'] = sum(len(s['chunks']) for s in self.run['sources'])
+                    receipt['recovery'] = {'status': chunk['status'],
+                        'source_span': [chunk['start'], chunk['end']],
+                        'child_links_location': 'document-summary.json sources[].chunks',
+                        'error': chunk.get('error')}
                     path = folder/f'chunk-{chunk["index"]:04d}.json'
                     save(path, receipt, '')
                     if receipt['status'] in ('checks_pass', 'checks_partial'):
                         knowledge.append({'source_url':source['final_url'], 'document_id':source['id'],
-                            'chunk_index':chunk['index'], 'pages':chunk.get('pages',[]),
+                            'chunk_index':chunk['index'], 'start_char':chunk['start'], 'pages':chunk.get('pages',[]),
                             'artifact':str(path.relative_to(self.root)),
                             'sha256':hashlib.sha256(path.read_bytes()).hexdigest(), 'facts':chunk['facts']})
-                        knowledge.sort(key=lambda row: (row['document_id'], row['chunk_index']))
+                        knowledge.sort(key=lambda row: (row['document_id'], row['start_char'], row['chunk_index']))
                     self.run['chunks_finished'] += 1
                     self.run['facts_awaiting_repair'] = sum(c.get('awaiting_repair',0) for c in lookup.values())
                     if all(c['status'] not in ('pending','extracting','repairing') for c in source['chunks']):
-                        source['status'] = 'extracted' if all(c['status']=='checks_pass' for c in source['chunks']) else 'extraction_partial'
+                        source['status'] = 'extracted' if all(c['status'] in ('checks_pass', 'split') for c in source['chunks']) else 'extraction_partial'
                     self.write_knowledge(knowledge)
+                    if policy_event:
+                        self.event(f'Source {source["id"]}: {policy_event}')
                     self.event(f'Source {source["id"]}, chunk {chunk["index"]+1}: {chunk["status"]}, {chunk["facts"]} facts.')
         updates()
         for source in self.run['sources']:
             if source['parsed']:
-                source['status'] = 'extracted' if all(c['status']=='checks_pass' for c in source['chunks']) else 'extraction_partial'
+                source['status'] = 'extracted' if all(c['status'] in ('checks_pass', 'split') for c in source['chunks']) else 'extraction_partial'
         self.run['facts_awaiting_repair'] = 0
         self.write_knowledge(knowledge)
         self.cancelled()

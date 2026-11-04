@@ -51,7 +51,10 @@ stage-specific recovery, not automatic replay of uncertain model calls.
 
 The session service schedules graph work on a serialized executor. Within a stage,
 bounded worker pools run independent model calls concurrently. These are separate
-controls: a concurrency setting is not a global spending or provider-rate limit.
+controls: concurrency bounds simultaneous work; `model_access/research_budget.py`
+shares one request/token allowance across the whole session. Neither is a provider
+rate limit or monetary cap. Budget pauses hold workers without replay; Continue
+extends allowances explicitly, and Quit releases waits through cancellation.
 The session service currently uses FastAPI exceptions for rejected actions; it is
 not a framework-independent domain layer.
 
@@ -71,7 +74,7 @@ Each package README describes its inputs, outputs, and important boundaries.
 | [claim_review](src/projectclarity/claim_review/README.md) | Support review and saved-passage investigation | New web research during a claim review |
 | [link_ranking](src/projectclarity/link_ranking/README.md) | Bounded shortlisting, ratings, selected destinations | Fetching destinations itself |
 | [reporting](src/projectclarity/reporting/README.md) | Bounded evidence filtering, item assembly, citations, CSV | Collecting missing evidence |
-| [model_access](src/projectclarity/model_access/README.md) | Provider calls, receipts, usage accounting | Stage routing or a spending cap |
+| [model_access](src/projectclarity/model_access/README.md) | Provider calls, receipts, usage accounting, run-wide budgets | Stage routing, provider pricing or rate limits |
 | [prompts](src/projectclarity/prompts/README.md) | Task instructions loaded by application code | Workflow control |
 
 ## Follow a request
@@ -118,6 +121,12 @@ responses from already-started calls. Recovery is explicit and stage-specific:
 
 - Selection, triage, and investigation have guarded resume paths with context and
   saved-response checks; eligibility differs by stage.
+- During extraction, `adaptive_chunk_sizing.py` adjusts each document's pending
+  spans on a 3,000 / 1,500 / 750 / 325 character ladder. Confirmed output truncation
+  splits downward; two clean replies below 60% output permit a one-level promotion.
+  Failed parents remain auditable, successful leaves retain exact source offsets,
+  and all new calls use the ordinary concurrency and run-wide budget gates.
+  Investigation uses offset-adjacent leaf passages, not consecutive numeric IDs.
 - A document retry is a new retained attempt. A linked round retries its saved
   destinations rather than replaying first-round search.
 - Ranking retries can reuse matching validated batches.
@@ -125,7 +134,9 @@ responses from already-started calls. Recovery is explicit and stage-specific:
   not rerun search, extraction, claim review, or completed ranking.
 
 Rounds default to 2, with a total limit of 1–5. Each additional round follows up to
-10 selected destinations, at most 3 from one source page. See the
+10 selected destinations, at most 3 from one source page. Before ranking, usage
+over half of either current budget pauses for an explicit next-round choice; the
+final round skips ranking at that threshold. See the
 [workflow policy](src/projectclarity/workflow/README.md) for exclusions and limits.
 
 ## Reporting design
@@ -138,7 +149,9 @@ step** in this path.
 
 The shared dispatcher performs provider token-count preflight, records raw replies,
 and revalidates eligible saved tasks on retry. Final validation checks required
-fields, citations, and full input accounting. Historical narrative/merge code
+fields and citations. Complete reports account for every input; partial item reports
+explicitly list unreviewed facts rather than invent exclusions. Invalid fields are
+withheld, successful batches survive failures, and retries reuse valid siblings. Historical narrative/merge code
 remains for explicit legacy regression fixtures; it is not the default workflow.
 See [reporting contracts](src/projectclarity/reporting/README.md).
 

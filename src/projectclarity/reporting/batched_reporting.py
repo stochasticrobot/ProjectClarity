@@ -38,6 +38,7 @@ class BoundedReportBuilder:
         self.tasks.mkdir(mode=0o700)
         self.cache = {}
         self.splits = 0
+        self.retained_fragments = []
         for prior in owner.state.get('report_history', []):
             relative = prior.get('artifact_directory')
             if not relative:
@@ -158,6 +159,8 @@ class BoundedReportBuilder:
             if cached:
                 try:
                     result = self.validate(cached['raw_text'], kind, items)
+                    if kind == 'facts' and result.get('_issues'):
+                        raise ValueError('Saved fields still need a fresh assessment.')
                     missing = result.get('_recovery', {}).get('missing_fact_ids', []) if kind == 'facts' else []
                     # A reply with no usable coverage (or incomplete recovery) must
                     # get a fresh assessment on explicit retry, not fail forever.
@@ -210,6 +213,8 @@ class BoundedReportBuilder:
             missing = details['missing_fact_ids'] if details else []
             if details:
                 receipt['recovery'] = details
+            if getattr(self, 'allow_partial', False):
+                self.retained_fragments.append(result)
             if missing and (recovery or len(missing) == len(items)):
                 raise ValueError('Omitted facts remain after bounded recovery; saved findings retained for retry.')
             recovered = []

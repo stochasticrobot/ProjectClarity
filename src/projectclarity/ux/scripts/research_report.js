@@ -66,7 +66,7 @@ function renderEntries(){
  }
 }
 /** Render only a server-validated report, including exclusions and source evidence.
- * Args: data — complete structured report with original requirement/evidence mapping.
+ * Args: data — validated complete or explicitly partial report with original evidence mapping.
  * Returns: nothing; preserves readable report and CSV parity without model calls.
  */
 function renderReport(data){
@@ -80,6 +80,7 @@ function renderReport(data){
  el('gaps').replaceChildren();for(const gap of data.gaps)el('gaps').append(node('li',readableRequirements(gap)));
  el('excluded').replaceChildren();for(const x of data.exclusions){const p=node('p',readableRequirements(x.reason));citations(p,[x.fact_id]);el('excluded').append(p);}
  el('sources').replaceChildren();for(const f of data.facts){const card=node('article','');card.id='source-'+f.id;card.append(node('h3',`${f.id}: ${f.fact.statement}`));for(const e of f.evidence){const a=node('a',`${e.source_url}${e.pages.length?' · PDF page(s) '+e.pages.join(', '):''}`);a.href=e.source_url;a.target='_blank';a.rel='noopener noreferrer';card.append(a,node('blockquote',e.quote));}el('sources').append(card);}
+ if(data.coverage.unreviewed_report||data.coverage.withheld_invalid_fields)el('coverage').textContent=`PARTIAL REPORT: ${data.coverage.unreviewed_report||0} input facts remain unreviewed; ${data.coverage.withheld_invalid_fields||0} invalid fields withheld. `+el('coverage').textContent;
  renderEntries();
 }
 /** Show measured batch completion and honest activity during open-ended merging.
@@ -117,11 +118,12 @@ function renderProgress(progress){
  * Returns: promise; retries status reads only, retaining explicit errors.
  */
 async function refresh(){clearTimeout(timer);try{const state=await api();if(followCurrentRound(state))return;renderStages(state);if(state.link_ranking&&!state.report&&!new URLSearchParams(location.search).has('stay')){location.replace(`/links/${sid}`);return;}const p=state.report;
- renderProgress(p);failedAttempt=p?.started_at;el('retry').hidden=!failedAttempt||!['failed','cancelled','interrupted'].includes(p?.status);
+ renderProgress(p);failedAttempt=p?.started_at;el('retry').hidden=!failedAttempt||!['failed','cancelled','interrupted','partial'].includes(p?.status);
+ el('retry').textContent=p?.status==='partial'?'Retry unresolved report work':'Retry report';
  el('question').textContent=state.research_question;el('start').hidden=!!p||!['completed','partial','cancelled','interrupted'].includes(state.investigation?.status);el('stop').hidden=p?.status!=='running';el('stop').disabled=!!state.stop_requested;
  el('status').textContent=p?(p.error||(p.status==='running'?`${p.phase||'Preparing report'} · ${p.batches_finished||0}/${p.batches_total||0} evidence batches complete · ${p.merge_tasks_finished||0} merge tasks complete · ${p.reused_tasks||0} saved tasks reused`:`Report ${p.status}.`)):'Ready to prepare your report from Report Knowledge.';
  el('counts').replaceChildren();for(const [label,value] of [['Input facts',p?.facts_total??state.investigation?.report_knowledge??0],['Accounted for',p?.facts_accounted||0],['Supported matches',p?.complete_entries||0],['Incomplete candidates',p?.incomplete_entries||0]]){const d=node('div','');d.append(node('strong',value),node('span',label));el('counts').append(d);}
- if(p?.status==='completed'&&!report){const data=await api('/report-data');if(data)renderReport(data);}
+ if(['completed','partial'].includes(p?.status)&&!report){const data=await api('/report-data');if(data)renderReport(data);}
  if(p?.status==='running'||['investigation_running','link_ranking_running'].includes(state.status))timer=setTimeout(refresh,1200);
  }catch(e){showActivityIssue(true);el('status').textContent=e.message+' Retrying status…';timer=setTimeout(refresh,3000);}}
 /** Start/stop generation only after an explicit user action.
@@ -131,9 +133,9 @@ async function refresh(){clearTimeout(timer);try{const state=await api();if(foll
 async function action(suffix,button){button.disabled=true;try{await api(suffix,true);await refresh();}catch(e){showActivityIssue();el('status').textContent=e.message;}finally{button.disabled=false;}}
 el('back').href=`/investigation/${sid}?stay=1`;el('start').addEventListener('click',()=>action('/report',el('start')));el('stop').addEventListener('click',()=>action('/stop',el('stop')));el('print').addEventListener('click',()=>window.print());for(const id of ['filter','find'])el(id).addEventListener('input',renderEntries);refresh();
 
-/** Retry a failed report only after a deliberate click bound to that attempt.
+/** Retry a failed or partial report only after a deliberate click bound to that attempt.
  * Args: none.
  * Returns: promise; preserves the failed report and prevents duplicate replay.
  */
-async function retryReport(){el('retry').disabled=true;try{await api('/report/retry',true,{previous_started_at:failedAttempt});await refresh();}catch(e){showActivityIssue();el('status').textContent=e.message;}finally{el('retry').disabled=false;}}
+async function retryReport(){el('retry').disabled=true;try{await api('/report/retry',true,{previous_started_at:failedAttempt});report=null;el('report-content').hidden=true;await refresh();}catch(e){showActivityIssue();el('status').textContent=e.message;}finally{el('retry').disabled=false;}}
 el('retry').addEventListener('click',retryReport);

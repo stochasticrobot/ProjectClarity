@@ -421,6 +421,33 @@ def build_research_graph(root, snapshot, publish, caller, stop,
         return run_stage(state, 'investigation', InvestigationRun,
                          'Could not initialize investigation. Original triage records are retained.')
 
+    def round_checkpoint(state):
+        """Save a pre-ranking budget choice without holding a worker or spending.
+
+        Args: state: Owning graph identity.
+        Returns: Unchanged identity; persists a pending human decision or a skip.
+            Stop takes precedence, and no ranking constructor runs while waiting.
+        """
+        if not stop.is_set():
+            from projectclarity.workflow.round_budget_checkpoint import before_link_ranking
+            decision = before_link_ranking(snapshot, caller)
+            if decision == 'report':
+                snapshot['link_ranking'] = {'status': 'skipped',
+                    'reason': 'Ranking skipped to preserve budget for reporting.'}
+                snapshot.setdefault('rounds_finished_reason', 'User chose reporting without another round.')
+            publish(snapshot)
+        return state
+
+    def after_checkpoint(state):
+        """Route only after the persisted choice; never infer approval from time.
+
+        Args: state: Owning graph identity, unchanged by routing.
+        Returns: Ranking, reporting or END for a pending choice/cancellation.
+        """
+        if stop.is_set() or snapshot.get('status') == 'link_ranking_waiting':
+            return END
+        return 'report' if snapshot.get('link_ranking', {}).get('status') == 'skipped' else 'link_ranking'
+
     def link_ranking(state):
         """Score saved outbound links without adding them to report evidence.
 
@@ -534,15 +561,17 @@ def build_research_graph(root, snapshot, publish, caller, stop,
     graph.add_node('selection', selection)
     graph.add_node('triage', triage)
     graph.add_node('investigation', investigation)
+    graph.add_node('round_checkpoint', round_checkpoint)
     graph.add_node('link_ranking', link_ranking)
     graph.add_node('report', report)
     graph.add_node('next_round', next_round)
-    graph.add_edge(START, start_at)
+    graph.add_edge(START, 'round_checkpoint' if start_at == 'link_ranking' else start_at)
     graph.add_conditional_edges('search', after_search, ['documents', END])
     graph.add_conditional_edges('documents', after_stage('run', 'selection'), ['selection', END])
     graph.add_conditional_edges('selection', after_stage('selection', 'triage'), ['triage', END])
     graph.add_conditional_edges('triage', after_stage('triage', 'investigation'), ['investigation', END])
-    graph.add_conditional_edges('investigation', after_stage('investigation', 'link_ranking'), ['link_ranking', END])
+    graph.add_conditional_edges('investigation', after_stage('investigation', 'round_checkpoint'), ['round_checkpoint', END])
+    graph.add_conditional_edges('round_checkpoint', after_checkpoint, ['link_ranking', 'report', END])
     graph.add_conditional_edges('link_ranking', after_links, ['next_round', 'report', END])
     graph.add_conditional_edges('next_round', after_round_start, ['documents', END])
     graph.add_edge('report', END)

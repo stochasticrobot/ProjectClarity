@@ -61,7 +61,7 @@ async function refresh(){
   const heading=el('selected-heading')||el('selected').previousElementSibling;
   heading.textContent=p?.status==='completed'?'Selected links':p?.status==='running'?'Provisional top links — ranking in progress':'Top links from available ratings — ranking incomplete';
   renderStages(state);el('question').textContent=state.research_question;
-  el('status').textContent=p?.error||`Link ranking ${p?.status||'not started'}.`;
+  el('status').textContent=p?.error||(p?.status==='waiting'?'Waiting for your decision. No links have been ranked.':`Link ranking ${p?.status||'not started'}.`);
   el('counts').textContent=p?.unique_destinations!==undefined?`${p.discovered_occurrences} discovered link occurrences · ${p.unique_destinations} unique destinations · ${p.duplicates_combined} duplicates combined · ${p.excluded} excluded · ${p.shortlisted} shortlisted · ${p.not_assessed} not assessed (shortlist limits) · ${p.candidates_ranked||0} ranked · ${data.selected.length} selected`:`${p?.candidates_ranked||0}/${p?.candidates_total||0} links ranked · ${data.selected.length} selected`;
   el('progress').max=Math.max(1,p?.batches_total||0);el('progress').value=p?.batches_finished||0;
   el('stop').hidden=p?.status!=='running';el('stop').disabled=!!state.stop_requested;
@@ -69,7 +69,7 @@ async function refresh(){
   el('report').hidden=!state.report;el('report').href=`/report/${sid}`;
   el('issues').replaceChildren(...data.issues.map(issue=>node('p',issue)));
   cards('selected',data.selected);candidateRows=data.candidates;renderCandidates();
-  if(state.status?.endsWith('_running'))timer=setTimeout(refresh,1200);
+  if(state.status?.endsWith('_running')||state.status==='link_ranking_waiting')timer=setTimeout(refresh,1200);
  }catch(error){showActivityIssue(true);el('status').textContent=error.message;timer=setTimeout(refresh,3000);}
 }
 /** Dispatch a clicked control, then refresh without duplicate submissions.

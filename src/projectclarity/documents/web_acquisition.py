@@ -356,6 +356,18 @@ def document_text(body, content_type):
 
 
 
+def read_document_text(path):
+    """Read saved source text without changing line endings or evidence offsets.
+
+    Args: path: Path to a private UTF-8 document.txt file, not a network URL.
+    Returns: Exact saved text, including CRLF sequences. Ordinary universal-newline
+        reads can change hashes and invalidate extraction spans. File and decoding
+        errors propagate; this function performs no repair or normalization.
+    """
+    with path.open(encoding='utf-8', newline='') as stream:
+        return stream.read()
+
+
 def split_text(text, limit=3000):
     """Partition complete document text without dropping characters or overflowing chunks.
 

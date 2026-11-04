@@ -29,6 +29,8 @@ when Node is absent. Browser-development dependencies are separate in
 | Explicit saved-stage recovery | [test_selection_resume.py](integration/test_selection_resume.py) · [test_triage_resume.py](integration/test_triage_resume.py) |
 | Multi-round research and report-only retry | [test_research_rounds.py](integration/test_research_rounds.py) |
 | Current item-report contract | [test_item_reporting.py](integration/test_item_reporting.py) |
+| Adaptive extraction and exact-span recovery | [test_adaptive_extraction.py](integration/test_adaptive_extraction.py) |
+| Run-wide budgets, concurrent reservations, pause/continue/quit | [test_research_budgets.py](integration/test_research_budgets.py) |
 | Usage accounting | [test_model_ledger.py](unit/test_model_ledger.py) |
 
 [unit](unit/) contains focused checks. [integration](integration/) contains HTTP,
@@ -44,3 +46,9 @@ provider latency, independent truth, or general model accuracy. Historical repor
 fixtures explicitly exercising legacy behavior are not proof of the current
 item-first reporting path. Developer-run experiments belong in
 [testing](../testing/README.md), not this automated suite.
+
+`test_resilient_item_reporting.py` verifies field quarantine, failed-batch isolation,
+partial report/CSV coverage, retained recovery findings and explicit cached retries.
+`test_round_budget_checkpoint.py` verifies the >50% pre-ranking choice through HTTP
+and the graph, including restart persistence, exact-threshold behavior and duplicate
+decisions. Both use offline provider/accounting fixtures, not live billing evidence.

@@ -55,7 +55,7 @@ function render(state) {
   for(const source of sources){
     const row=textNode('tr','');const label=textNode('td','');const link=textNode('a',source.title||source.url);link.href=source.url;link.target='_blank';link.rel='noopener noreferrer';label.append(link,textNode('small',source.url));
     const status=textNode('td',source.status.replaceAll('_',' '));if(source.parser)status.append(textNode('small',`${source.parser}${source.pages?.length?' · '+source.pages.length+' PDF pages':''}`));for(const warning of source.warnings||[])status.append(textNode('small',warning));if(source.error)status.append(textNode('small',source.error));
-    row.append(label,status,textNode('td',`${source.chunks.filter(c=>['checks_pass','checks_partial','failed'].includes(c.status)).length}/${source.chunks.length}`),textNode('td',source.facts));
+    row.append(label,status,textNode('td',`${source.chunks.filter(c=>['checks_pass','checks_partial','failed','split'].includes(c.status)).length}/${source.chunks.length}`),textNode('td',source.facts));
     const action=textNode('td','');const button=textNode('button','Inspect');button.className='secondary';button.addEventListener('click',()=>inspectSource(source.id));action.append(button);row.append(action);element('sources').append(row);
   }
   element('events').replaceChildren();for(const event of [...run.events].reverse()){const li=textNode('li','');li.append(textNode('time',new Date(event.time).toLocaleTimeString()),textNode('span',event.message));element('events').append(li);}
@@ -63,7 +63,9 @@ function render(state) {
 }
 /** Show progress in explicit stage units and identify the document being consumed.
  * Args: run — saved acquisition/extraction state, including per-source chunks.
- * Returns: nothing; updates labels and observed progress, never estimated percentages.
+ * Returns: nothing; updates observed progress, current sizing and recovery counts.
+ * Split parents count as processed attempts, not unresolved failures; dynamic
+ * pending-work totals are labelled explicitly and are never estimated percentages.
  */
 function renderWork(run){
   const stage=run.stage,sources=run.sources,bar=element('extraction-progress');
@@ -86,10 +88,10 @@ function renderWork(run){
     element('work-title').textContent=stage==='finished'?'Knowledge extraction summary':'Extracting knowledge';
     label=`${done}/${total} chunks processed across all documents`;
     const inflight=sources.flatMap(s=>s.chunks).filter(c=>c.status==='repairing').reduce((n,c)=>n+(c.accepted||0),0);
-    description=`${run.facts+inflight} facts accepted · ${run.facts_awaiting_repair||0} awaiting repair · ${run.facts_unresolved||0} unresolved · ${run.facts_withdrawn||0} withdrawn. Chunks: ${run.chunks_passed} complete · ${run.chunks_partial||0} partial · ${done-run.chunks_passed-(run.chunks_partial||0)} failed · ${Math.max(0,total-done)} remaining.`;
+    description=`${run.facts+inflight} facts accepted · ${run.facts_awaiting_repair||0} awaiting repair · ${run.facts_unresolved||0} unresolved · ${run.facts_withdrawn||0} withdrawn. Chunks: ${run.chunks_passed} complete · ${run.chunks_partial||0} partial · ${done-run.chunks_passed-(run.chunks_partial||0)-(run.chunks_split||0)} failed · ${run.chunks_split||0} split for recovery · ${Math.max(0,total-done)} remaining. ${run.recovery_calls||0} recovery calls (including child repairs). Pending chunk totals can change as sizes adapt.`;
     const source=sources.find(s=>s.status==='extracting');
-    current=source?`Reading: ${source.title||source.url}`:`${run.facts} facts extracted from ${sources.filter(s=>s.parsed).length} parsed documents.`;
-    if(source){const chunks=source.chunks,finished=chunks.filter(c=>['checks_pass','checks_partial','failed'].includes(c.status)).length,active=chunks.find(c=>['extracting','repairing'].includes(c.status));
+    current=source?`Reading: ${source.title||source.url}${source.extraction_sizing?` · Chunk length ${source.extraction_sizing.chunk_characters.toLocaleString()} characters`:""}`:`${run.facts} facts extracted from ${sources.filter(s=>s.parsed).length} parsed documents.`;
+    if(source){const chunks=source.chunks,finished=chunks.filter(c=>['checks_pass','checks_partial','failed','split'].includes(c.status)).length,active=chunks.find(c=>['extracting','repairing'].includes(c.status));
       element('current-document').hidden=false;element('document-link').textContent=source.url;element('document-link').href=source.url;
       element('document-progress-label').textContent=`This document: ${finished}/${chunks.length} chunks processed${active?` · reading chunk ${active.index+1}`:''}`;
       element('document-progress').max=Math.max(1,chunks.length);element('document-progress').value=finished;
@@ -108,7 +110,8 @@ function renderWork(run){
 async function refresh(){clearTimeout(timer);try{render(await api());}catch(error){showActivityIssue(true);element('run-message').textContent=error.message+' Retrying status…';timer=setTimeout(refresh,3000);}}
 /** Show saved source text, accepted assertions and unresolved/withdrawn proposals.
  * Args: id — source identifier supplied by the run snapshot.
- * Returns: promise; fills the read-only inspector with no model calls.
+ * Returns: promise; fills the read-only inspector with no model calls, including
+ * failed source spans that remain unresolved after minimum-size recovery.
  */
 async function inspectSource(id){
   try{const data=await api(`/knowledge/${id}`);element('inspector').hidden=false;element('inspect-title').textContent=data.source.title||data.source.url;element('inspect-status').textContent=[data.source.error||data.source.status,...(data.source.warnings||[])].join(' · '); element('document-text').textContent=data.document_text||'No parsed document text available.';element('facts').replaceChildren();
@@ -116,6 +119,9 @@ async function inspectSource(id){
     for(const chunk of data.knowledge){
       for(const issue of chunk.unresolved||[]){const card=textNode('article','');card.append(textNode('strong',`Unresolved · chunk ${chunk.chunk_index+1}`),textNode('p',issue.fact?.statement||JSON.stringify(issue.fact)),textNode('small',issue.reason),textNode('p',issue.repair_error?JSON.stringify(issue.repair_error):'Not accepted into knowledge.'));element('facts').append(card);}
       for(const item of chunk.withdrawn||[]){const card=textNode('article','');card.append(textNode('strong',`Withdrawn · chunk ${chunk.chunk_index+1} · ${item.id}`),textNode('p',item.reason));element('facts').append(card);}
+    }
+    for(const chunk of data.source.chunks||[]){
+      if(chunk.status==='failed'){const card=textNode('article','');card.append(textNode('strong',`Unresolved source portion · chunk ${chunk.index+1}`),textNode('p',chunk.error||'Extraction failed.'),textNode('small',`Source characters ${chunk.start}–${chunk.end}; no accepted facts from this portion.`));element('facts').append(card);}
     }
     if(!data.knowledge.length)element('facts').append(textNode('p','No accepted knowledge records yet.'));
     element('inspector').scrollIntoView({behavior:'smooth',block:'start'});

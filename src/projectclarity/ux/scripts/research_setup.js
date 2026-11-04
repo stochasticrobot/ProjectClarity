@@ -124,7 +124,8 @@ async function refresh() {
 
 /** Submit the research question once with a persistent idempotency identifier.
  * Args: event — browser form submission.
- * Returns: promise; starts polling, or restores the form after a rejected request.
+ * Returns: promise; saves run-wide budgets with the question, starts polling,
+ * or restores the form after a rejected request.
  */
 async function submitQuestion(event) {
   event.preventDefault();
@@ -132,7 +133,7 @@ async function submitQuestion(event) {
   sessionId = crypto.randomUUID(); localStorage.setItem('clarity.setup', sessionId);
   showActivity({label:'Submitting your question',tone:'working',busy:true});
   message('Defining what’s needed…');
-  try { render(await api('/api/setup', {session_id: sessionId, question: $('question').value, auto_advance: true, research_rounds: Number($('research-rounds').value), extraction_concurrency: Number($('extraction-concurrency').value), selection_concurrency: Number($('selection-concurrency').value), triage_concurrency: Number($('triage-concurrency').value), investigation_concurrency: Number($('investigation-concurrency').value), link_ranking_concurrency: Number($('link-ranking-concurrency').value), report_selection_concurrency: Number($('report-selection-concurrency').value)})); }
+  try { render(await api('/api/setup', {session_id: sessionId, question: $('question').value, auto_advance: true, model_request_budget: Number($('model-request-budget').value), model_token_budget: Number($('model-token-budget').value), research_rounds: Number($('research-rounds').value), extraction_concurrency: Number($('extraction-concurrency').value), selection_concurrency: Number($('selection-concurrency').value), triage_concurrency: Number($('triage-concurrency').value), investigation_concurrency: Number($('investigation-concurrency').value), link_ranking_concurrency: Number($('link-ranking-concurrency').value), report_selection_concurrency: Number($('report-selection-concurrency').value)})); }
   catch (error) { message(error.message, true); }
   finally { button.disabled = false; }
 }

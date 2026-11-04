@@ -59,7 +59,7 @@ so their results can be traced and eligible work reused on explicit retry.
 | Keep autonomous work predictable | Explicit stage transitions, cancellation gates, and a configurable round limit | [Workflow graph](src/projectclarity/workflow/research_graph.py) |
 | Preserve evidence through multiple rounds | Immutable source artifacts, source quotations, round-qualified fact IDs, and cumulative reviewed evidence | [Research rounds](src/projectclarity/workflow/research_rounds.py) |
 | Reduce latency without losing recovery | Bounded per-stage worker pools; coordinators save shared progress and retain completed responses when stopped | [Concurrent extraction](src/projectclarity/knowledge_extraction/concurrent_extraction.py) |
-| Handle imperfect model responses | Structured schemas, reference checks, fact-level validation, and bounded repair that retains valid neighboring facts | [Fact validation and repair](src/projectclarity/knowledge_extraction/fact_validation_and_repair.py) |
+| Handle imperfect model responses | Structured checks, fact-level repair, and bounded adaptive extraction when output is truncated | [Fact validation and repair](src/projectclarity/knowledge_extraction/fact_validation_and_repair.py) |
 | Prevent oversized report requests | Provider token-count preflight, bounded evidence batches, and deterministic item assembly instead of model merge calls | [Item reporting](src/projectclarity/reporting/item_reporting.py) · [Item assembly](src/projectclarity/reporting/answer_item_assembly.py) |
 | Make failures diagnosable | Saved request/response receipts, validation outcomes, token accounting, and explicit retry without automatic crash replay | [Model ledger](src/projectclarity/model_access/model_ledger.py) · [Session management](src/projectclarity/workflow/research_sessions.py) |
 
@@ -97,13 +97,18 @@ workflow then proceeds through research and reporting.
 
 | Setting | Default | Range / behavior |
 |---|---|---|
+| Model request budget | 750 | Shared across setup, all stages, rounds and retries; pauses for Quit or Continue |
+| Model token budget | 8,000,000 | Input + output + cache tokens; pending calls reserve room before dispatch |
 | Research rounds | 2 | 1–5 total rounds, including the initial search |
 | Concurrent model calls | 6 per stage | 1–16 independently for extraction, selection, triage, investigation, link ranking, and report selection |
 | Links followed per additional round | Up to 10 | At most 3 from the same source page; previously visited destinations are excluded |
 
 An `ANTHROPIC_API_KEY` environment variable takes precedence over the file.
 The current model is configured in [model_client.py](src/projectclarity/model_access/model_client.py).
-Live model calls can incur charges; usage tracking is not a spending cap.
+Live model calls can incur charges. Request/token budgets are usage limits, not
+monetary caps. **Continue** adds another configured allowance without replaying
+completed work. Provider token estimates may differ from actual usage; unconfirmed
+usage is displayed explicitly and requires acknowledgement before more calls.
 
 Saved data defaults to `runs/web/` relative to the launch directory; use
 `--data-dir /path/to/private-data` to change it. Keep `.env`, `.venv/`, and private

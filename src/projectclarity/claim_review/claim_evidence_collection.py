@@ -19,6 +19,7 @@ from pathlib import Path
 import re
 
 from projectclarity.evidence_selection.relevance_selection import prepare_knowledge
+from projectclarity.documents.web_acquisition import read_document_text
 
 STOP_WORDS = set('a an the and or but if of to in on at for from by with is are was were be been it its this that these those as has have had not no claim fact quote evidence source missing omitted information support supported unsupported review check whether does do did'.split())
 GAP_TERMS = (
@@ -52,6 +53,20 @@ def checked_path(root, relative):
     return path
 
 
+def neighboring_passages(original, candidate):
+    """Find adjacent source spans even when adaptive chunk IDs are nonsequential.
+
+    Args: original: Claim's saved passage; candidate: Another passage from the same
+        document, already checked by the caller. Both may be legacy receipt-only data.
+    Returns: Whether the exact source boundaries touch. Old receipts without offsets
+        retain the historical index-adjacency fallback; overlapping split parents
+        are not neighbors and are omitted when the corpus loads document metadata.
+    """
+    if all(k in p for p in (original, candidate) for k in ('start_char', 'end_char')):
+        return original['end_char'] == candidate['start_char'] or candidate['end_char'] == original['start_char']
+    return abs(original['chunk_index'] - candidate['chunk_index']) == 1
+
+
 class EvidenceCollector:
     """Snapshot all available saved text and accepted facts for one research run."""
     def __init__(self, root, state, cancelled):
@@ -64,6 +79,8 @@ class EvidenceCollector:
         Returns:
             None; builds passage/fact indexes in memory. Invalid unrelated sources
             are excluded explicitly; an invalid original claim later fails review.
+            Saved line endings are preserved for hashes and offsets; superseded
+            split-parent spans are omitted in favor of their exact replacement leaves.
         """
         self.root=checked_path(root,state['run']['artifact_directory'])
         self.passages={};self.originals={};self.errors=[];self.cancelled=cancelled
@@ -74,10 +91,12 @@ class EvidenceCollector:
             cancelled()
             if not source.get('parsed'):continue
             try:
-                text=(self.root/f'document-{source["id"]:03d}'/'document.txt').read_text()
+                text=read_document_text(self.root/f'document-{source["id"]:03d}'/'document.txt')
                 digest=hashlib.sha256(text.encode()).hexdigest()
                 if digest!=source['text_sha256']:raise ValueError('Saved document hash changed.')
                 for chunk in source['chunks']:
+                    if chunk.get('status') == 'split':
+                        continue  # Its replacement leaves already cover the same text.
                     start,end=chunk['start'],chunk['end']
                     if not 0<=start<end<=len(text):raise ValueError('Invalid saved text offsets.')
                     key=(source['id'],chunk['index'])
@@ -112,7 +131,8 @@ class EvidenceCollector:
     def collect(self, record, budget=30000):
         """Gather likely supporting passages for one claim's specific review problem.
         
-        Always try the original passage first, then adjacent chunks, then passages
+        Always try the original passage first, then source-offset adjacent chunks
+        (not numeric ID neighbors after adaptive resizing), then passages
         matching the subject's name and claim/review words. This simple ranking makes
         nearby missing context available without asking a model to search. Cross-source
         name matches are candidates, not proof that two entities are identical.
@@ -148,6 +168,7 @@ class EvidenceCollector:
             if gap & group:expanded.update(group)
         keywords=(terms(record['fact']['statement'])-STOP_WORDS)|expanded
         key=origin['key'];candidates=[]
+        original_passage = self.passages[key]
         for candidate,passage in self.passages.items():
             self.cancelled()
             text=passage['text'];words=terms(text)
@@ -163,7 +184,7 @@ class EvidenceCollector:
             passage={**passage,'matched_fact_ids':[f['fact_id'] for f in subject_facts if terms(f['fact']['statement']+' '+f['fact']['predicate']+' '+f['fact']['value']) & keywords]}
             score=len(words & keywords)+2*len(words & expanded)+len(fact_matches)
             if candidate==key:priority=0;reason='Original passage'
-            elif candidate[0]==key[0] and abs(candidate[1]-key[1])==1:priority=1;reason='Neighboring passage'
+            elif candidate[0]==key[0] and neighboring_passages(original_passage, passage):priority=1;reason='Neighboring passage'
             elif subject_match and ((words & keywords) or fact_matches):
                 priority=2 if candidate[0]==key[0] else 3
                 reason='Subject name and claim/review terms'+(' in extracted facts and text' if fact_matches else ' in saved text')

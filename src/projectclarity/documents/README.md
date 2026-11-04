@@ -10,7 +10,7 @@ implement local-file reading.
 1. [document_pool.py](document_pool.py) — collect paths, combine exact duplicates,
    and retain titles and origin notes without knowing how they were discovered.
 2. [document_pipeline.py](document_pipeline.py) — coordinate downloading and bounded
-   concurrent extraction, save progress, and publish `knowledge.json`.
+   concurrent extraction with per-document adaptive sizes, save progress, and publish `knowledge.json`.
 3. [web_acquisition.py](web_acquisition.py) — URL/network checks, robots rules,
    redirects, download limits, parsing, and text chunking.
 4. [document_links.py](document_links.py) — recover link text and destinations from
@@ -32,3 +32,11 @@ The document coordinator owns shared counters and state writes; extraction worke
 use the [extraction contracts](../knowledge_extraction/README.md). Stop preserves
 completed work. Explicit document retry starts a retained new attempt, not a
 promise to reuse every successful chunk from the previous attempt.
+
+Adaptive extraction replaces only unstarted spans or confirmed truncated attempts.
+The size ladder is 3,000 → 1,500 → 750 → 325 characters; two clean low-output replies
+permit one upward step. Original source text, including line endings, is preserved.
+See the [extraction policy](../knowledge_extraction/README.md#adaptive-chunk-sizes-web-workflow).
+Chunk IDs are stable identifiers, not guaranteed consecutive source positions.
+Superseded failed parents remain in the summary with replacement-child links;
+accepted knowledge references only successful leaves.

@@ -56,14 +56,24 @@ outcome, and checked output. Matching prior responses are revalidated on explici
 retry; changing model, prompt, schema, or inputs can invalidate reuse. Responses
 that fail validation are not treated as successful merely because they are saved.
 
-A failed batch does not discard successful siblings, but unresolved failures block
-final publication. Stop prevents new dispatch and saves in-flight responses as they
-finish. A server restart does not replay calls. **Retry report** starts only reporting
+In the item-first path, a failed batch no longer blocks useful output from other
+batches. A partial report lists unreviewed input IDs/counts separately from explicit
+exclusions, exposes a retry button, and labels CSV coverage. Even a failed bounded
+recovery retains its validated parent findings. If no evidence can be assessed at
+all, the attempt remains failed rather than presenting an empty success.
+
+Malformed or uncited fields are withheld while valid cited siblings survive.
+Uncited fields explicitly marked insufficient become unknown, with their text kept
+only in the task audit. Other invalid fields are retryable issues and make the
+report partial. No citations are guessed or borrowed. The exact raw reply remains
+saved. Legacy narrative reporting still requires every batch to pass. Stop prevents
+new dispatch and saves in-flight responses as they finish. A server restart does not replay calls. **Retry report** starts only reporting
 from the saved reviewed evidence; it does not repeat search, extraction, review, or
 completed ranking. Missing or unusable work may require new model calls.
 
 Valid citations take precedence over redundant exclusions after structural checks.
-Unknown or ambiguous IDs still fail. Formatting normalization never changes source
+Unknown or ambiguous IDs still fail reference checks; an affected field is withheld,
+not silently assigned a valid ID. Formatting normalization never changes source
 prose or guesses a different fact. Original provider replies remain unchanged.
 
 ## Verification and legacy code

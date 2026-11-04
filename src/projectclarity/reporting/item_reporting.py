@@ -13,6 +13,8 @@ from projectclarity.reporting.report_payloads import fact_group_key, canonical_j
 class ItemReportBuilder(BoundedReportBuilder):
     """Reuse durable bounded execution without the old narrative/merge workflow."""
 
+    allow_partial = True
+
     def request(self, kind, items):
         """Prepare a filtering request, never a model-written report merge.
 
@@ -35,8 +37,9 @@ class ItemReportBuilder(BoundedReportBuilder):
         """Filter evidence in parallel, assemble items locally and check accounting.
 
         Args: None.
-        Returns: Final item list with citations and no narrative. Failed or stopped
-            work retains receipts and cannot publish a silently incomplete answer.
+        Returns: Final item list with citations and no narrative. Failed batches
+            retain usable siblings in an explicitly partial report;
+            failed facts remain unreviewed, never exclusions. Stop still cancels.
         """
         from projectclarity.reporting.report_generation import validate_report
         owner=self.owner
@@ -45,6 +48,27 @@ class ItemReportBuilder(BoundedReportBuilder):
         fragments=select_report_batches(self,batches)
         if owner.stop.is_set():raise InterruptedError('Stopped before answer assembly.')
         owner.progress['phase']='Assembling answer items';owner.publish(owner.state)
-        result=validate_report(canonical_json(assemble_items(fragments,owner.packet)),owner.packet)
+        assembled=assemble_items(fragments,owner.packet)
+        covered={row['fact_id'] for row in assembled['exclusions']}
+        for entry in assembled['entries']:
+            covered.update(entry['label_fact_ids'])
+            for field in entry['fields']:
+                covered.update(field['fact_ids'])
+        if owner.packet['facts'] and not covered:
+            raise ValueError('No report evidence could be assessed. Saved batches remain available for retry.')
+        unreviewed=[f['id'] for f in owner.packet['facts'] if f['id'] not in covered]
+        issues=sum(len(fragment.get('_issues',[])) for fragment in fragments)
+        partial=bool(unreviewed or issues or owner.progress.get('failed_batches'))
+        if partial:
+            assembled['gaps'].append(f'Partial report: {len(unreviewed)} of {len(owner.packet["facts"])} input facts remain unreviewed; {issues} invalid fields were withheld. Retry unresolved work to improve coverage.')
+        # Validate the accepted subset against its real citations. Preserve the full
+        # input separately and list every unreviewed ID; never invent exclusions
+        # merely to satisfy the complete-report coverage invariant.
+        result=validate_report(canonical_json(assembled),{**owner.packet,
+            'facts':[f for f in owner.packet['facts'] if f['id'] in covered]})
+        owner.packet['coverage'].update(unreviewed_report_fact_ids=unreviewed,
+            unreviewed_report=len(unreviewed), withheld_invalid_fields=issues)
+        owner.progress.update(partial=partial, facts_accounted=len(covered),
+            unreviewed_facts=len(unreviewed), withheld_invalid_fields=issues)
         owner.progress['phase']='Saving final report'
         return result
