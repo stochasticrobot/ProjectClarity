@@ -1,0 +1,51 @@
+{
+  "question": "List Canadian technology startups focused on building AI products and/or services.",
+  "run_date": "2026-11-04",
+  "model": "claude-haiku-5-5",
+  "scope": "Retrospective audit of one saved run; not an independent accuracy benchmark.",
+  "rounds": [
+    {
+      "round": 1,
+      "urls_attempted": 8,
+      "documents_parsed": 5,
+      "extracted_fact_records": 401,
+      "relevance_selected": 329,
+      "report_evidence_facts": 320,
+      "unresolved_extractions": 4,
+      "ranking_candidates_assessed": 134
+    },
+    {
+      "round": 2,
+      "urls_attempted": 10,
+      "documents_parsed": 9,
+      "extracted_fact_records": 820,
+      "relevance_selected": 257,
+      "report_evidence_facts": 229,
+      "unresolved_extractions": 1,
+      "ranking_candidates_assessed": 366
+    }
+  ],
+  "extracted_fact_records": 1221,
+  "report_evidence_facts": 549,
+  "report_rows": 49,
+  "rows_with_all_fields_marked_supported": 2,
+  "model_requests": 326,
+  "recorded_tokens": 2850151,
+  "estimated_tokens": 0,
+  "unknown_usage": 0,
+  "report_batches": 17,
+  "failed_report_batches": 0,
+  "unreviewed_triage_facts": 10,
+  "unreviewed_report_facts": 0,
+  "report_sha256": "10bbaa8c18398f8760deaca908e28a459b37414e7d5c92797a55395887893f0f",
+  "new_round_two_name_groups": [
+    "Clay",
+    "Floqer",
+    "ORKA AI",
+    "Signal 1",
+    "Solink",
+    "WisdomTCS"
+  ],
+  "editorial_name_groups": 37,
+  "name_groups_with_round_one_evidence": 31
+}

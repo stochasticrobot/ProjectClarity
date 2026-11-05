@@ -1,0 +1,40 @@
+{
+  "scope": "Saved-run provenance, not a guarantee about current website routing or independent truth.",
+  "requested_url": "https://aimagazine.ca/canadian-ai-spotlight/ai-startup-profiles/folkly-ai-and-the-quiet-revolution-in-cultural-archiving/",
+  "final_url": "https://aimagazine.ca/canadian-ai-spotlight/folkly-ai-and-the-quiet-revolution-in-cultural-archiving/",
+  "http_hops": [
+    {
+      "url": "https://aimagazine.ca/canadian-ai-spotlight/ai-startup-profiles/folkly-ai-and-the-quiet-revolution-in-cultural-archiving/",
+      "status": 301
+    },
+    {
+      "url": "https://aimagazine.ca/canadian-ai-spotlight/folkly-ai-and-the-quiet-revolution-in-cultural-archiving/",
+      "status": 200
+    }
+  ],
+  "downloaded_content_sha256": "36c8d4086773099f0b6eb0460f6e73b18d48ccb8e4ed6d478f10d5cfdc52c8ae",
+  "downloaded_bytes": 288178,
+  "fact_checks": [
+    {
+      "fact_id": "F437",
+      "chunk_index": 1,
+      "chunk_artifact_sha256": "eeff670a8a42573e89bb9a421ca4ec62d37af4657c55ee3e13d96966a8842687",
+      "parsed_document_sha256": "b2bc0d120b2013d1b513b6177511152ed0c19d6f764e7ec51526ff58c3f9d1fc",
+      "all_report_quotes_present_in_saved_document": true
+    },
+    {
+      "fact_id": "F443",
+      "chunk_index": 1,
+      "chunk_artifact_sha256": "eeff670a8a42573e89bb9a421ca4ec62d37af4657c55ee3e13d96966a8842687",
+      "parsed_document_sha256": "b2bc0d120b2013d1b513b6177511152ed0c19d6f764e7ec51526ff58c3f9d1fc",
+      "all_report_quotes_present_in_saved_document": true
+    },
+    {
+      "fact_id": "F539",
+      "chunk_index": 5,
+      "chunk_artifact_sha256": "516c4ac68e7578aeda7e4e378f1f6eb8ebd5f7fea9db7e827ad224a19d2b0046",
+      "parsed_document_sha256": "b2bc0d120b2013d1b513b6177511152ed0c19d6f764e7ec51526ff58c3f9d1fc",
+      "all_report_quotes_present_in_saved_document": true
+    }
+  ]
+}

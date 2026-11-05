@@ -27,8 +27,22 @@ header .new-research-link { white-space:nowrap; font-size:.95rem; font-weight:60
 .usage-panel { margin-top:2.5rem; padding-top:.75rem; border-top:1px solid #d5dce5; color:#55616f; font-size:.85rem; }
 .usage-panel p, .usage-panel small, .report-entry { overflow-wrap:anywhere; }
 .usage-panel small { display:block; }
-.report-field { margin:.75rem 0; }
-.report-field strong { display:block; }
+/* Cards prioritize one answer at a time without compressing its evidence into a
+   wide table. Field labels stack on small screens; print keeps rows together. */
+.report-entry { background:#fff; border:1px solid #d5dfd2; border-radius:12px; padding:26px; margin:24px 0; }
+.report-entry h2 { font-size:24px; line-height:1.3; margin:16px 0 12px; }
+.report-entry-citations { font-size:13px; line-height:1.8; margin:0 0 18px; }
+.report-entry a { color:#08766c; }
+.report-entry-status { display:inline-block; font-size:12px; font-weight:650; padding:5px 10px; border-radius:20px; }
+.report-entry-status.supported { color:#24543e; background:#e5f1e6; }
+.report-entry-status.incomplete { color:#75511a; background:#fff3df; }
+.report-field { display:grid; grid-template-columns:minmax(0,1fr) minmax(0,3fr); gap:20px; padding:16px 0; border-top:1px solid #e0e7e2; line-height:1.65; }
+.report-field strong { display:block; font-size:14px; }
+.report-field p { margin:0 0 6px; }
+.report-field-status { font-size:12px; text-transform:uppercase; color:#64736b; margin-right:8px; }
+#filters select,#filters input { padding:10px; max-width:100%; border:1px solid #bdcbbf; border-radius:8px; background:white; color:inherit; font:inherit; }
+@media(max-width:650px) { .report-entry { padding:18px; } .report-field { grid-template-columns:1fr; gap:6px; } }
+@media print { .report-field { break-inside:avoid; } .report-entry h2 { break-after:avoid; } }
 @media print { header, #stages, #usage-panel, button, #report-actions, #back, #filters { display:none!important; } main { max-width:none; } }
 /* Source-derived assertions and repair diagnostics may contain long unbroken text. */
 #facts article { overflow-wrap:anywhere; }

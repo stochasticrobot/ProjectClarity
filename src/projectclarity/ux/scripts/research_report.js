@@ -8,7 +8,8 @@
  * with readable field names; original source quotations are left alone.
  *
  * It also shows report-generation progress and permitted start, stop or retry
- * actions. Filtering changes only what is visible on the page, not the saved report
+ * actions. Cards make long answers readable; an optional table supports comparison.
+ * Filtering and switching views change only what is visible, not the saved report
  * or the information included in its spreadsheet export.
  */
 'use strict';
@@ -35,15 +36,17 @@ function citations(parent,ids){for(const id of ids){const a=node('a',` [${id}]`)
  * unchanged rather than being guessed. Stored artifacts are never modified.
  */
 function readableRequirements(text){const names=new Map((report?.requirements||[]).map(r=>[r.id,r.name]));return text.replace(/\bR\d+\b/g,id=>names.get(id)||id);}
-/** Display complete/incomplete entries under the exact Step1 requirement names.
- * Args: none; reads validated cached report and local display filters.
+/** Display readable cards by default, or a compact table when explicitly chosen.
+ * Both views retain the same filtered entries and source links, so presentation
+ * choices never hide missing qualifications or require report regeneration.
+ * Args: none; reads the validated cached report, filters and view selector.
  * Returns: nothing; never changes qualification status or stored report data.
  */
 function renderEntries(){
  if(!report)return;const filter=el('filter').value,query=el('find').value.toLowerCase();
  const rows=report.entries.filter(e=>{const complete=e.fields.every(f=>f.status==='supported');return(filter==='all'||(filter==='complete'?complete:!complete))&&`${e.label} ${e.fields.map(f=>f.value).join(' ')}`.toLowerCase().includes(query);});
  el('shown').textContent=`${rows.length} entries shown`;el('entries').replaceChildren();
- if(report.presentation==='items'){
+ if(el('report-view').value==='table'){
   const columns=report.requirements.filter(r=>r.kind!=='entity_type');
   const table=node('table','');table.className='answer-items';
   const head=node('tr','');for(const label of ['Item','Evidence',...columns.map(r=>r.name)])head.append(node('th',label));table.append(head);
@@ -61,8 +64,24 @@ function renderEntries(){
   const wrap=node('div','');wrap.className='answer-table-scroll';wrap.append(table);el('entries').append(wrap);return;
  }
 
- for(const e of rows){const card=node('article','');card.className='report-entry';const complete=e.fields.every(f=>f.status==='supported');card.append(node('strong',complete?'Supported match':'Incomplete candidate'));const h=node('h2',e.label);citations(h,e.label_fact_ids);card.append(h);
-  for(const requirement of report.requirements){const f=e.fields.find(f=>f.requirement_id===requirement.id),d=node('div','');d.className='report-field';d.append(node('strong',requirement.name));const value=node('p',`${readableRequirements(f.value)||'Unknown'}${f.status==='supported'?'':' — '+f.status}`);citations(value,f.fact_ids);d.append(value);card.append(d);}el('entries').append(card);
+ for(const entry of rows){
+  const card=node('article','');card.className='report-entry';
+  const complete=entry.fields.every(field=>field.status==='supported');
+  const status=node('span',complete?'Supported match':'Incomplete candidate');
+  status.className='report-entry-status '+(complete?'supported':'incomplete');
+  const heading=node('h2',entry.label);card.append(status,heading);
+  const references=node('p','');references.className='report-entry-citations';
+  citations(references,entry.label_fact_ids);card.append(references);
+  for(const requirement of report.requirements){
+   const field=entry.fields.find(item=>item.requirement_id===requirement.id);
+   const row=node('div','');row.className='report-field';
+   const content=node('div','');
+   const value=node('p',readableRequirements(field.value)||'Not established');
+   const qualification=node('span',field.status);qualification.className='report-field-status';
+   content.append(value,qualification);citations(content,field.fact_ids);
+   row.append(node('strong',requirement.name),content);card.append(row);
+  }
+  el('entries').append(card);
  }
 }
 /** Render only a server-validated report, including exclusions and source evidence.
@@ -131,7 +150,7 @@ async function refresh(){clearTimeout(timer);try{const state=await api();if(foll
  * Returns: promise; refreshes observed state and shows rejected actions.
  */
 async function action(suffix,button){button.disabled=true;try{await api(suffix,true);await refresh();}catch(e){showActivityIssue();el('status').textContent=e.message;}finally{button.disabled=false;}}
-el('back').href=`/investigation/${sid}?stay=1`;el('start').addEventListener('click',()=>action('/report',el('start')));el('stop').addEventListener('click',()=>action('/stop',el('stop')));el('print').addEventListener('click',()=>window.print());for(const id of ['filter','find'])el(id).addEventListener('input',renderEntries);refresh();
+el('back').href=`/investigation/${sid}?stay=1`;el('start').addEventListener('click',()=>action('/report',el('start')));el('stop').addEventListener('click',()=>action('/stop',el('stop')));el('print').addEventListener('click',()=>window.print());for(const id of ['filter','find','report-view'])el(id).addEventListener('input',renderEntries);refresh();
 
 /** Retry a failed or partial report only after a deliberate click bound to that attempt.
  * Args: none.

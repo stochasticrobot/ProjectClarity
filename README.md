@@ -15,6 +15,19 @@ preserves provenance, and assembles the final answer.
 
 [Architecture & code guide](CODE_GUIDE.md) · [Run locally](#run-locally) · [Tests](#testing)
 
+## See a real research run
+
+**[Canadian AI startup discovery: case study](docs/case-studies/canadian-ai-startups/README.md)**
+— [three-slide presentation](docs/case-studies/canadian-ai-startups/presentation.pdf),
+actual application screenshots, and the full cited report.
+
+Two rounds retained **1,221 extraction records**, supplied **549 facts to report
+evidence**, and produced **49 report rows**. The case study traces a useful
+follow-up discovery, measures model usage, and examines duplicates, scope drift
+and missing qualifications. It demonstrates collection and assembly for human
+review—not an exhaustive or independently verified startup directory. Static
+artifacts need no API key.
+
 ## What it does
 
 Ask a question such as **“Which Canadian startups build AI products?”** The application:

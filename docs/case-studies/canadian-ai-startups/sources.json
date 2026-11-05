@@ -1,0 +1,160 @@
+[
+  {
+    "round": 1,
+    "url": "https://www.f6s.com/companies/artificial-intelligence/canada/co",
+    "title": "100 Top AI (Artificial Intelligence) Companies in Canada - F6S",
+    "outcome": "robots_blocked",
+    "parsed": false,
+    "extracted_fact_records": 0
+  },
+  {
+    "round": 1,
+    "url": "https://beststartup.ca/top-ai-development-companies-in-canada-2026/",
+    "title": "Top AI Development Companies in Canada 2026 — The Definitive Guide",
+    "outcome": "redirect_limit",
+    "parsed": false,
+    "extracted_fact_records": 0
+  },
+  {
+    "round": 1,
+    "url": "https://aimagazine.ca/category/canadian-ai-spotlight/ai-startup-profiles/",
+    "title": "Canadian AI Startup Profiles | Founders and Funding",
+    "outcome": "extraction_partial",
+    "parsed": true,
+    "extracted_fact_records": 13
+  },
+  {
+    "round": 1,
+    "url": "https://aimagazine.ca/canadian-ai-companies/",
+    "title": "Canadian AI Companies, the 2026 List Worth Knowing",
+    "outcome": "extraction_partial",
+    "parsed": true,
+    "extracted_fact_records": 46
+  },
+  {
+    "round": 1,
+    "url": "https://northernsignal.ca/atlas/top-canadian-ai-companies",
+    "title": "Top 10 Canadian AI Companies by Funding - Northern Signal",
+    "outcome": "extracted",
+    "parsed": true,
+    "extracted_fact_records": 91
+  },
+  {
+    "round": 1,
+    "url": "https://techshark.io/blog/top-ai-companies-in-canada/",
+    "title": "15 Best AI Companies in Canada You Should Know in 2026",
+    "outcome": "extracted",
+    "parsed": true,
+    "extracted_fact_records": 192
+  },
+  {
+    "round": 1,
+    "url": "https://www.f6s.com/companies/machine-learning/canada/co",
+    "title": "100 Top Machine Learning (ML) Companies in Canada · October 2026",
+    "outcome": "robots_blocked",
+    "parsed": false,
+    "extracted_fact_records": 0
+  },
+  {
+    "round": 1,
+    "url": "https://www.silstonegroup.com/top-ai-software-development-companies-in-canada-2026",
+    "title": "Top AI Software Development Companies in Canada (2026)",
+    "outcome": "extracted",
+    "parsed": true,
+    "extracted_fact_records": 59
+  },
+  {
+    "round": 2,
+    "url": "https://techshark.io/ai-glossary/",
+    "title": "AI Glossary",
+    "outcome": "extracted",
+    "parsed": true,
+    "extracted_fact_records": 104
+  },
+  {
+    "round": 2,
+    "url": "https://techshark.io/blog/best-ai-companies-in-india/",
+    "title": "Best AI Companies in India",
+    "outcome": "extracted",
+    "parsed": true,
+    "extracted_fact_records": 244
+  },
+  {
+    "round": 2,
+    "url": "https://techshark.io/blog/best-ai-tools-directory/",
+    "title": "Best AI Tools Directory",
+    "outcome": "extracted",
+    "parsed": true,
+    "extracted_fact_records": 113
+  },
+  {
+    "round": 2,
+    "url": "https://northernsignal.ca/atlas/",
+    "title": "Atlas",
+    "outcome": "extracted",
+    "parsed": true,
+    "extracted_fact_records": 5
+  },
+  {
+    "round": 2,
+    "url": "https://aimagazine.ca/canadian-ai-spotlight/ai-startup-profiles/folkly-ai-and-the-quiet-revolution-in-cultural-archiving/",
+    "title": "Folkly",
+    "outcome": "extracted",
+    "parsed": true,
+    "extracted_fact_records": 89,
+    "requested_url": "https://aimagazine.ca/canadian-ai-spotlight/ai-startup-profiles/folkly-ai-and-the-quiet-revolution-in-cultural-archiving/",
+    "final_url": "https://aimagazine.ca/canadian-ai-spotlight/folkly-ai-and-the-quiet-revolution-in-cultural-archiving/",
+    "http_hops": [
+      {
+        "url": "https://aimagazine.ca/canadian-ai-spotlight/ai-startup-profiles/folkly-ai-and-the-quiet-revolution-in-cultural-archiving/",
+        "status": 301
+      },
+      {
+        "url": "https://aimagazine.ca/canadian-ai-spotlight/folkly-ai-and-the-quiet-revolution-in-cultural-archiving/",
+        "status": 200
+      }
+    ],
+    "downloaded_content_sha256": "36c8d4086773099f0b6eb0460f6e73b18d48ccb8e4ed6d478f10d5cfdc52c8ae",
+    "provenance_note": "url is the requested destination. Citations use the final URL observed after the saved HTTP 301 redirect; see PROVENANCE.md."
+  },
+  {
+    "round": 2,
+    "url": "https://betakit.com/",
+    "title": "BetaKit",
+    "outcome": "extracted",
+    "parsed": true,
+    "extracted_fact_records": 38
+  },
+  {
+    "round": 2,
+    "url": "https://crunchbase.com/",
+    "title": "Crunchbase",
+    "outcome": "extracted",
+    "parsed": true,
+    "extracted_fact_records": 30
+  },
+  {
+    "round": 2,
+    "url": "https://layer6.ai/",
+    "title": "https://layer6.ai",
+    "outcome": "extraction_partial",
+    "parsed": true,
+    "extracted_fact_records": 163
+  },
+  {
+    "round": 2,
+    "url": "https://www.coveo.com/",
+    "title": "https://www.coveo.com",
+    "outcome": "extracted",
+    "parsed": true,
+    "extracted_fact_records": 34
+  },
+  {
+    "round": 2,
+    "url": "https://www.elementai.com/",
+    "title": "https://www.elementai.com",
+    "outcome": "http_error",
+    "parsed": false,
+    "extracted_fact_records": 0
+  }
+]
