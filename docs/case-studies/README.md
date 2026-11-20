@@ -6,7 +6,7 @@ and how the resulting evidence can be reviewed.
 ## Canadian AI company discovery
 
 **[Start with the case study](canadian-ai-startups/README.md)** ·
-[Three-slide presentation](canadian-ai-startups/presentation.pdf) ·
+[Four-slide presentation](canadian-ai-startups/presentation.pdf) ·
 [Full cited report](canadian-ai-startups/report.html)
 
 A two-round search collected Canadian-location and AI-offering evidence for
@@ -15,7 +15,11 @@ connected the platform to its Calgary-based creator, ORKA AI. That follow-up
 illustrates autonomous exploration; the creator connection alone does not establish
 that Folkly is an AI product.
 
-The presentation focuses on discoveries and the engineering that enabled them.
+A newer knowledge-graph example traces a University of Toronto cluster through a
+research group to Geoffrey Hinton, with a screenshot and source-linked assertions.
+It is identified separately from the original report run.
+
+The presentation covers discoveries, extracted knowledge and the engineering behind them.
 A separate [evaluation](canadian-ai-startups/EVALUATION.md) records detailed
 measurements, source lineage and areas for improvement. Static artifacts require
 no model credentials or running application.

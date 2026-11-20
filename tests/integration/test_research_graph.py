@@ -80,11 +80,13 @@ def wait_for_completion(client, sid):
         sid: Owning session UUID.
     Returns:
         Terminal snapshot, or AssertionError after ten seconds. Does not enqueue
-        work; polling uses only the ordinary read-only status endpoint.
+        work; polling uses only the ordinary read-only status endpoint. Automatic
+        setup/search handoff states are not terminal, even between worker updates.
     """
     for _ in range(1000):
         state = client.get(f'/api/setup/{sid}').json()
-        if state['status'] not in ACTIVE_STATUSES:
+        pending_handoff = state.get('auto_advance') and state['status'] in ('ready', 'queries_ready')
+        if state['status'] not in ACTIVE_STATUSES and not pending_handoff:
             return state
         time.sleep(.01)
     raise AssertionError('Research graph did not settle')
@@ -127,7 +129,7 @@ class ResearchGraphTests(unittest.TestCase):
                     self.assertEqual(state['status'], 'report_completed')
                     self.assertEqual(trace.nodes, ['search', 'documents', 'download', 'extract',
                                                   'selection', 'triage', 'investigation', 'link_ranking', 'report'])
-                    self.assertEqual(len(caller.calls), 7)
+                    self.assertEqual(len(caller.calls), 8)
                     self.assertEqual([stage for stage, _, _ in caller.calls[:3]],
                                      ['define', 'clarify', 'search_queries'])
                     for page in ('/', f'/stage/{sid}', f'/run/{sid}', f'/evidence/{sid}',

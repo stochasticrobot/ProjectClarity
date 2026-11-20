@@ -145,6 +145,64 @@ class PdfFallbackTests(unittest.TestCase):
             self.assertEqual(triage.triage['status'],'completed')
             for record in triage.decided:self.assertTrue(record['source']['pages'])
 
+    def test_single_query_fallback_reaches_extraction(self):
+        """Prove first-query fallback through the real source-collection entry point.
+
+        Args: None.
+        Returns: None; verifies blocked and empty primary responses recover via
+            exactly one fallback, save both receipts and deliver a document to
+            extraction. Successful primary search must not call the fallback.
+            Search, download and model responses are offline fixtures, not evidence
+            that the live Wikipedia service is currently available.
+        """
+        lead={'url':'https://example.org/fallback.pdf','title':'Evidence','snippet':'Lead'}
+        body=pdf_bytes(['Acme builds AI in Canada.'])
+        class Reader:
+            """Supply a small source document with no external requests."""
+            def fetch(self,url):
+                """Return PDF bytes for the discovered candidate.
+
+                Args: url: Candidate URL passed by the real document collector.
+                Returns: Acquisition tuple consumed by production PDF parsing.
+                """
+                return url,{'content-type':'application/pdf'},body,[]
+        for outcome in ('blocked','empty','success'):
+            with self.subTest(outcome=outcome), TemporaryDirectory() as tmp:
+                calls=[]
+                def search(query,limit,cancelled):
+                    """Simulate a blocked, empty or successful primary provider.
+
+                    Args: query, limit, cancelled: Standard search inputs.
+                    Returns: Controlled receipt, or a diagnostic-bearing blocked error.
+                    """
+                    calls.append(('primary',query))
+                    if outcome=='blocked':
+                        raise SourceError('search_blocked','HTTP 202',{'status':202})
+                    return {'provider':'offline','results':[lead] if outcome=='success' else []}
+                def fallback(query,limit,cancelled):
+                    """Return one candidate while recording the fallback invocation.
+
+                    Args: query, limit, cancelled: Standard fallback inputs.
+                    Returns: Wikipedia-shaped receipt, without network access.
+                    """
+                    calls.append(('fallback',query))
+                    return {'provider':'wikipedia','results':[lead]}
+                state={'session_id':str(uuid4()),'research_question':'AI?',
+                       'information_needed':[],'searches':[{'query':'first'}]}
+                run=SourceCollection(Path(tmp),state,lambda s:None,ExtractCaller(),Event(),
+                                     search=search,reader=Reader(),fallback=fallback)
+                run.execute()
+                expected=[('primary','first')]
+                if outcome!='success':expected.append(('fallback','first'))
+                self.assertEqual(calls,expected)
+                self.assertEqual(len(run.run['sources']),1)
+                self.assertGreater(run.run['model_calls'],0)
+                self.assertEqual(run.run['searches'][0]['status'],'completed')
+                self.assertTrue((run.root/'search-1.json').exists())
+                self.assertEqual((run.root/'search-1-primary-failed.json').exists(),outcome!='success')
+                if outcome=='blocked':
+                    self.assertEqual(run.run['searches'][0]['primary_failure']['diagnostic'],{'status':202})
+
     def test_fallback_failure_and_cancellation(self):
         """Keep primary and fallback failure distinct and never fallback after stop.
 
@@ -169,7 +227,7 @@ class PdfFallbackTests(unittest.TestCase):
         with TemporaryDirectory() as tmp:
             state={'session_id':str(uuid4()),'research_question':'AI?','information_needed':[],'searches':[{'query':'one'},{'query':'two'}]}
             run=SourceCollection(Path(tmp),state,lambda s:None,ExtractCaller(),Event(),search=search,fallback=fallback)
-            run.execute();self.assertEqual(calls,['two']);self.assertEqual(run.run['status'],'failed')
+            run.execute();self.assertEqual(calls,['one','two']);self.assertEqual(run.run['status'],'failed')
             record=run.run['searches'][1];self.assertEqual(record['primary_failure']['error'],'primary failed');self.assertEqual(record['error'],'fallback failed')
             stop=Event();stop.set();calls.clear()
             run=SourceCollection(Path(tmp),state,lambda s:None,ExtractCaller(),stop,search=search,fallback=fallback)

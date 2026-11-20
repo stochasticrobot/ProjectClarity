@@ -13,6 +13,7 @@ later step fails. Recovery of stopped triage is explicit, not an automatic repla
 """
 from concurrent.futures import ThreadPoolExecutor
 import json
+from functools import partial
 from pathlib import Path
 import os
 import sqlite3
@@ -26,7 +27,10 @@ from langgraph.types import Command
 from projectclarity.model_access.model_client import ROOT, ModelCalls
 from projectclarity.workflow.research_graph import build_setup_graph, build_search_graph, build_research_graph
 from projectclarity.workflow.source_collection import SourceCollection
+from projectclarity.search.captcha_handoff import CaptchaHandoff
 from projectclarity.documents.web_acquisition import read_document_text
+from projectclarity.knowledge_graph.collections import Collections
+from projectclarity.knowledge_graph.projection_jobs import ProjectionJobs
 
 ACTIVE_STATUSES = ('working', 'search_working', 'run_running', 'selection_running', 'triage_running', 'investigation_running', 'link_ranking_running', 'report_running')
 
@@ -43,13 +47,20 @@ class Sessions:
             env_file: Existing credential file for real requests.
             runner_factory: Real autonomous runner, replaceable for offline API tests.
         Returns:
-            None. Creates SQLite checkpoint storage and one background worker.
+            None. Creates SQLite checkpoint storage, one research worker and a
+            separate graph-only worker that cannot block report generation.
             Interrupted in-flight sessions are marked failed, never auto-replayed.
+            Collection metadata, a persistent shared default and an optional lazy
+            Neo4j driver are initialized; existing session membership is unchanged.
         """
         self.root = root
         root.mkdir(parents=True, exist_ok=True, mode=0o700)
         self.lock = Lock()
+        self.collections = Collections(root, env_file)
+        self.default_collection = self.collections.default()
+        self.graph_jobs = ProjectionJobs(root, self.collections)
         self.stops = {}
+        self.captchas = CaptchaHandoff()
         self.runner_factory = runner_factory
         self.executor = ThreadPoolExecutor(max_workers=1, thread_name_prefix='research-setup')
         self.connection = sqlite3.connect(root / 'checkpoints.sqlite', check_same_thread=False)
@@ -61,6 +72,10 @@ class Sessions:
         self.search_graph = build_search_graph(transport, saver)
         for path in root.glob('*/session.json'):
             state = json.loads(path.read_text())
+            if state['status'] == 'knowledge_graph_running':
+                state['status'] = 'knowledge_graph_ready'
+                state['knowledge_graph'] = {'status': 'failed', 'error': 'Server stopped during graph preparation. Retry using saved evidence.'}
+                self.write(state)
             if state['status'] == 'link_ranking_running':
                 state['status'] = 'link_ranking_interrupted'
                 state['link_ranking'].update(status='interrupted', error='Server stopped; saved ranking retained. No automatic replay.')
@@ -95,13 +110,20 @@ class Sessions:
         Args:
             session_id: UUID string, never an arbitrary filesystem path.
         Returns:
-            Snapshot dictionary including independently saved budget progress;
+            Snapshot dictionary including independent budget, CAPTCHA and graph progress;
             missing or invalid IDs raise HTTP 404. Reading never grants allowance.
         """
         try:
             path = self.root / str(UUID(str(session_id))) / 'session.json'
             state = json.loads(path.read_text())
+            state.pop('captcha', None)
+            challenge = self.captchas.snapshot(str(session_id))
+            if challenge is not None:
+                state['captcha'] = challenge
             state['stop_requested'] = self.stops.get(str(session_id), Event()).is_set()
+            graph_status = self.graph_jobs.read(str(session_id), state.get('knowledge_graph'))
+            if graph_status is not None:
+                state['knowledge_graph'] = graph_status
             if hasattr(self.transport, 'budgets'):
                 state['model_budget'] = self.transport.budgets.snapshot(str(session_id))
             return state
@@ -115,7 +137,7 @@ class Sessions:
             state: Session dictionary with validated ID and user-facing fields.
         Returns:
             None. Writes owner-only JSON via atomic replacement; errors propagate.
-            Budget overlays are omitted: their separate owner prevents stale workers
+            Budget and ephemeral CAPTCHA overlays are omitted; their owners prevent stale workers
             from overwriting allowance decisions.
         """
         directory = self.root / state['session_id']
@@ -123,7 +145,7 @@ class Sessions:
         temporary = directory / 'session.tmp'
         with temporary.open('w') as stream:
             os.chmod(temporary, 0o600)
-            json.dump({k: v for k, v in state.items() if k != 'model_budget'}, stream, ensure_ascii=False, indent=2)
+            json.dump({k: v for k, v in state.items() if k not in ('model_budget', 'captcha')}, stream, ensure_ascii=False, indent=2)
         temporary.replace(directory / 'session.json')
 
     def work(self, state, payload, search=False):
@@ -177,15 +199,18 @@ class Sessions:
         """Queue a new definition once and return immediately for a responsive UI.
 
         Args:
-            data: Validated question and client-generated UUID.
+            data: Validated question, client-generated UUID and optional collection UUID.
         Returns:
             Working snapshot or existing identical request snapshot. Conflicting
             reuse, empty questions or an already active request raise HTTP errors.
             auto_advance persists the requested automatic downstream handoffs;
+            web_query_count sets initial web searches (one to ten, default two);
             research_rounds bounds total collection/review passes (one to five).
             extraction_concurrency, selection_concurrency and triage_concurrency fix per-run
             call limits for their respective stages. model_request_budget and
             model_token_budget apply cumulatively across the whole session.
+            An omitted collection uses the persistent shared default;
+            explicit membership must already exist and cannot change on duplicate starts.
         """
         sid, question = str(data.session_id), data.question.strip()
         if not question:
@@ -193,13 +218,16 @@ class Sessions:
         with self.lock:
             if (self.root / sid / 'session.json').exists():
                 existing = self.read(sid)
-                if existing['original_question'] != question:
+                if existing['original_question'] != question or (data.collection_id is not None and
+                        existing.get('collection_id') != str(data.collection_id)):
                     raise HTTPException(409, 'This request ID belongs to a different question.')
                 return existing
             if any(json.loads(p.read_text())['status'] in ACTIVE_STATUSES for p in self.root.glob('*/session.json')):
                 raise HTTPException(409, 'Another setup is still running. Please wait for it to finish.')
-            state = {'session_id': sid, 'original_question': question, 'status': 'working', 'auto_advance': data.auto_advance,
-                     'research_rounds': data.research_rounds, 'current_round': 1,
+            collection = (self.collections.require(str(data.collection_id)) if data.collection_id
+                          else self.default_collection)
+            state = {'collection_id': collection['id'], 'session_id': sid, 'original_question': question, 'status': 'working', 'auto_advance': data.auto_advance,
+                     'web_query_count': data.web_query_count, 'research_rounds': data.research_rounds, 'current_round': 1,
                      'model_request_budget': data.model_request_budget,
                      'model_token_budget': data.model_token_budget,
                      'extraction_concurrency': data.extraction_concurrency,
@@ -234,7 +262,7 @@ class Sessions:
             return state
 
     def prepare_searches(self, sid):
-        """Generate one pair for a ready saved definition, idempotently.
+        """Generate the requested searches for a ready saved definition, idempotently.
 
         Args:
             sid: UUID of an existing completed setup session.
@@ -266,7 +294,7 @@ class Sessions:
             self.write(state)
 
     def start_run(self, sid):
-        """Start the saved two-search pool once, returning a real-time monitor state.
+        """Start the saved search pool once, returning a real-time monitor state.
 
         Args:
             sid: Session UUID whose query pair is ready.
@@ -279,7 +307,7 @@ class Sessions:
             if 'run' in state:
                 return state
             if state['status'] != 'queries_ready':
-                raise HTTPException(409, 'Prepare the two searches before starting research.')
+                raise HTTPException(409, 'Prepare the searches before starting research.')
             if any(json.loads(p.read_text())['status'] in ACTIVE_STATUSES for p in self.root.glob('*/session.json')):
                 raise HTTPException(409, 'Another request is still running. Please wait for it to finish.')
             stop = Event()
@@ -307,13 +335,19 @@ class Sessions:
             None. Stage implementations publish progress and retain receipts. This
             does not replay earlier stages when starting from saved evidence.
             Explicit resumes rebind cancellation without resetting run-wide usage.
+            The research graph queues an independent graph projection when reporting
+            begins. Neo4j completion or failure never gates report generation.
+            Graph failures are recorded separately and never change the research outcome.
+            Source searches are bound to this session’s human CAPTCHA handoff.
             Unexpected graph infrastructure errors propagate to the worker future.
         """
+        if runner is not None and hasattr(runner, 'search'):
+            runner.search.on_challenge = partial(self.captchas.wait, state['session_id'], cancelled=runner.search.cancelled)
         if hasattr(self.transport, 'budgets'):
             self.transport.budgets.begin(state['session_id'], stop)
         graph = build_research_graph(
             self.root / state['session_id'], state, self.publish_run,
-            self.transport, stop, start_at=start_at, document_runner=runner, runner_factory=self.runner_factory)
+            self.transport, stop, start_at=start_at, document_runner=runner, runner_factory=self.runner_factory, schedule_projection=self.graph_jobs.submit)
         graph.invoke({'session_id': state['session_id']}, {'recursion_limit': 64})
 
     def start_report(self, sid, previous_started_at=None):
@@ -325,7 +359,8 @@ class Sessions:
             Reopening or duplicate clicks never generate another report. Explicit
             report retries always enter reporting directly, even for legacy runs
             lacking ranking metadata. On first preparation, unfinished ranking gets a new
-            retained attempt only after this explicit action.
+            retained attempt only after this explicit action. A pre-report explorer
+            pause enters reporting directly, including when ranking was skipped.
         """
         with self.lock:
             state=self.read(sid)
@@ -342,7 +377,7 @@ class Sessions:
             if not folder or not (self.root/sid/folder/'report_knowledge.json').exists():raise HTTPException(409,'Report Knowledge is unavailable.')
             stop=Event();self.stops[sid]=stop
             if prior:state.setdefault('report_history',[]).append(state.pop('report'))
-            entry = 'report' if prior or state.get('link_ranking', {}).get('status') in ('completed', 'partial') else 'link_ranking'
+            entry = 'report' if prior or state['status'] == 'knowledge_graph_ready' or state.get('link_ranking', {}).get('status') in ('completed', 'partial') else 'link_ranking'
             if entry == 'link_ranking' and state.get('link_ranking'):
                 state.setdefault('link_ranking_history', []).append(state.pop('link_ranking'))
             state.update(status=entry + '_running', stop_requested=False)
@@ -729,16 +764,36 @@ class Sessions:
         text_path=folder/'document.txt'
         return {'source':source,'document_text':read_document_text(text_path) if text_path.exists() else None,'knowledge':records}
 
+    def sync_graph(self, sid):
+        """Refresh saved extraction evidence without delaying an independent report.
+
+        Args:
+            sid: Existing session UUID; extraction must no longer be changing files.
+        Returns:
+            Completed graph counts or a sanitized failure. Rejects active research
+            before reporting with HTTP 409. Allows refresh while a report is running;
+            waits only on the graph job, without holding the research-state lock.
+        """
+        with self.lock:
+            state = self.read(sid)
+            if state['status'] in ACTIVE_STATUSES and state['status'] != 'report_running':
+                raise HTTPException(409, 'Wait for source collection and review to finish.')
+            future = self.graph_jobs.submit(state)
+        return future.result()
+
     def close(self):
         """Finish queued work and release the SQLite connection during shutdown/tests.
 
         Args:
             None.
         Returns:
-            None. Cancels budget waits and waits for already-sent requests before
-            releasing SQLite; shutdown never approves additional allowance.
+            None. Cancels CAPTCHA and budget waits, then waits for already-sent requests before
+            releasing SQLite and Neo4j connections; shutdown never approves additional allowance.
         """
+        self.captchas.close()
         if hasattr(self.transport, 'budgets'):
             self.transport.budgets.close()
         self.executor.shutdown(wait=True)
+        self.graph_jobs.close()
         self.connection.close()
+        self.collections.store.close()

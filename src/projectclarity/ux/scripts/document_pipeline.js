@@ -30,7 +30,7 @@ async function api(suffix='', post=false) {
 }
 /** Render observed progress, preserving the source inspector while polling.
  * Args: state — saved public snapshot.
- * Returns: nothing; updates counters/table/events without initiating new work.
+ * Returns: nothing; updates counters/table/events and provider attempt history without initiating work.
  */
 function render(state) {
   renderStages(state);
@@ -50,7 +50,7 @@ function render(state) {
   const counts=[['URLs found',sources.length],['Downloaded',sources.filter(s=>s.downloaded).length],['Text documents',sources.filter(s=>s.parsed).length],['Chunks finished',`${run.chunks_finished}/${run.chunks_total}`],['Facts extracted',run.facts]];
   element('counts').replaceChildren();for(const [label,value] of counts){const item=textNode('div','');item.append(textNode('strong',value),textNode('span',label));element('counts').append(item);}
   renderWork(run);
-  element('queries').replaceChildren();for(const q of run.searches){const li=textNode('li','');li.append(textNode('strong',q.query),textNode('p',`${q.provider}: ${q.status} · ${q.results} results${q.primary_failure?' · Primary failed: '+q.primary_failure.error+' · Wikipedia fallback':''}${q.error?' — '+q.error:''}`));element('queries').append(li);}
+  element('queries').replaceChildren();for(const q of run.searches){const li=textNode('li','');li.append(textNode('strong',q.query),textNode('p',`${q.provider}: ${q.status} · ${q.results} results${searchAttemptSummary(q)}${q.error?' — '+q.error:''}`));element('queries').append(li);}
   element('sources').replaceChildren();
   for(const source of sources){
     const row=textNode('tr','');const label=textNode('td','');const link=textNode('a',source.title||source.url);link.href=source.url;link.target='_blank';link.rel='noopener noreferrer';label.append(link,textNode('small',source.url));
@@ -63,7 +63,7 @@ function render(state) {
 }
 /** Show progress in explicit stage units and identify the document being consumed.
  * Args: run — saved acquisition/extraction state, including per-source chunks.
- * Returns: nothing; updates observed progress, current sizing and recovery counts.
+ * Returns: nothing; updates observed progress using saved query counts, sizing and recovery counts.
  * Split parents count as processed attempts, not unresolved failures; dynamic
  * pending-work totals are labelled explicitly and are never estimated percentages.
  */
@@ -73,7 +73,7 @@ function renderWork(run){
   element('current-document').hidden=true;
   let done=0,total=0,label='',description='',current='';
   if(stage==='searching'){
-    done=run.searches.filter(q=>['completed','failed'].includes(q.status)).length;total=2;
+    done=run.searches.filter(q=>['completed','failed'].includes(q.status)).length;total=run.limits?.query_count||run.searches.length;
     element('work-title').textContent='Searching for sources';label=`${done}/${total} searches finished`;
     const active=run.searches.find(q=>['searching','waiting'].includes(q.status));
     current=active?`${active.status==='waiting'?'Cooling down before search':'Searching'}: ${active.query}`:'Preparing searches…';

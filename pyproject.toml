@@ -22,4 +22,4 @@ where = ["src"]
 dependencies = {file = ["requirements.txt"]}
 
 [tool.setuptools.package-data]
-projectclarity = ["**/README.md", "prompts/*.txt", "ux/pages/*.html", "ux/scripts/*.js", "ux/styles/*.css"]
+projectclarity = ["**/README.md", "prompts/*.txt", "ux/pages/*.html", "ux/scripts/*.js", "ux/scripts/*.LICENSE", "ux/styles/*.css"]

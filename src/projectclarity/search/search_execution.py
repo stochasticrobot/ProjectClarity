@@ -1,8 +1,8 @@
 """Run prepared searches and return candidate document paths.
 
 This is the search step, before document processing. It runs each prepared query,
-records successes and failures, and can try Wikipedia once if the second search
-fails or finds nothing. The output is a list of URLs with display titles and notes
+records every attempt, and tries Mwmbl, Bing RSS, then Wikipedia if the primary
+search fails or finds nothing. It stops at the first usable result set. The output is a list of URLs with display titles and notes
 about where each came from. It does not create document-processing records or read
 the returned pages. source_collection.py passes these paths to the document pool.
 """
@@ -10,14 +10,14 @@ from datetime import datetime, timezone
 import json
 from projectclarity.knowledge_extraction.knowledge_extraction import save
 from projectclarity.documents.web_acquisition import SourceError, canonical_url
-from projectclarity.search.web_search import search_web, search_wikipedia, SEARCH_INTERVAL_SECONDS
+from projectclarity.search.web_search import search_web, SEARCH_INTERVAL_SECONDS
 
 
 class SearchExecution:
     """One finite search step, independently usable without a document processor."""
 
     def __init__(self, root, state, progress, publish, stop, search=search_web,
-                 fallback=search_wikipedia):
+                 fallback=None):
         """Capture prepared queries and search settings without contacting a service.
 
         Args:
@@ -28,18 +28,21 @@ class SearchExecution:
             publish: Callback saving the current public session snapshot.
             stop: Event requesting cancellation between calls or while waiting.
             search: Search service callable; replaceable for offline tests.
-            fallback: Wikipedia callable for the second query's single fallback.
+            fallback: Optional single-provider override for controlled tests/callers.
+                None uses the production Mwmbl, Bing RSS, Wikipedia chain.
         Returns:
             None. Saves search inputs separately from the document manifest; makes
-            no network requests. Filesystem errors propagate.
+            no network requests. Records the actual prepared query count and a
+            five-results-per-query URL bound. Filesystem errors propagate.
         """
         self.root,self.state,self.run,self.publish,self.stop=root,state,progress,publish,stop
         self.search,self.fallback=search,fallback
+        self.on_challenge = None
         self.complete=False
         self.run.update(provider=state.get('search_provider','duckduckgo'),searches=[],stage='searching')
-        self.run['limits'].update(results_per_query=5,max_urls=10,search_interval_seconds=SEARCH_INTERVAL_SECONDS)
+        self.run['limits'].update(query_count=len(state['searches']),results_per_query=5,max_urls=5*len(state['searches']),search_interval_seconds=SEARCH_INTERVAL_SECONDS)
         save(root/'search-manifest.json',{'searches':state['searches'],
-             'provider':self.run['provider'],'results_per_query':5},'')
+             'provider':self.run['provider'],'query_count':len(state['searches']),'results_per_query':5},'')
 
     def cancelled(self):
         """Stop scheduling work when the user requests cancellation.
@@ -77,8 +80,11 @@ class SearchExecution:
         Returns:
             Candidate paths with display titles and origin notes. Saves each search
             receipt; failures remain explicit. No documents are downloaded.
-            The second query gets one Wikipedia fallback on primary failure/empty results;
-            both attempts are retained. Query/title/snippet data never substitutes
+            Each provider is tried at most once per query, in configured order, until
+            usable results arrive. HTTP/reported errors and empty or unusable results
+            advance the chain; cancellation stops immediately. A configured human
+            challenge handoff pauses DuckDuckGo before fallback. All attempts are saved.
+            Query/title/snippet data never substitutes
             for downloaded document evidence.
         """
         paths=[]
@@ -86,7 +92,7 @@ class SearchExecution:
             self.cancelled()
             record={'query':query['query'],'status':'searching','results':0,'provider':self.run['provider']}
             self.run['searches'].append(record)
-            self.event(f'Search {index+1}/2: '+query['query'])
+            self.event(f'Search {index+1}/{len(self.state["searches"])}: '+query['query'])
             def show_wait(seconds):
                 """Publish provider cooldown separately from an active search request.
 
@@ -94,23 +100,55 @@ class SearchExecution:
                 Returns: None; updates the current search status and event history.
                 """
                 record['status']='waiting' if seconds else 'searching'
-                self.event(f'Waiting {seconds:.0f}s before the next search request.' if seconds else f'Sending search {index+1}/2.')
+                self.event(f'Waiting {seconds:.0f}s before the next search request.' if seconds else f'Sending search {index+1}/{len(self.state["searches"])}.')
             try:
-                try:
-                    receipt=self.search(query['query'],5,self.cancelled,provider=self.run['provider'],on_wait=show_wait) if self.search is search_web else self.search(query['query'],5,self.cancelled)
-                    if index == 1 and not receipt['results']:
-                        raise SourceError('search_empty', 'Primary search returned no results.', receipt)
-                except InterruptedError:
-                    raise
-                except Exception as primary_error:
-                    if index != 1:
+                providers = [(self.run['provider'], self.search)]
+                providers += ([('wikipedia', self.fallback)] if self.fallback is not None else
+                              [(name, search_web) for name in ('mwmbl', 'bing_rss', 'wikipedia')])
+                record['attempts'] = []
+                for attempt_index, (provider, search) in enumerate(providers):
+                    self.cancelled()
+                    record.update(provider=provider, status='searching', fallback=attempt_index > 0)
+                    attempt = {'provider': provider, 'status': 'searching', 'results': 0}
+                    record['attempts'].append(attempt)
+                    self.event(f'Search {index+1}: trying {provider}.')
+                    try:
+                        options = {'provider':provider, 'on_wait':show_wait}
+                        if provider == 'duckduckgo' and self.on_challenge is not None:
+                            options['on_challenge'] = self.on_challenge
+                        receipt = (search(query['query'],5,self.cancelled,**options)
+                                   if search is search_web else search(query['query'],5,self.cancelled))
+                        if receipt.get('error') or receipt.get('errors') or receipt.get('success') is False:
+                            raise SourceError('search_error', f'{provider} reported a search error.', receipt)
+                        usable = []
+                        for result in receipt['results'][:5]:
+                            try:
+                                url = canonical_url(result['url'])
+                            except (ValueError, KeyError, TypeError):
+                                record.setdefault('rejected_urls', []).append(str(result.get('url', ''))[:2048])
+                                continue
+                            usable.append({**result, 'url': url})
+                        if not usable:
+                            raise SourceError('search_empty', f'{provider} returned no usable results.', receipt)
+                        receipt = {**receipt, 'provider': provider, 'results': usable}
+                        attempt.update(status='completed', results=len(usable))
+                        save(self.root/f'search-{index+1}-attempt-{attempt_index+1}.json',
+                             {'query':query['query'], **receipt, 'status':'completed'}, '')
+                        break
+                    except InterruptedError:
                         raise
-                    primary={'query':query['query'],'provider':self.run['provider'],'error':str(primary_error)[:1000],
-                             'diagnostic':getattr(primary_error,'details',None)}
-                    record.update(primary_failure=primary,provider='wikipedia',status='searching',fallback=True)
-                    save(self.root/f'search-{index+1}-primary-failed.json',primary,'')
-                    self.event('Second search unavailable; trying Wikipedia once with the same query.')
-                    receipt=self.fallback(query['query'],5,self.cancelled)
+                    except Exception as error:
+                        attempt.update(status='failed', error=str(error)[:1000],
+                                       diagnostic=getattr(error, 'details', None))
+                        save(self.root/f'search-{index+1}-attempt-{attempt_index+1}.json',
+                             {'query':query['query'], **attempt}, '')
+                        if attempt_index == 0:
+                            primary = {'query':query['query'], **attempt}
+                            record['primary_failure'] = primary
+                            save(self.root/f'search-{index+1}-primary-failed.json', primary, '')
+                        self.event(f'Search {index+1}: {provider} failed: '+attempt['error'])
+                        if attempt_index == len(providers)-1:
+                            raise
                 save(self.root/f'search-{index+1}.json',{'query':query['query'],**receipt},'')
                 record.update(status='completed',results=len(receipt['results']))
                 for result in receipt['results']:

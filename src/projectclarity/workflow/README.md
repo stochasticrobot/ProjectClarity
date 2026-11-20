@@ -6,7 +6,7 @@ connects prepared searches or selected URLs to the same document processor.
 
 ## Execution and persistence
 
-The graph owns stage order; workers save outcomes rather than invoke downstream
+The LangGraph workflow owns stage order; workers save outcomes rather than invoke downstream
 stages themselves. Setup and search preparation retain SQLite checkpoints. The
 autonomous research graph uses explicit stage recovery, not crash replay.
 [The code guide](../../../CODE_GUIDE.md) explains the graph boundaries and request flow.
@@ -24,7 +24,9 @@ setting remain single-pass; deploying this feature does not restart them.
    input title. Do not run new searches.
 3. Repeat the same extraction/review stages with the saved concurrency limits.
 4. After the last round, or when no unvisited selected destinations remain,
-   generate one report from the combined reviewed evidence.
+   start the report from combined reviewed evidence and queue an independent
+   graph-projection worker. Neither graph readiness nor a manual explorer action
+   gates report generation.
 
 [research_rounds.py](research_rounds.py) archives each completed round's stage references in
 `round_history`, retains the active `current_round` and immutable `round_paths`,
@@ -67,6 +69,24 @@ the hard budget. Reports still consume budget and may reach its ordinary pause.
 
 The checkpoint survives server restarts and page reloads without spending. Its
 single-use decision ID prevents duplicate clicks from granting multiple rounds.
-On the last configured round, high usage skips ranking and goes to reporting without
+On the last configured round, high usage skips ranking and goes to reporting (with independent graph preparation) without
 asking to approve a nonexistent next round. Existing report-only retries stay
 report-only and do not replay the checkpoint or upstream research.
+
+## Knowledge graph preparation is not a report stage
+
+The reporting node queues [ProjectionJobs](../knowledge_graph/projection_jobs.py)
+with a frozen session snapshot before starting the report. Its separate executor
+reads accepted saved extraction records across retained rounds and updates Neo4j.
+The report still reads reviewed evidence files; it never queries the knowledge graph.
+Neither output waits for the other, and graph failure leaves reporting unaffected.
+
+Projection progress is saved in a per-session `knowledge-graph.json`, separate from
+research/report state. `Sessions.read` exposes it to the browser's ready notice.
+Explicit graph refresh uses the same saved-evidence path and can run during reporting,
+without starting research or model calls. Report-only retries do not queue projection.
+Restart marks unfinished graph jobs interrupted; refresh is explicit, not crash replay.
+
+See the [knowledge graph architecture](../../../CODE_GUIDE.md#knowledge-graph-architecture)
+for storage ownership, collection scope and the difference between source assertions
+and reviewed report evidence.

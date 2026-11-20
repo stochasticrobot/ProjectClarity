@@ -1,0 +1,82 @@
+{
+  "scope": "Focused graph excerpt from a separate research run completed 20 November 2026, not the original 4 November report.",
+  "source_url": "https://layer6.ai/",
+  "source_artifact_sha256": "cad3b9c5edb7bdb9fb2ae07e14e27b5ca2cb27828e09ec855c11224b2ad61a03",
+  "capture": "Actual application graph canvas from live Neo4j results. Eight assertions selected; unrelated nodes hidden, positions and label sizes adjusted for readability. No labels, relationships or evidence changed; no name-based entity merging.",
+  "counts": {
+    "nodes": 17,
+    "assertions": 8,
+    "edges": 16
+  },
+  "assertions": [
+    {
+      "reference": "F3",
+      "subject": "Maks",
+      "predicate": "received PhD from",
+      "object": "University of Toronto",
+      "statement": "Maks received his PhD from the University of Toronto.",
+      "quote": "Maks received his PhD from the University of Toronto"
+    },
+    {
+      "reference": "F4",
+      "subject": "Maks",
+      "predicate": "was part of",
+      "object": "Machine Learning Group",
+      "statement": "Maks was part of the Machine Learning Group led by Geoffrey Hinton at the University of Toronto, where he received his PhD.",
+      "quote": "where he was part of the Machine Learning Group led by Geoffrey Hinton"
+    },
+    {
+      "reference": "F1",
+      "subject": "Maks",
+      "predicate": "co-founder of",
+      "object": "Layer 6",
+      "statement": "Maks is a co-founder of Layer 6.",
+      "quote": "Maks is a co-founder of Layer 6"
+    },
+    {
+      "reference": "F5",
+      "subject": "Machine Learning Group",
+      "predicate": "led by",
+      "object": "Geoffrey Hinton",
+      "statement": "The Machine Learning Group is led by Geoffrey Hinton.",
+      "quote": "the Machine Learning Group led by Geoffrey Hinton"
+    },
+    {
+      "reference": "F16",
+      "subject": "Sumee Seetharaman",
+      "predicate": "holds degree",
+      "object": "Rotman School of Management",
+      "statement": "Sumee holds an MBA from the Rotman School of Management at the University of Toronto.",
+      "quote": "She holds an MBA from the Rotman School of Management at the University of Toronto"
+    },
+    {
+      "reference": "F17",
+      "subject": "Rotman School of Management",
+      "predicate": "part of",
+      "object": "University of Toronto",
+      "statement": "The Rotman School of Management is at the University of Toronto.",
+      "quote": "the Rotman School of Management at the University of Toronto"
+    },
+    {
+      "reference": "F25",
+      "subject": "Guangwei Yu",
+      "predicate": "received degree from",
+      "object": "University of Toronto",
+      "statement": "Guang received an MScAC in computer science from the University of Toronto.",
+      "quote": "Guang received his MScAC in computer science and BASc in Engineering Science from the University of Toronto"
+    },
+    {
+      "reference": "F32",
+      "subject": "Jesse Cresswell",
+      "predicate": "completed PhD in Physics",
+      "object": "University of Toronto",
+      "statement": "In 2019 Jesse completed a PhD in Physics at the University of Toronto.",
+      "quote": "In 2019 he completed a PhD in Physics at the University of Toronto where he was a Vanier Scholar"
+    }
+  ],
+  "checks": {
+    "artifact_hash_matches": true,
+    "all_quotes_present_in_saved_chunk": true
+  },
+  "limits": "Source-scoped extracted assertions; not independently verified. Maks remains the extracted mention label. This excerpt does not establish global identity resolution or infer new relationships."
+}

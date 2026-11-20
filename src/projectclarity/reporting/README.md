@@ -92,3 +92,12 @@ The standalone `testing/report_batch_regression.py` still uses a legacy-shaped
 fixture caller and copies only one investigation's inputs; it is **not a supported
 replay recipe for current multi-round item reports**. Use the maintained integration
 tests for that path. See [developer experiments](../../../testing/README.md).
+
+## Relationship to the knowledge graph
+
+Reporting consumes reviewed evidence files, not Neo4j. At the fresh reporting
+boundary the workflow also schedules an independent knowledge-graph projection
+from accepted extraction records. Graph completion, failure or user navigation
+does not gate the report, and report-only retries do not rebuild the graph.
+The graph may therefore contain assertions excluded from report inputs. See
+[storage and ownership](../../../CODE_GUIDE.md#storage-and-ownership).

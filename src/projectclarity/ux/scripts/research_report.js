@@ -134,7 +134,9 @@ function renderProgress(progress){
 }
 /** Poll generation and shared ledger without triggering model work on refresh.
  * Args: none.
- * Returns: promise; retries status reads only, retaining explicit errors.
+ * Returns: promise; retries status reads only, retaining explicit errors. Continues
+ * while a graph is queued/running even after reporting ends, so its optional
+ * ready notice appears without navigating or regenerating report content.
  */
 async function refresh(){clearTimeout(timer);try{const state=await api();if(followCurrentRound(state))return;renderStages(state);if(state.link_ranking&&!state.report&&!new URLSearchParams(location.search).has('stay')){location.replace(`/links/${sid}`);return;}const p=state.report;
  renderProgress(p);failedAttempt=p?.started_at;el('retry').hidden=!failedAttempt||!['failed','cancelled','interrupted','partial'].includes(p?.status);
@@ -143,7 +145,7 @@ async function refresh(){clearTimeout(timer);try{const state=await api();if(foll
  el('status').textContent=p?(p.error||(p.status==='running'?`${p.phase||'Preparing report'} · ${p.batches_finished||0}/${p.batches_total||0} evidence batches complete · ${p.merge_tasks_finished||0} merge tasks complete · ${p.reused_tasks||0} saved tasks reused`:`Report ${p.status}.`)):'Ready to prepare your report from Report Knowledge.';
  el('counts').replaceChildren();for(const [label,value] of [['Input facts',p?.facts_total??state.investigation?.report_knowledge??0],['Accounted for',p?.facts_accounted||0],['Supported matches',p?.complete_entries||0],['Incomplete candidates',p?.incomplete_entries||0]]){const d=node('div','');d.append(node('strong',value),node('span',label));el('counts').append(d);}
  if(['completed','partial'].includes(p?.status)&&!report){const data=await api('/report-data');if(data)renderReport(data);}
- if(p?.status==='running'||['investigation_running','link_ranking_running'].includes(state.status))timer=setTimeout(refresh,1200);
+ if(p?.status==='running'||['queued','running'].includes(state.knowledge_graph?.status)||['investigation_running','link_ranking_running'].includes(state.status))timer=setTimeout(refresh,1200);
  }catch(e){showActivityIssue(true);el('status').textContent=e.message+' Retrying status…';timer=setTimeout(refresh,3000);}}
 /** Start/stop generation only after an explicit user action.
  * Args: suffix — API action; button — clicked control.

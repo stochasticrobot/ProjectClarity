@@ -43,3 +43,27 @@ URLs are permanently equivalent or that current content is unchanged.
 
 The ORKA example remains a demonstration of following a product mention to its
 creator. The screenshot alone does not establish Folkly's AI functionality.
+
+## Knowledge graph extension — 20 November 2026
+
+The University of Toronto–Geoffrey Hinton graphic is from a **different, newer
+research run**, not the original report export. Its eight assertions were retrieved
+from the live Neo4j graph and traced to one saved extraction chunk from
+[Layer 6's website](https://layer6.ai/). The extraction artifact's SHA-256 matched
+the graph lineage, and every included quotation was present in the saved source
+chunk. See [knowledge-graph-evidence.json](knowledge-graph-evidence.json) for the
+public statements, quotations, hash and capture description. No source was fetched
+again and no model extraction was rerun to prepare this example.
+
+The image is a screenshot of the application's graph canvas. For this editorial
+excerpt, unrelated nodes were hidden and node positions and label sizes were
+adjusted in the browser for readability. All eight assertions and their endpoints
+were already in the application's live graph response. No relationships, node
+labels or source records were changed, and no duplicate names were merged. The
+screenshot excludes local session identifiers and private interface details.
+
+The chain uses the source-scoped label **Maks**, exactly as extracted; it is not a
+claim of cross-document identity resolution. The graph records what the source
+asserts and retains its wording, including temporal limitations. This is a visual
+route through several assertions, not proof of a new relationship between the
+endpoints. The original report, metrics and report provenance remain unchanged.

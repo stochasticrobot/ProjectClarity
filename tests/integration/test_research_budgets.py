@@ -195,6 +195,8 @@ class BudgetTests(unittest.TestCase):
                     ('searches', 'search_queries'), ('entities', 'extract-fixture'),
                     ('selected_facts', 'evidence-fixture'), ('decisions', 'triage-fixture'),
                     ('items', 'report-fixture')] if key in properties)
+                if 'entities' in properties and 'decisions' in properties:
+                    stage = 'extract-omissions-fixture'
                 return response(fixtures(stage, request, sid))
 
             messages.create.side_effect = send
@@ -206,7 +208,7 @@ class BudgetTests(unittest.TestCase):
                     self.assertEqual(result.status_code, 202)
                     eventually(lambda: sessions.read(sid).get('model_budget', {}).get('paused'))
                     state = sessions.read(sid)
-                    self.assertEqual(state['status'], 'selection_running')
+                    self.assertEqual(state['status'], 'run_running')
                     self.assertEqual(messages.create.call_count, 4)
                     client.post(f'/api/setup/{sid}/budget', json={'revision': state['model_budget']['revision'], 'action': 'continue'})
                     eventually(lambda: sessions.read(sid)['status'] == 'report_completed')
@@ -216,6 +218,7 @@ class BudgetTests(unittest.TestCase):
                     stages = [call[0] for call in fixtures.calls]
                     self.assertEqual(stages.count('define'), 1)
                     self.assertEqual(stages.count('extract-fixture'), 1)
+                    self.assertEqual(stages.count('extract-omissions-fixture'), 1)
                     self.assertIn('report-fixture', stages)
             finally:
                 sessions.close()

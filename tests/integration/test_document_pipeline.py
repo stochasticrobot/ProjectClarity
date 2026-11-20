@@ -41,7 +41,8 @@ class ExtractCaller(FakeCaller):
             request: Actual request containing complete source chunk and requirements.
             sid: Owning session ID.
         Returns:
-            Schema-valid extraction/selection JSON; records unmodified requests.
+            Schema-valid extraction, omission-review or selection JSON; records
+            unmodified requests. Omission fixtures keep literal descriptions.
         """
         if stage.startswith('report-'):
             self.calls.append((stage,request,sid))
@@ -51,6 +52,11 @@ class ExtractCaller(FakeCaller):
             return json.dumps({'summary':[],'entries':[],'gaps':['Fixture contains no complete answer.'],
                 'exclusions':[{'fact_id':f['id'],'reason':'Fixture excluded.'} for f in data['facts']]})
         self.calls.append((stage,request,sid))
+        if stage.startswith('extract-omissions-'):
+            data=json.loads(request['messages'][0]['content'])
+            return json.dumps({'entities':[], 'decisions':[
+                {'id': item['id'], 'action':'keep', 'object_id':None,
+                 'reason':'Fixture retains its literal description.'} for item in data['assertions']]})
         if stage.startswith('triage-'):
             facts=json.loads(request['messages'][0]['content'])['facts']
             return json.dumps({'decisions':[{'fact_id':f['fact_id'],'bucket':'report_knowledge','reason':'Complete statement supported by its quote.'} for f in facts]})
@@ -270,7 +276,7 @@ class RunTests(unittest.TestCase):
                 self.assertEqual(state['run']['sources'][1]['status'],'robots_blocked')
                 self.assertEqual(state['run']['chunks_finished'],1)
                 self.assertEqual(state['run']['facts'],1)
-                self.assertEqual(len(caller.calls),4)
+                self.assertEqual(len(caller.calls),5)
                 payload=json.loads(caller.calls[0][1]['messages'][0]['content'])
                 self.assertEqual(payload['requested_information'],state['information_needed'])
                 self.assertNotIn('Not evidence',payload['document_chunk'])
@@ -278,7 +284,7 @@ class RunTests(unittest.TestCase):
                 self.assertEqual(inspected['knowledge'][0]['facts'][0]['quote'],inspected['document_text'])
                 self.assertEqual(client.get(f'/api/setup/{sid}/knowledge/99').status_code,404)
                 self.assertEqual(client.post(f'/api/setup/{sid}/run').json()['status'],'report_completed')
-                self.assertEqual(len(caller.calls),4)
+                self.assertEqual(len(caller.calls),5)
             sessions.close()
 
     def test_cancel_before_search_creates_no_false_completion(self):

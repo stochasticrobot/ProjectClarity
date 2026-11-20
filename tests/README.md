@@ -52,3 +52,25 @@ partial report/CSV coverage, retained recovery findings and explicit cached retr
 `test_round_budget_checkpoint.py` verifies the >50% pre-ranking choice through HTTP
 and the graph, including restart persistence, exact-threshold behavior and duplicate
 decisions. Both use offline provider/accounting fixtures, not live billing evidence.
+
+The [knowledge graph regression](integration/test_knowledge_graph.py) covers
+collection separation, source lineage, repeated projection and graph/report
+independence. It checks both directions of concurrency: a held graph worker must
+not block reporting, and a held report must not prevent graph exploration. Graph
+failure and refresh must leave report inputs intact. Database-dependent persistence
+and Cypher checks use an optional real-Neo4j branch. See [database validation](../docs/KNOWLEDGE_GRAPH.md#validate);
+without a connection file, that branch is explicitly skipped.
+
+- `integration/test_search_provider_chain.py` checks the production default provider order, every stopping point, HTTP/reported/empty failures, cancellation and bounded JSON/RSS parsing with offline provider responses.
+
+- `integration/test_search_captcha.py` runs setup → production search/IPC → human
+  decision API → document/report routing with a real child process and synthetic
+  provider replies. It covers renewed puzzles, stale/double answers, image/session
+  isolation, skip, cancellation and shutdown/restart without replay. The fixture
+  image is a plain pixel, not a real CAPTCHA.
+
+Entity omission regressions in `integration/test_entity_omissions.py` exercise the
+production extraction worker and document coordinator, retained original receipts,
+headquarters/membership/event links, literal counts, cancellation, malformed replies,
+unsupported names and downstream graph projection. Only provider/acquisition replies
+are fixtures; these tests do not establish real-model omission detection quality.

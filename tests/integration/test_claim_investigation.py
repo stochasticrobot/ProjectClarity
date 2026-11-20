@@ -80,14 +80,14 @@ class InvestigationCaller:
 
 
 def wait_terminal(client,sid):
-    """Wait briefly for the production executor with fake model calls.
+    """Wait through investigation, graph preparation and reporting with fake model calls.
 
     Args: client: Actual HTTP test client; sid: Session ID.
     Returns: Terminal public snapshot or AssertionError after five seconds.
     """
     for _ in range(500):
         state=client.get(f'/api/setup/{sid}').json()
-        if state['status'] not in ('investigation_running','link_ranking_running','report_running'):return state
+        if state['status'] not in ('investigation_running','link_ranking_running','knowledge_graph_running','report_running'):return state
         time.sleep(.01)
     raise AssertionError('Investigation did not finish')
 

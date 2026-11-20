@@ -12,7 +12,8 @@
 'use strict';
 /** Read a historical stage without redirecting, editing or replaying any work.
  * Args: none; uses validated server session and the requested stage query.
- * Returns: promise; renders saved details or an explicit error. No POST requests.
+ * Returns: promise; renders saved details, including provider attempts, or an explicit error.
+ * No POST requests or searches are made.
  */
 async function reviewStage(){
  const sid=location.pathname.split('/').pop(),view=new URLSearchParams(location.search).get('stage')||'question';
@@ -30,7 +31,7 @@ async function reviewStage(){
   if(!state.run)document.getElementById('live').href='/';
   if(view==='question'){entry('Original question',state.original_question);for(const r of state.information_needed||[])entry(r.name,r.description);}
   else if(view==='clarification'){for(const pair of state.answers||[])entry(pair.question,pair.answer);if(!state.answers?.length)for(const q of state.questions||[])entry(q,'Awaiting your answer in the current stage.');}
-  else if(view==='searches'){for(const q of state.run?.searches||state.searches||[])entry(q.query,`${q.purpose||''} ${q.provider||''} ${q.status||'Prepared'}${q.results!==undefined?' · '+q.results+' results':''}${q.primary_failure?' · Primary search failed: '+q.primary_failure.error+' · Wikipedia fallback':''}${q.error?' · '+q.error:''}`);}
+  else if(view==='searches'){for(const q of state.run?.searches||state.searches||[])entry(q.query,`${q.purpose||''} ${q.provider||''} ${q.status||'Prepared'}${q.results!==undefined?' · '+q.results+' results':''}${searchAttemptSummary(q)}${q.error?' · '+q.error:''}`);}
   else if(view==='documents'||view==='extraction'){
    for(const s of state.run?.sources||[]){entry(s.title||s.url,`${s.url}\n${s.status} · ${s.parser||'Not parsed'}${s.pages?.length?' · '+s.pages.length+' PDF pages':''}\n${(s.warnings||[]).join(' ')} ${s.error||''}${view==='extraction'?' · '+s.facts+' facts · '+s.chunks.filter(c=>['checks_pass','checks_partial','failed'].includes(c.status)).length+'/'+s.chunks.length+' chunks processed':''}`);
     const a=document.createElement('a');a.textContent='Inspect source and extracted knowledge';a.href=`/run/${sid}?stay=1&document=${s.id}`;container.append(a);

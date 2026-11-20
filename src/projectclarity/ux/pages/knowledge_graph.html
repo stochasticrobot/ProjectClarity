@@ -1,0 +1,16 @@
+<!doctype html>
+<!-- Explore saved source assertions while the independent report continues normally. -->
+<html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Clarity — Knowledge graph</title><link rel="stylesheet" href="/assets/research_styles.css"><link rel="stylesheet" href="/assets/knowledge_graph.css">
+<script src="/assets/research_captcha.js" defer></script><script src="/assets/cytoscape.min.js" defer></script><script src="/assets/knowledge_graph.js" defer></script></head>
+<body><main class="graph-explorer"><header><a href="/">Clarity</a><a class="current-page" href="/graph" aria-current="page">Knowledge graph</a><a href="/?new=1">New research</a></header>
+<div class="graph-heading"><div><h1>Extracted entities and their relationships</h1><p class="muted">Blue circles: source mentions · Orange diamonds: assertions. Matching names are not merged identities.</p></div><a id="open-report" hidden>View report →</a></div>
+<section id="research-context" hidden><h2 id="research-question"></h2></section>
+<form id="graph-filters" class="search-parameters"><fieldset><legend>Search parameters</legend><div class="search-controls"><div><label for="search">Keywords</label><input id="search" type="search" maxlength="200" placeholder="Search assertions"></div><div><label for="limit">Maximum assertions</label><input id="limit" type="number" min="1" max="500" value="250"></div><button type="submit">Search</button></div></fieldset></form>
+<p id="graph-message" role="status" aria-live="polite"></p>
+<div class="graph-workspace"><div class="graph-column"><div class="graph-frame"><div class="graph-controls" role="group" aria-label="Graph zoom"><button id="zoom-in" type="button" aria-label="Zoom in" title="Zoom in">+</button><button id="zoom-out" type="button" aria-label="Zoom out" title="Zoom out">−</button></div><div id="graph" role="img" aria-label="Evidence graph. Select an assertion to see details on the right; the same assertions are listed below."></div></div><section class="assertions-panel"><h2>Displayed assertions</h2><ul id="assertions"></ul></section></div>
+<aside id="evidence-inspector" aria-labelledby="inspector-heading"><h2 id="inspector-heading">Assertion details</h2><p class="muted">Select an orange diamond or an assertion below the graph.</p><pre id="inspector" aria-live="polite"></pre></aside></div>
+<details class="supporting-panel"><summary>Contributing research</summary><ul id="collection-sessions"></ul></details>
+<details class="supporting-panel"><summary>Cypher and parameters</summary><pre id="cypher"></pre></details>
+<p class="muted">Source assertions, not independently verified truths. The graph does not supply or alter report inputs.</p>
+</main></body></html>

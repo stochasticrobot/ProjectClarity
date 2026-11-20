@@ -12,9 +12,13 @@ import os
 import subprocess
 import sys
 import time
+from tempfile import TemporaryDirectory
+from pathlib import Path
+from functools import partial
 from threading import Lock
 from urllib.parse import urlencode, quote
 from bs4 import BeautifulSoup
+from projectclarity.search.public_search import search_public
 from projectclarity.documents.web_acquisition import SourceError, http_get
 
 SEARCH_INTERVAL_SECONDS = 10
@@ -25,7 +29,7 @@ def search_wikipedia(query, limit, cancelled, transport=http_get):
     """Search English Wikipedia once through its documented public search API.
 
     Args:
-        query: Saved second search query, unchanged; no model-generated broadening.
+        query: Saved primary search query, unchanged; no model-generated broadening.
         limit: Maximum article leads returned, normally five.
         cancelled: Cooperative cancellation callback.
         transport: Bounded single-hop HTTP transport, injectable for offline tests.
@@ -53,15 +57,17 @@ def search_wikipedia(query, limit, cancelled, transport=http_get):
     return {'provider':'wikipedia','http_status':status,'query':query,'results':results}
 
 
-def search_web(query, limit, cancelled, provider="duckduckgo", on_wait=None):
+def search_web(query, limit, cancelled, provider="duckduckgo", on_wait=None, on_challenge=None):
     """Pace same-provider searches and preserve observed failure diagnostics.
 
     Args:
         query: Saved search query, unchanged.
         limit: Requested result count.
         cancelled: Callback that raises when scheduling should stop.
-        provider: Explicit engine; no automatic fallback.
+        provider: duckduckgo, brave, mwmbl, bing_rss or wikipedia; no automatic fallback.
         on_wait: Optional callback receiving cooldown seconds, then zero on dispatch.
+        on_challenge: Optional human handoff callback; keeps the isolated DuckDuckGo
+            client alive until the user submits, skips or cancels. No automatic solving.
     Returns:
         Search receipt or SourceError with safe HTTP diagnostics. Same-process
         requests are serialized, with ten seconds after the previous provider
@@ -80,6 +86,12 @@ def search_web(query, limit, cancelled, provider="duckduckgo", on_wait=None):
         cancelled()
         if on_wait:on_wait(0)
         try:
+            if provider in ('mwmbl', 'bing_rss'):
+                return search_public(query,limit,cancelled,provider)
+            if provider == 'wikipedia':
+                return search_wikipedia(query,limit,cancelled)
+            if on_challenge is not None and provider == "duckduckgo":
+                return _search_once(query,limit,cancelled,provider,on_challenge)
             return _search_once(query,limit,cancelled,provider)
         finally:
             _search_finished[provider]=time.monotonic()
@@ -87,43 +99,65 @@ def search_web(query, limit, cancelled, provider="duckduckgo", on_wait=None):
         _search_lock.release()
 
 
-def _search_once(query, limit, cancelled, provider="duckduckgo"):
-    """Execute one explicit free DDGS search in a credential-free subprocess.
+def _search_once(query, limit, cancelled, provider="duckduckgo", on_challenge=None):
+    """Run a credential-free worker, retaining its client during human verification.
 
     Args:
-        query: Already-prepared query, unchanged.
-        limit: Maximum returned URLs, normally five.
-        cancelled: Callback checked while waiting for the isolated worker.
-        provider: Explicit engine, duckduckgo or brave; no automatic fallback.
+        query: Prepared query, unchanged; limit: Maximum returned leads.
+        cancelled: Cooperative cancellation callback that terminates the worker.
+        provider: Explicit DuckDuckGo or Brave engine.
+        on_challenge: Optional callback returning the user's submit/skip/cancel
+            decision from safe images/instructions. None retains noninteractive behavior.
     Returns:
-        Parsed search receipt, including normalized result references. Nonzero,
-        timed-out or unrecognized/blocked replies raise SourceError, not empty success.
-        This function never downloads result pages or substitutes another engine.
+        Search receipt or sanitized SourceError. Human waits suspend the network
+        deadline, not cancellation. Private temporary handoff files are removed on
+        every exit; cookies and provider form tokens never leave the worker.
     """
     environment = {k:v for k,v in os.environ.items() if k in ('PATH','LANG','LC_ALL','SYSTEMROOT')}
-    process = subprocess.Popen([sys.executable,'-m','projectclarity.search.web_search','--search-worker'],stdin=subprocess.PIPE,stdout=subprocess.PIPE,stderr=subprocess.DEVNULL,text=True,env=environment)
-    payload=json.dumps({'query':query,'limit':limit,'provider':provider})
-    started=time.monotonic()
-    try:
-        while True:
-            cancelled()
-            if time.monotonic()-started > 30:
-                raise SourceError('search_timeout','Search exceeded 30 seconds.')
-            try:
-                output,_=process.communicate(payload,timeout=.25)
-                break
-            except subprocess.TimeoutExpired:
-                payload=None
-        if len(output)>100000:
-            raise SourceError('search_error','Search response exceeded its output limit.')
-        result=json.loads(output)
-        if process.returncode:
-            raise SourceError(result.get('code','search_error'),result.get('error','Search provider failed.'),result)
-        return result
-    finally:
-        if process.poll() is None:
-            process.kill()
-        process.communicate()
+    with TemporaryDirectory(prefix='clarity-captcha-') as directory:
+        root = Path(directory)
+        process = subprocess.Popen([sys.executable,'-m','projectclarity.search.web_search','--search-worker'],
+            stdin=subprocess.PIPE,stdout=subprocess.PIPE,stderr=subprocess.DEVNULL,text=True,env=environment)
+        request = {'query':query,'limit':limit,'provider':provider}
+        if on_challenge is not None and provider == 'duckduckgo':
+            request['captcha_directory'] = directory
+        payload = json.dumps(request)
+        started, revision = time.monotonic(), None
+        try:
+            while True:
+                cancelled()
+                challenge_file = root / 'challenge.json'
+                if on_challenge is not None and challenge_file.exists():
+                    if challenge_file.stat().st_size > 24000000:
+                        raise SourceError('search_error', 'Challenge payload too large.')
+                    challenge = json.loads(challenge_file.read_text())
+                    if challenge['revision'] != revision:
+                        answer = on_challenge(challenge)
+                        cancelled()
+                        revision = challenge['revision']
+                        temporary = root / 'answer.tmp'
+                        temporary.write_text(json.dumps({'revision':revision, **answer}))
+                        temporary.chmod(0o600); temporary.replace(root / 'answer.json')
+                        started = time.monotonic()
+                if time.monotonic()-started > (120 if on_challenge is not None else 30):
+                    raise SourceError('search_timeout','Search exceeded its active-request time limit.')
+                try:
+                    output,_ = process.communicate(payload,timeout=.25)
+                    break
+                except subprocess.TimeoutExpired:
+                    payload = None
+            if len(output)>100000:
+                raise SourceError('search_error','Search response exceeded its output limit.')
+            result = json.loads(output)
+            if process.returncode:
+                if result.get('code') == 'search_cancelled':
+                    raise InterruptedError('Research cancelled during human verification.')
+                raise SourceError(result.get('code','search_error'),result.get('error','Search provider failed.'),result)
+            return result
+        finally:
+            if process.poll() is None:
+                process.kill()
+            process.communicate()
 
 
 def search_worker():
@@ -132,8 +166,9 @@ def search_worker():
     Args:
         None. Reads bounded JSON from stdin and writes one bounded JSON receipt.
     Returns:
-        Exit code, with status/result or failure data on stdout. One provider page
-        only; blocks are not bypassed and empty unrecognized pages are failures.
+        Exit code, with status/result or failure data on stdout. An interactive
+        DuckDuckGo request retains its client while private file IPC waits for a
+        human answer; other requests retain single-provider, noninteractive behavior.
     """
     from ddgs.engines import ENGINES
     observed=[]
@@ -141,6 +176,17 @@ def search_worker():
     try:
         request=json.loads(sys.stdin.read(10000))
         provider=request.get('provider','duckduckgo')
+        if provider == 'duckduckgo' and request.get('captcha_directory'):
+            from projectclarity.search.duckduckgo_session import search_session, exchange_challenge
+            try:
+                result = search_session(request['query'],request['limit'],partial(exchange_challenge,request['captcha_directory']))
+                print(json.dumps(result)); return 0
+            except InterruptedError:
+                print(json.dumps({'code':'search_cancelled','error':'Human verification cancelled.'})); return 1
+            except SourceError as error:
+                print(json.dumps({'code':error.code,'error':str(error),'diagnostic':error.details})); return 1
+            except Exception:
+                print(json.dumps({'code':'search_error','error':'DuckDuckGo verification request failed.'})); return 1
         if provider not in ('duckduckgo','brave'):
             raise ValueError('Unsupported explicit search provider')
         base=ENGINES['text'][provider]

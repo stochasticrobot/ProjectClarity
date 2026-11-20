@@ -7,6 +7,10 @@ Extraction process:
 1. Identify entities
 Identify people, organizations, places, products, concepts, and other identifiable subjects. Record their types and resolve aliases or pronouns only when the reference is unambiguous.
 
+Identify entities wherever they participate in an assertion, not only when they are its main subject. An organization's headquarters, a person's employer, a product's manufacturer, the location of an event, an organization someone belongs to, or a named group or event may also be an entity. Represent membership in an organization as a relationship to that organization.
+
+For a location such as "Paris, France", identify the explicitly named city and country as distinct places. Likewise, identify a province or region when explicitly named. Preserve the full location wording in the relevant assertion. Do not add geographic details or relationships using outside knowledge.
+
 2. Extract facts
 Examine the entire text for distinct factual assertions about these entities. Capture:
 - Attributes, properties, roles, and classifications.
@@ -15,6 +19,14 @@ Examine the entire text for distinct factual assertions about these entities. Ca
 - Dates, periods, locations, quantities, and measurements.
 - Changes, comparisons, and causal relationships.
 - Claims, opinions, predictions, plans, and denials, attributed to their speakers or sources.
+
+When an assertion relates one entity to another, include both entities in the entity list and use their IDs as the assertion's subject and object. Do not represent the second entity only as a text value.
+
+For example, "Company A is headquartered in Calgary" should identify Company A and Calgary as entities, with Calgary as the object of the headquarters assertion. Preserve any additional location details and qualifications in the full statement.
+
+Use literal values for attributes such as counts, measurements and descriptive text that do not identify another entity. If an assertion contains both an entity relationship and a literal value, retain both where supported by the schema.
+
+If the text does not identify the other entity clearly enough, preserve what it says without inventing an entity or forcing a relationship.
 
 3. Preserve meaning
 Each fact must be understandable independently of the surrounding text.
@@ -34,6 +46,8 @@ Distinguish what the document asserts from what it attributes to another person 
 Before returning the result, review the text again for omitted entities, facts, relationships, dates, quantities, or qualifications.
 
 Remove duplicates while preserving distinct claims and evidence. Ensure entity references, relationship directions, predicates, and qualifiers agree with the supporting text.
+
+Check that entities named within assertions have not been overlooked. Where an assertion relates two identified entities, ensure it references both entity IDs rather than leaving the object only in the statement or value.
 
 Constraints:
 - Use only information contained in the supplied text.

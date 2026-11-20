@@ -10,7 +10,7 @@ from datetime import datetime, timezone
 
 from projectclarity.documents.document_pipeline import DocumentPipeline
 from projectclarity.search.search_execution import SearchExecution
-from projectclarity.search.web_search import search_web, search_wikipedia
+from projectclarity.search.web_search import search_web
 from projectclarity.knowledge_extraction.knowledge_extraction import save
 
 
@@ -18,7 +18,7 @@ class SourceCollection:
     """Coordinate the web app's search and document steps without merging their jobs."""
 
     def __init__(self, root, state, publish, caller, stop, search=search_web,
-                 reader=None, fallback=search_wikipedia):
+                 reader=None, fallback=None):
         """Prepare separate search and document workers for one web research attempt.
 
         Args:
@@ -29,7 +29,8 @@ class SourceCollection:
             stop: Shared cancellation event.
             search: Search callable, replaceable for offline checks.
             reader: Optional document reader implementing fetch(path).
-            fallback: Alternate search callable used by search's existing policy.
+            fallback: Optional single-provider override for controlled callers/tests;
+                None uses the production Mwmbl, Bing RSS, Wikipedia chain.
         Returns:
             None. Initializes the document and search input files; no external calls.
             root and run expose the attempt location and public combined progress.

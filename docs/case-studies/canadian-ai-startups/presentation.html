@@ -10,7 +10,7 @@
 @page{size:12in 7.5in;margin:0}@media print{body{background:white;font-size:16px}nav{display:none}.slide{width:12in;height:7.5in;min-height:0;max-width:none;margin:0;padding:35px 50px 55px;box-shadow:none;break-after:page;break-inside:avoid;print-color-adjust:exact;-webkit-print-color-adjust:exact}.slide:last-child{break-after:auto}h1{font-size:59px}h2{font-size:35px}.lead{font-size:23px}.trio{margin:25px 0}.foot{left:50px;right:50px}figure img{max-height:435px}.small{font-size:13px}a{text-decoration:none}}
 </style>
 </head><body>
-<nav aria-label="Presentation navigation"><b>ProjectClarity / Canadian AI discovery</b><a href="presentation.pdf">PDF</a><a href="report.html">Full cited report</a><a href="README.md">Detailed case study</a><a href="#engineering">Engineering</a></nav>
+<nav aria-label="Presentation navigation"><b>ProjectClarity / Canadian AI discovery</b><a href="presentation.pdf">PDF</a><a href="report.html">Full cited report</a><a href="README.md">Detailed case study</a><a href="#knowledge">Knowledge graph</a><a href="#engineering">Engineering</a></nav>
 <section class="slide dark" id="intro">
 <p class="eyebrow">ProjectClarity · Agentic research in practice</p>
 <h1 style="font-size:54px">Find Canadian AI companies.<br>See what they build.</h1>
@@ -22,19 +22,29 @@
 <div class="card"><h3>Cohere</h3><p>Toronto · Enterprise AI</p><p class="small">Large language models and generative AI for business applications.</p><a class="small" href="report.html#entry-14">Company + evidence →</a></div>
 </div>
 <p class="small muted">Examples from the saved report: technology companies with Canadian-location and AI-offering evidence. The full report retains citations and fields needing further review.</p>
-<div class="foot"><span>Real research run · 4 November 2026 · Findings reported by the collected sources</span><span>01 / 03</span></div>
+<div class="foot"><span>Real research run · 4 November 2026 · Findings reported by the collected sources</span><span>01 / 04</span></div>
 </section>
 <section class="slide" id="discovery">
 <p class="eyebrow">It followed discoveries—not just the initial search</p><h2>Following a product mention identified its creator.</h2>
 <p>The agent followed the Folkly profile and found evidence linking the archiving platform to <b>Calgary-based ORKA AI</b>. This demonstrates autonomous follow-up, not AI-product qualification.</p>
 <figure><a href="assets/report-orka-card.png"><img src="assets/report-orka-evidence.png" style="max-height:365px;margin-top:28px;margin-bottom:28px" alt="Original report excerpt linking ORKA AI to Folkly; its AI-product field label does not establish that Folkly uses AI"></a><figcaption>Original report excerpt. An AI consulting description plus a product connection does not establish that Folkly uses AI. Click for the full card.</figcaption></figure>
 <p class="small"><a href="https://aimagazine.ca/canadian-ai-spotlight/folkly-ai-and-the-quiet-revolution-in-cultural-archiving/">Source profile</a> → <a href="report.html#evidence-F437">Creator evidence</a> + <a href="report.html#evidence-F443">Location evidence</a> + <a href="report.html#evidence-F539">Creator–product connection</a> → <a href="report.html#entry-38">Report entry</a></p>
-<div class="foot"><span>Round two contributed 229 additional report-evidence facts and six new name groups for review</span><span>02 / 03</span></div>
+<div class="foot"><span>Round two contributed 229 additional report-evidence facts and six new name groups for review</span><span>02 / 04</span></div>
+</section>
+<section class="slide" id="knowledge">
+<p class="eyebrow" style="margin-bottom:10px">Beyond reporting · Extracted knowledge</p>
+<h2 style="margin-bottom:10px">Explore the connections behind the findings.</h2>
+<p class="small">A University of Toronto cluster leads through a researcher and a Machine Learning Group to <b>Geoffrey Hinton</b>.</p>
+<figure><a href="assets/knowledge-graph-toronto-hinton.png"><img src="assets/knowledge-graph-toronto-hinton.png" style="max-height:370px" alt="Source-backed graph: Maks connects University of Toronto to a Machine Learning Group led by Geoffrey Hinton; other education links surround the university"></a>
+<figcaption>Blue: entity mentions. Orange: source assertions. Actual graph excerpt; eight assertions selected and layout adjusted for readability. Names and links unchanged.</figcaption></figure>
+<p class="small"><b>Extract → retain source evidence → store in Neo4j → explore with Cypher.</b> Select an assertion in Clarity to inspect its quotation and source. Graph preparation runs alongside the report.</p>
+<p class="small"><a href="knowledge-graph-evidence.json">Inspect the pictured evidence →</a> · <a href="https://layer6.ai/">Source: Layer 6 team biographies</a></p>
+<div class="foot"><span>Separate run · 20 November 2026 · Source-scoped assertions, not independently verified identities or facts</span><span>03 / 04</span></div>
 </section>
 <section class="slide" id="engineering">
 <p class="eyebrow">The engineering behind the useful result</p><h2>Research that advances itself.<br>Evidence a person can inspect.</h2>
-<div class="grid"><div><h3>Three deliberate design choices</h3><p><b>1. Follow the evidence.</b><br>Rank discovered links, visit selected destinations and feed new knowledge into the same report.</p><p><b>2. Preserve the trail.</b><br>Keep source references beside each finding so a reviewer can inspect how the answer was assembled.</p><p><b>3. Bound the work.</b><br>Use concurrent batches, request budgets and saved results to handle larger tasks and recover useful work.</p></div><div class="card"><h3>Inspect the result yourself</h3><p><a href="report.html">Full cited report →</a></p><p><a href="EVALUATION.md">Evaluation and lessons learned →</a></p><p><a href="metrics.json">Measured usage and counts →</a></p><p><a href="sources.json">Sources explored →</a></p><p class="small muted">Static report and presentation: no API key needed. The detailed case study covers source quality, duplicates, qualification gaps and model usage.</p></div></div>
-<p class="small" style="margin-top:25px"><b>Collected:</b> 14 parsed documents · 1,221 retained extraction records · two research rounds.<br><b>Delivered:</b> 49 cited report rows, including the company examples shown here, for human review.</p>
-<div class="foot"><span>Python · LangGraph · Anthropic · FastAPI · SQLite · JavaScript</span><span>03 / 03</span></div>
+<div class="grid"><div><h3>Three deliberate design choices</h3><p><b>1. Follow the evidence.</b><br>Rank discovered links, visit selected destinations and feed new knowledge into the same report.</p><p><b>2. Preserve the trail.</b><br>Keep original extraction records and quotations. Let reviewers inspect findings and explore relationships in the knowledge graph.</p><p><b>3. Bound the work.</b><br>Use concurrent batches, request budgets and saved results to handle larger tasks and recover useful work.</p></div><div class="card"><h3>Inspect the result yourself</h3><p><a href="report.html">Full cited report →</a></p><p><a href="EVALUATION.md">Evaluation and lessons learned →</a></p><p><a href="metrics.json">Measured usage and counts →</a></p><p><a href="sources.json">Sources explored →</a></p><p class="small muted">Static report and presentation: no API key needed. The detailed case study covers source quality, duplicates, qualification gaps and model usage.</p></div></div>
+<p class="small" style="margin-top:25px"><b>Original report run — collected:</b> 14 parsed documents · 1,221 retained extraction records · two research rounds.<br><b>Delivered:</b> 49 cited report rows, including the company examples shown here, for human review.</p>
+<div class="foot"><span>Python · LangGraph · FastAPI · Neo4j / Cypher · Cytoscape.js</span><span>04 / 04</span></div>
 </section>
 </body></html>

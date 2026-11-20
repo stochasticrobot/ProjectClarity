@@ -77,7 +77,7 @@ class TriageCaller:
 
 
 def settled(client,sid):
-    """Wait for offline model fixtures to finish through the production executor.
+    """Wait through review, graph preparation and reporting using offline model fixtures.
 
     Args:
         client: Actual API TestClient.
@@ -86,7 +86,7 @@ def settled(client,sid):
     """
     for _ in range(500):
         state=client.get(f'/api/setup/{sid}').json()
-        if state['status'] not in ('triage_running','investigation_running','link_ranking_running','report_running'):return state
+        if state['status'] not in ('triage_running','investigation_running','link_ranking_running','knowledge_graph_running','report_running'):return state
         time.sleep(.01)
     raise AssertionError('Triage did not finish')
 

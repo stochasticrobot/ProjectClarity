@@ -25,3 +25,11 @@ Prompt edits can change behavior and invalidate exact-request reuse. Review the
 complete request, including Pydantic schema descriptions, and run the relevant
 stage tests. Moving a prompt or editing documentation must not silently change
 its contents. Tests of response shape do not prove semantic answer quality.
+
+## Entity-omission review
+
+[repair_entity_omissions.txt](repair_entity_omissions.txt) reviews accepted assertions
+whose object reference is missing. It distinguishes literal attributes from named
+entity relationships and requires uncertain cases to remain unresolved. The schema
+permits only entity definitions and link decisions, not rewritten fact text. The
+web extraction worker makes at most one such call per affected chunk.

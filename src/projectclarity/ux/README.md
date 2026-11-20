@@ -33,3 +33,24 @@ polling and opening pages do not start research. Start, stop, resume, and retry
 controls call the [session service](../workflow/research_sessions.py), which checks
 whether each action is valid. This is a loopback-only app, not an authenticated
 public deployment.
+
+## Knowledge graph explorer
+
+[graph_routes.py](graph_routes.py) serves `/graph`, bounded collection-scoped reads,
+contributing-session details and explicit saved-evidence refresh. The routes call
+the [knowledge graph service](../knowledge_graph/README.md); the browser does not
+connect directly to Neo4j or receive database credentials. Parameterized Cypher is
+inspectable, not freely editable in the UI.
+
+[knowledge_graph.js](scripts/knowledge_graph.js) renders returned entity mentions
+and assertions using vendored Cytoscape.js. Search defaults to 250 assertions
+(maximum 500). The graph and assertion list share selection highlighting; an
+adjacent inspector displays the original statement, quote and source. Zoom controls
+change the viewport, not the query. Responsive layouts keep the evidence accessible.
+
+Shared navigation shows **Knowledge graph ready — Explore** when preparation
+finishes. It never opens the graph automatically or pauses automatic report generation.
+The explorer is a separate evidence view, not a stage requiring user approval.
+New sessions share a default collection; a report's graph link selects that collection,
+not a session-only view. Multiple collections and API-level session filtering remain
+internal capabilities rather than exposed collection-management controls.

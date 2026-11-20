@@ -1,6 +1,6 @@
 """Assess independent document chunks concurrently without competing state writers.
 
-Each worker owns one chunk and its optional repair. Workers report progress through
+Each worker owns one chunk, rejected-fact repair and missing-entity review. Workers report progress through
 an inbox; the document coordinator alone updates session state and the knowledge
 index. A worker never starts more than one model call at once, so the worker limit
 also bounds extraction and repair calls together. Confirmed output truncation is
@@ -9,6 +9,7 @@ never repeats the same request.
 """
 from projectclarity.knowledge_extraction.knowledge_extraction import extraction_request
 from projectclarity.knowledge_extraction.fact_validation_and_repair import recover
+from projectclarity.knowledge_extraction.entity_omission_repair import repair_omissions
 from projectclarity.model_access.model_ledger import mark_validation
 from projectclarity.model_access.model_outcomes import ModelOutputLimitError
 
@@ -28,7 +29,10 @@ def extract_chunk(source, chunk, content, requirements, caller, sid, stop, inbox
     Returns:
         Receipt containing accepted facts or a recorded failure; None if stopped
         before initial dispatch. Completed responses are retained after a stop,
-        but optional repairs will not start. Provider usage and a typed truncation
+        but optional repairs will not start. A separate bounded omission review
+        can add object references; its originals and decisions remain in the receipt.
+        Failed or uncertain omission reviews retain facts with partial status.
+        Provider usage and a typed truncation
         flag let the coordinator adapt without treating JSON/quote errors as output
         limits. No source/chunk input is mutated.
     """
@@ -79,6 +83,11 @@ def extract_chunk(source, chunk, content, requirements, caller, sid, stop, inbox
         result = recover(raw, content, call, sid,
                          f'extract-repair-doc{source["id"]}-chunk{chunk["index"]}', stop.is_set, progress)
         receipt.update(status='checks_partial' if result['unresolved'] else 'checks_pass', **result)
+        receipt['parsed'], receipt['entity_omissions'] = repair_omissions(
+            result['parsed'], content, call, sid,
+            f'extract-omissions-doc{source["id"]}-chunk{chunk["index"]}', stop.is_set)
+        if receipt['entity_omissions']['status'] in ('partial', 'failed', 'skipped_cancelled'):
+            receipt['status'] = 'checks_partial'
         for match in receipt['grounding']:
             match['document_start'] = chunk['start'] + match['start']
             match['document_end'] = chunk['start'] + match['end']

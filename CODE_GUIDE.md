@@ -1,10 +1,10 @@
 # Architecture and code-reading guide
 
 This guide is for developers reviewing how ProjectClarity turns a question into a
-source-linked answer. For the product overview and installation, start with the
+source-linked answer and an explorable knowledge graph. For the product overview and installation, start with the
 [main README](README.md).
 
-## A five-file reading tour
+## A focused reading tour
 
 1. [research_graph.py](src/projectclarity/workflow/research_graph.py) — the workflow,
    its branches, and the conditions that allow or stop each transition.
@@ -16,6 +16,12 @@ source-linked answer. For the product overview and installation, start with the
    links start another round without losing earlier reviewed evidence.
 5. [item_reporting.py](src/projectclarity/reporting/item_reporting.py) — how bounded
    model assessments feed a final report assembled by code.
+
+6. [evidence_projection.py](src/projectclarity/knowledge_graph/evidence_projection.py)
+   and [neo4j_store.py](src/projectclarity/knowledge_graph/neo4j_store.py) — how saved
+   extraction records become source-linked nodes and Cypher results.
+7. [projection_jobs.py](src/projectclarity/knowledge_graph/projection_jobs.py) — why
+   graph preparation neither blocks nor supplies report generation.
 
 ## Execution model
 
@@ -31,8 +37,16 @@ flowchart TD
     TRIAGE --> INVESTIGATE[Investigate flagged claims]
     INVESTIGATE --> LINKS[Rank saved links]
     LINKS -->|Another round allowed and new links available| DOC
-    LINKS -->|Round limit or no new links| REPORT[Filter and assemble report]
+    LINKS -->|Research ends| OUTPUTS[Reporting boundary]
+    OUTPUTS --> REPORT[Filter reviewed evidence and assemble report]
+    OUTPUTS --> KG[Independent worker: project saved extractions]
+    KG --> NEO[(Neo4j: mentions and assertions)]
+    NEO --> CYPHER[Parameterized Cypher]
+    CYPHER --> EXPLORE[Cytoscape.js evidence explorer]
 ```
+
+Here, **LangGraph workflow graphs** describe control flow. The **Neo4j knowledge
+graph** stores evidence; it is not a workflow engine or a report input.
 
 There are five graph builders in `research_graph.py`, not one fully checkpointed
 workflow:
@@ -40,7 +54,7 @@ workflow:
 | Graph | Responsibility |
 |---|---|
 | Setup | Define answer requirements; pause for clarification and refine the definition. |
-| Search preparation | Produce two queries from the finalized requirements. |
+| Search preparation | Produce the requested 1–10 queries (default 2) from finalized requirements. |
 | Autonomous research | Route collection, review, link exploration, and reporting; stop on failure or cancellation. |
 | Document processing | Download and extract from explicitly supplied paths, independently of search. |
 | Standalone source collection | Connect search to document processing without downstream review or reporting. |
@@ -49,7 +63,8 @@ Setup and search preparation use SQLite-backed checkpoints. The autonomous
 research graph is **not crash-checkpointed**: saved artifacts support explicit,
 stage-specific recovery, not automatic replay of uncertain model calls.
 
-The session service schedules graph work on a serialized executor. Within a stage,
+The session service schedules research workflow work on a serialized executor.
+A separate executor owns knowledge-graph projection jobs. Within a stage,
 bounded worker pools run independent model calls concurrently. These are separate
 controls: concurrency bounds simultaneous work; `model_access/research_budget.py`
 shares one request/token allowance across the whole session. Neither is a provider
@@ -70,6 +85,7 @@ Each package README describes its inputs, outputs, and important boundaries.
 | [search](src/projectclarity/search/README.md) | Prepared query execution and candidate URLs | Source-document downloading |
 | [documents](src/projectclarity/documents/README.md) | Input pool, acquisition, parsing, extraction scheduling | Search strategy or relevance decisions |
 | [knowledge_extraction](src/projectclarity/knowledge_extraction/README.md) | Structured facts, quote checks, bounded repair | Independent factual verification |
+| [knowledge_graph](src/projectclarity/knowledge_graph/README.md) | Saved-evidence projection, Neo4j persistence and collection-scoped Cypher | Report inputs, identity resolution or independent verification |
 | [evidence_selection](src/projectclarity/evidence_selection/README.md) | Selecting potentially relevant original facts | Rewriting facts or proving completeness |
 | [claim_review](src/projectclarity/claim_review/README.md) | Support review and saved-passage investigation | New web research during a claim review |
 | [link_ranking](src/projectclarity/link_ranking/README.md) | Bounded shortlisting, ratings, selected destinations | Fetching destinations itself |
@@ -86,19 +102,22 @@ Each package README describes its inputs, outputs, and important boundaries.
    Query preparation then hands off to the autonomous research graph.
 4. Stage workers save artifacts and publish progress. The graph continues only
    after eligible outcomes and when no stop has been requested.
-5. After link ranking, the graph either starts another document round or reports.
-   Later rounds use selected URLs, not another search.
+5. After the round checkpoint and eligible link ranking, the workflow either starts
+   another document round or enters reporting. At a fresh reporting boundary it
+   queues graph preparation independently. Later rounds use selected URLs, not
+   another search. Report-only retries do not queue another graph projection.
 6. The browser follows the saved current stage and round. Read-only saved views
    remain available without restarting work.
 
 ## Follow a fact
 
 ```text
-Source bytes → parsed text → extraction receipt → knowledge.json
-  → relevant_knowledge.json → triage decisions
-  → investigation report_knowledge.json
-  → cumulative reviewed evidence, when multiple rounds exist
-  → bounded answer contributions → report.json + report.csv
+Source bytes → parsed text → extraction + validation/repair receipt → knowledge.json
+  ├─ Report path: relevant_knowledge.json → triage decisions
+  │    → investigation report_knowledge.json → cumulative reviewed evidence
+  │    → bounded answer contributions → report.json + report.csv
+  └─ Graph path: accepted extraction records across retained rounds
+       → source-linked mentions/assertions → Neo4j → Cypher → browser explorer
 ```
 
 Source quotations and record references survive selection and review. Unreviewed
@@ -175,3 +194,87 @@ Quote matching proves text presence, not truth. Source-support review is not
 independent corroboration. Tests establish execution contracts, not general model
 accuracy. Exact-label assembly is not universal entity resolution, and bounded
 exploration does not establish exhaustive answer coverage.
+
+## Knowledge graph architecture
+
+The [knowledge graph package](src/projectclarity/knowledge_graph/README.md) converts
+accepted, indexed extraction records from retained research rounds into a rebuildable
+Neo4j view. This includes assertions not selected for the report; later claim-review
+decisions are not currently overlaid. Original saved source and extraction files
+remain authoritative.
+
+### Storage and ownership
+
+| Store | Owner and purpose | Boundary |
+|---|---|---|
+| Source files, extraction receipts and `knowledge.json` | Document/extraction pipeline; source bytes, quotes, accepted records and artifact hashes | Projection reads these without rewriting them |
+| Reviewed evidence and report files | Selection/review/reporting; report eligibility, citations and output | Report does not read Neo4j |
+| `collections.json` | Collection service; persistent grouping and default collection | Logical separation, not multi-user authorization |
+| `knowledge-graph.json` per session | `ProjectionJobs`; queued/running/completed/failed/interrupted status | Separate from research/report progress |
+| Neo4j | `Neo4jStore`; derived mention/assertion nodes and relationships | Rebuildable; not a replacement for saved evidence |
+
+An entity is a source-scoped `ClarityMention`. A `ClarityAssertion` retains the
+predicate, statement, literal value, quotation, URL, research round and extraction
+lineage. Connections are `Mention -[:SUBJECT_OF]-> Assertion -[:OBJECT]-> Mention`;
+a literal attribute may have no object node. Names alone never merge identities.
+
+`evidence_rows` validates indexed artifact hashes and prepares records.
+`Collections.sync` scopes them to the session's collection. `Neo4jStore.replace_session`
+atomically replaces that session's projection while preserving other sessions;
+failure rolls back. Repeated projection does not accumulate duplicate records.
+New sessions share one persistent default collection. The current explorer queries
+that collection across sessions, including when reached from a report; the internal
+collection query API also supports a session filter.
+
+### Independent execution and browser delivery
+
+At the reporting boundary, `research_graph.report` queues `ProjectionJobs` with a
+frozen session snapshot and immediately proceeds to report generation. Graph jobs
+have their own executor and progress receipts. `Sessions.read` exposes that progress
+without letting report updates overwrite it. A slow or failed graph never blocks
+the report, and a fast report may finish first.
+
+`graph_routes.py` exposes graph reads and explicit refresh. Fixed, parameterized
+Cypher retrieves bounded assertions and endpoints; the browser cannot supply arbitrary
+Cypher. `knowledge_graph.js` renders those rows with vendored Cytoscape.js and connects
+selection to the evidence inspector. Default/max assertion limits are 250/500, ordered
+by stable record ID rather than relevance. The ready notice offers navigation but
+never opens the explorer automatically.
+
+Refresh uses saved records, not new search/download/model calls, and can run during
+reporting. Interrupted graph jobs are marked interrupted on restart, not silently
+replayed. Report retries do not rebuild the graph. Refreshing an older saved session
+can recreate its projection after graph-only deletion; deleting Neo4j data is not
+deleting the original research.
+
+The omission-review step belongs to extraction, not the graph renderer. It can add
+missing object references while retaining originals; it does not resolve identities,
+repair all multi-entity assertions, or establish semantic truth. See the
+[extraction contract](src/projectclarity/knowledge_extraction/README.md#targeted-entity-omission-review).
+
+Configure Neo4j separately using the [setup guide](docs/KNOWLEDGE_GRAPH.md). Tests in
+[test_knowledge_graph.py](tests/integration/test_knowledge_graph.py) cover collection
+isolation, source lineage, persistence and independence from reporting. Real-database
+checks need an explicit development connection; offline fixtures do not prove live
+model quality or production database availability.
+
+## Initial search and human verification
+
+The question form also saves `web_query_count` (default 2, range 1–10). It reaches
+the query-planning prompt, exact-count validation, saved search receipts and initial
+search execution. Each query still requests at most five results. Later research
+rounds follow selected links; each failed or empty initial query advances through Mwmbl, Bing RSS and Wikipedia,
+stopping at the first usable result set and saving every attempt.
+
+### Human search verification
+
+The web session binds `SearchExecution.on_challenge` to its in-memory
+`CaptchaHandoff`. `search_web` keeps the credential-free subprocess alive while
+`duckduckgo_session.search_session` retains the HTTP client. Private temporary
+files carry only raster images/instructions and explicit human decisions between
+processes; cookies and provider form tokens stay inside the worker. The parent
+suspends the active-request timeout during the human wait but still honors stop.
+The one-use session-bound API rejects stale decisions. A successful answer is not
+counted as search success until actual result URLs are parsed. Skip proceeds to
+the normal provider chain; cancellation and application shutdown terminate the
+worker. No model call is made to interpret challenge images.

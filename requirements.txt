@@ -10,3 +10,4 @@ ddgs==9.16.1
 protego==0.7.0
 beautifulsoup4==4.15.0
 pypdf==6.21.4
+neo4j==6.4.0

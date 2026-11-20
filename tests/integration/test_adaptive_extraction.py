@@ -83,16 +83,27 @@ class AdaptiveExtractionTests(unittest.TestCase):
             stop = Event(); caller = ModelCalls(root, root/'unused'); caller.budgets.begin(sid, stop)
             messages = provider.return_value.__enter__.return_value.messages
             messages.count_tokens.return_value = SimpleNamespace(input_tokens=10)
-            calls = []; lock = Lock()
+            calls = []; omission_calls = []; lock = Lock()
 
             def send(**request):
                 """Choose an outcome at the provider boundary, recording exact inputs.
 
                 Args: request: Actual unchanged extraction request.
-                Returns: Complete or truncated fixture reply; may request Stop or
+                Returns: Complete or truncated extraction reply or literal-attribute
+                    omission decisions. Counts review calls separately so they cannot
+                    advance the extraction truncation strategy; may request Stop or
                     propagate a strategy exception without modifying stage logic.
                 """
-                content = json.loads(request['messages'][0]['content'])['document_chunk']
+                payload = json.loads(request['messages'][0]['content'])
+                content = payload['document_chunk']
+                if 'assertions' in payload:
+                    with lock:
+                        omission_calls.append(len(content))
+                    reply = provider_response(content)
+                    reply.content[0].text = json.dumps({'entities':[], 'decisions':[
+                        {'id': item['id'], 'action':'keep', 'object_id':None,
+                         'reason':'Literal fixture description.'} for item in payload['assertions']]})
+                    return reply
                 with lock:
                     calls.append(len(content)); number = len(calls)
                 output, reason = strategy(number, content)
@@ -161,7 +172,7 @@ class AdaptiveExtractionTests(unittest.TestCase):
             self.assertEqual(len(collector.knowledge_by_key), len(knowledge['chunks']))
             self.assertEqual(len(collector.passages), sum(c['status'] != 'split' for s in state['run']['sources'] for c in s['chunks']))
             return dict(run=state['run'], receipts=receipts, knowledge=knowledge,
-                        calls=calls, ledger=read_ledger(folder), snapshots=snapshots,
+                        calls=calls, omission_calls=omission_calls, ledger=read_ledger(folder), snapshots=snapshots,
                         budget=caller.budgets.snapshot(sid))
 
     def test_failure_ladder_and_two_clean_successes_promote_one_step(self):
@@ -183,8 +194,8 @@ class AdaptiveExtractionTests(unittest.TestCase):
         self.assertEqual(result['calls'][:5], [3000, 1500, 750, 325, 325])
         self.assertEqual(result['run']['chunks_split'], 3)
         self.assertIn(3000, result['calls'][5:])
-        self.assertEqual(result['ledger']['totals']['attempted'], len(result['calls']))
-        self.assertEqual(result['budget']['calls_used'], len(result['calls']))
+        self.assertEqual(result['ledger']['totals']['attempted'], len(result['calls']) + len(result['omission_calls']))
+        self.assertEqual(result['budget']['calls_used'], len(result['calls']) + len(result['omission_calls']))
         self.assertEqual(result['run']['chunks_finished'], result['run']['chunks_total'])
         self.assertEqual(len(result['knowledge']['chunks']), len(result['calls']) - 3)
         messages = [e['message'] for e in result['run']['events']]

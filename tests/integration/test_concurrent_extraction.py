@@ -69,7 +69,7 @@ class ConcurrentCaller(ExtractCaller):
                     {'id':'P2', 'action':'withdraw', 'reason':'Not in source.', 'fact':None}]})
             with self.lock:
                 result = json.loads(super().__call__(stage, request, sid))
-            if self.repair:
+            if self.repair and not stage.startswith('extract-omissions-'):
                 invalid = dict(result['facts'][0], quote='This text is absent.')
                 result['facts'].append(invalid)
             return json.dumps(result)
@@ -120,7 +120,7 @@ class ConcurrencyTests(unittest.TestCase):
             self.assertEqual(len(ids), count-int(fail))
             if repair:
                 self.assertEqual(run['facts_withdrawn'], count)
-                self.assertEqual(caller.started, 2*count)
+                self.assertEqual(caller.started, 3*count)
 
     def test_four_overlapping_calls_and_repairs_share_limit(self):
         """Verify extraction and repairs together never exceed four slots.

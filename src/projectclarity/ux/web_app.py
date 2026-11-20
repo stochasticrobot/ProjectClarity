@@ -30,10 +30,14 @@ class StartInput(BaseModel):
     """Bounded user input and client-generated ID to make repeat submissions idempotent."""
     model_config = ConfigDict(extra='forbid')
     session_id: UUID
+    collection_id: UUID | None = None
     question: str = Field(min_length=1, max_length=8000)
     auto_advance: bool = False
+    # Accepted only for old browser tabs; graph exploration no longer gates reports.
+    explore_before_report: bool = False
     model_request_budget: int = Field(default=DEFAULT_MODEL_REQUEST_BUDGET, ge=1, le=1_000_000, strict=True)
     model_token_budget: int = Field(default=DEFAULT_MODEL_TOKEN_BUDGET, ge=1, le=1_000_000_000, strict=True)
+    web_query_count: int = Field(default=2, ge=1, le=10, strict=True)
     research_rounds: int = Field(default=2, ge=1, le=5, strict=True)
     extraction_concurrency: int = Field(default=6, ge=1, le=16, strict=True)
     selection_concurrency: int = Field(default=6, ge=1, le=16, strict=True)
@@ -108,6 +112,8 @@ def create_app(sessions):
         all responses are no-store. The server is not intended for public hosting.
     """
     app = FastAPI(docs_url=None, redoc_url=None, openapi_url=None)
+    from projectclarity.ux.captcha_routes import register_captcha_routes
+    register_captcha_routes(app, sessions)
 
     @app.middleware('http')
     async def local_only(request: Request, call_next):
@@ -118,6 +124,7 @@ def create_app(sessions):
             call_next: Framework callback for the next handler.
         Returns:
             No-store response or HTTP 403 for untrusted host/origin or fetch context.
+            The explorer permits only the vendored graph library's fixed style hash.
         """
         from fastapi.responses import JSONResponse
         host = request.url.hostname
@@ -131,6 +138,11 @@ def create_app(sessions):
         response.headers['Cache-Control'] = 'no-store'
         response.headers['X-Content-Type-Options'] = 'nosniff'
         response.headers['Content-Security-Policy'] = "default-src 'self'; script-src 'self'; style-src 'self'; connect-src 'self'; frame-ancestors 'none'"
+        # Cytoscape inserts one fixed positioning stylesheet. Permit only its exact
+        # bytes on the explorer, without allowing arbitrary inline styles or scripts.
+        if request.url.path in ('/graph', '/collections'):
+            response.headers['Content-Security-Policy'] = response.headers['Content-Security-Policy'].replace(
+                "style-src 'self'", "style-src 'self' 'sha256-pgvDUBa4IjFA2yuSJ2cqcyxmNYJMborsd0ORcRv9vw8='")
         return response
 
     @app.get('/')
@@ -163,7 +175,7 @@ def create_app(sessions):
         Returns:
             Static response, or HTTP 404 for every other filename.
         """
-        if name not in ('research_setup.js', 'research_styles.css', 'document_pipeline.js', 'evidence_selection.js', 'claim_triage.js', 'workflow_navigation.js', 'model_usage.js', 'research_budget.js', 'stage_review.js', 'claim_investigation.js', 'research_report.js', 'link_ranking.js'):
+        if name not in ('research_captcha.js', 'knowledge_graph.js', 'knowledge_graph.css', 'cytoscape.min.js', 'research_setup.js', 'research_styles.css', 'document_pipeline.js', 'evidence_selection.js', 'claim_triage.js', 'workflow_navigation.js', 'model_usage.js', 'research_budget.js', 'stage_review.js', 'claim_investigation.js', 'research_report.js', 'link_ranking.js'):
             raise HTTPException(404)
         return FileResponse(ROOT / 'ux' / ('styles' if name.endswith('.css') else 'scripts') / name)
 
@@ -475,6 +487,8 @@ def create_app(sessions):
         """
         return sessions.knowledge(str(sid), document_id)
 
+    from projectclarity.ux.graph_routes import register_graph_routes
+    register_graph_routes(app, sessions)
     return app
 
 

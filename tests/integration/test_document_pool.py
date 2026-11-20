@@ -76,7 +76,7 @@ class DocumentPoolTests(unittest.TestCase):
             manifest=json.loads((worker.root/'manifest.json').read_text())
             self.assertEqual(manifest['paths'][0]['path'],'https://example.org/manual')
             self.assertNotIn('searches',manifest)
-            self.assertEqual(len(caller.calls),1)
+            self.assertEqual(len(caller.calls),2)
             with self.assertRaises(ValueError):worker.set_paths(['https://example.org/other'])
 
     def test_search_returns_paths_without_building_document_records(self):

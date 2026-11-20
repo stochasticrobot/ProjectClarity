@@ -26,13 +26,46 @@ function currentStage(state){
   if(state.searches?.length||state.status==='search_working')return 'searches';
   return state.status==='clarification'?'clarification':'question';
 }
+/** Announce graph availability without opening it or interrupting the report.
+ * Args: state — saved session snapshot including independent graph progress.
+ * Returns: nothing; maintains one polite, nonmodal notification with an explicit
+ * exploration link. Pending, failed or absent graphs do not show a ready notice.
+ * Repeated polls leave unchanged content alone to avoid repeated announcements.
+ */
+function renderGraphNotice(state={}){
+ const header=document.querySelector('header');if(!header)return;
+ let notice=document.getElementById('graph-ready-notice');
+ if(!notice){
+  notice=document.createElement('div');notice.id='graph-ready-notice';
+  notice.setAttribute('role','status');notice.setAttribute('aria-live','polite');
+  notice.hidden=true;header.after(notice);
+ }
+ const ready=state.knowledge_graph?.status==='completed'&&!!state.session_id;
+ notice.hidden=!ready;
+ if(!ready){notice.replaceChildren();delete notice.dataset.session;return;}
+ if(notice.dataset.session===state.session_id)return;
+ const link=document.createElement('a');link.textContent='Explore';
+ link.href=`/graph?session=${encodeURIComponent(state.session_id)}`;
+ notice.replaceChildren(document.createTextNode('Knowledge graph ready — '),link);
+ notice.dataset.session=state.session_id;
+}
+
 /** Render accessible workflow navigation with read-only links to reached stages.
  * Args: state — saved state or empty initial state; viewed — optional review stage.
  * Returns: nothing; highlights live stage, labels viewed stage, disables future
  * stages and omits clarification when no clarification was requested. Also shows
- * the shared budget decision dialog without granting allowance during polling.
+ * the shared budget decision dialog without granting allowance during polling,
+ * and an optional graph-ready notice/link without opening or refreshing the graph.
  */
 function renderStages(state={},viewed=null){
+ if(typeof renderCaptcha==='function')renderCaptcha(state);
+ renderGraphNotice(state);
+ const header=document.querySelector('header');
+ if(header){
+  let link=document.getElementById('collection-explorer-link');
+  if(!link){link=document.createElement('a');link.id='collection-explorer-link';link.textContent='Knowledge graph';header.append(link);}
+  link.href=state.session_id?`/graph?session=${encodeURIComponent(state.session_id)}`:'/graph';
+ }
  followCurrentRound(state,viewed);
  if(typeof renderBudget==='function')renderBudget(state);
  if(typeof renderRoundBudget==='function')renderRoundBudget(state);
@@ -70,6 +103,7 @@ function renderStages(state={},viewed=null){
  * precedence on every screen; saved stage views otherwise never animate.
  */
 function activityPresentation(state={},page=location.pathname,viewed=null){
+ if(state.captcha)return {label:'Search paused — human verification needed',tone:'warning',busy:false};
  if(state.model_budget?.paused&&['working','search_working','run_running','selection_running','triage_running','investigation_running','link_ranking_running','report_running'].includes(state.status))return {label:'Research paused — budget approval needed',tone:'warning',busy:false};
  if(state.status==='link_ranking_waiting')return {label:'Waiting for your next-round decision',tone:'warning',busy:false};
  const names={link_ranking:'Link ranking',run:'Research',selection:'Evidence selection',triage:'Claim review',investigation:'Claim investigation',report:'Report'};
@@ -135,7 +169,8 @@ function showActivityIssue(retrying=false){
 /** Follow the current stage after a round boundary without replaying any work.
  * Args: state — latest saved snapshot; viewed — explicit saved-stage view.
  * Returns: true when navigation was requested, otherwise false/undefined.
- * Only live workflow pages navigate. Saved views and ?stay
+ * Only live workflow pages navigate. The graph remains a separate read-only view.
+ * Saved views and ?stay
  * remain read-only. Missing old stage buckets must not strand an open page.
  */
 function followCurrentRound(state,viewed=null){
@@ -145,4 +180,13 @@ function followCurrentRound(state,viewed=null){
  const target=state.report?'report':state.link_ranking?'links':state.investigation?'investigation':state.triage?'triage':state.selection?'evidence':'run';
  if(page!==target){location.replace(`/${target}/${state.session_id}`);return true;}
  return false;
+}
+
+/** Describe actual provider attempts without mislabelling a successful fallback.
+ * Args: query — saved search record, possibly from before attempt history existed.
+ * Returns: plain-text history for display through textContent; never starts work.
+ */
+function searchAttemptSummary(query){
+ if(query.attempts?.length)return ' · Attempts: '+query.attempts.map(a => `${a.provider}: ${a.status}${a.error?' ('+a.error+')':''}`).join(' → ');
+ return query.primary_failure?' · Primary failed: '+query.primary_failure.error+' · Fallback: '+query.provider:'';
 }

@@ -1,6 +1,6 @@
 # Evaluation and methodology
 
-[Case-study overview](README.md) · [Three-slide presentation](presentation.pdf) · [Full cited report](report.html)
+[Case-study overview](README.md) · [Four-slide presentation](presentation.pdf) · [Full cited report](report.html)
 
 This supporting audit records the measurements, source lineage and review limits
 behind the presentation. The report fields and research results are unchanged.
@@ -158,3 +158,19 @@ improvements, not corrections silently applied to this demonstration.**
 **Takeaway:** the agent expanded a broad question into a cited review list, found
 additional leads by following links, and retained evidence of its own limitations.
 The result is useful input to a person's research—not a substitute for that review.
+
+## Later demonstration: knowledge extraction and graph exploration
+
+The four-slide presentation now includes a separate example from 20 November 2026:
+a University of Toronto cluster connected through the source mention “Maks” and a
+Machine Learning Group to Geoffrey Hinton. This demonstrates retained structured
+knowledge and an explorable evidence graph beyond the report's selected findings.
+It does not alter the original run measurements or establish independent factual
+verification, global identity resolution or complete location extraction.
+
+The focused screenshot includes eight assertions and nine entity mentions. Its
+layout was arranged for readability without changing labels or relationships.
+[Capture provenance](PROVENANCE.md#knowledge-graph-extension--20-november-2026) and
+[the pictured assertions](knowledge-graph-evidence.json) distinguish this newer
+example from the historical report evaluation above. The original report exports,
+source list and metrics were not regenerated.

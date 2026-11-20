@@ -165,7 +165,7 @@ class SearchQuery(BaseModel):
 
 
 class SearchQueries(BaseModel):
-    """Two model-proposed complementary searches; count and duplicates checked locally."""
+    """Model-proposed searches whose requested count and duplicates are checked locally."""
     model_config = ConfigDict(extra='forbid', strict=True)
     searches: list[SearchQuery]
 
@@ -173,13 +173,15 @@ class SearchQueries(BaseModel):
 class SearchState(SetupState, total=False):
     """Finalized setup context plus proposed searches, checkpointed independently."""
     searches: list[dict]
+    web_query_count: int
 
 
-def validate_searches(text):
+def validate_searches(text, count=2):
     """Reject missing, excessive or superficially duplicated query proposals.
 
     Args:
-        text: Exact model JSON response with two searches and purpose explanations.
+        text: Exact model JSON response with searches and purpose explanations.
+        count: Requested initial query count, from one to ten; defaults to two.
     Returns:
         Validated proposals, or ValueError for malformed or duplicate output.
         Word-set comparisons catch case, punctuation and reordering, not semantic
@@ -187,15 +189,17 @@ def validate_searches(text):
     """
     import re
     result = SearchQueries.model_validate_json(text)
-    if len(result.searches) != 2:
-        raise ValueError('Expected exactly two searches.')
+    if not isinstance(count, int) or isinstance(count, bool) or not 1 <= count <= 10:
+        raise ValueError('Expected a query count from one to ten.')
+    if len(result.searches) != count:
+        raise ValueError(f'Expected exactly {count} searches.')
     signatures = []
     for item in result.searches:
         if not item.query.strip() or len(item.query) > 500 or not item.purpose.strip() or len(item.purpose) > 2000:
             raise ValueError('Each search needs a concise query and an explanation.')
         signature = frozenset(re.findall(r'\w+', item.query.casefold()))
         if not signature or signature in signatures:
-            raise ValueError('The two searches must not duplicate or reorder the same words.')
+            raise ValueError('Searches must not duplicate or reorder the same words.')
         signatures.append(signature)
     return result
 
@@ -211,17 +215,29 @@ def build_search_graph(caller, checkpointer):
         It proposes queries only; no search provider, URL fetching or retries.
     """
     def queries(state):
-        """Generate the pair from the final question, requirements and actual answers.
+        """Generate the requested searches from the final question and actual answers.
 
         Args:
             state: Ready definition loaded by the server, never supplied by browser.
         Returns:
-            Two validated query/purpose records; errors prevent completed status.
+            Exactly the requested count of validated query/purpose records; errors
+            prevent completed status instead of silently accepting fewer queries.
         """
         data = {k: state.get(k, [] if k == 'answers' else None)
                 for k in ('research_question', 'information_needed', 'answers')}
+        count = state.get('web_query_count', 2)
+        data['web_query_count'] = count
         request = request_for('search_queries.txt', data, SearchQueries, caller.model)
-        return checked_call(caller,'search_queries',request,state['session_id'],validate_searches).model_dump()
+
+        def validate(text):
+            """Bind validation to the saved query count, not a fixed pair.
+
+            Args: text: Provider response containing proposed queries.
+            Returns: Exact-count, nonduplicate queries or a validation error.
+            """
+            return validate_searches(text, count)
+
+        return checked_call(caller,'search_queries',request,state['session_id'],validate).model_dump()
 
     graph = StateGraph(SearchState)
     graph.add_node('queries', queries)
@@ -283,11 +299,12 @@ def build_source_collection_graph(collection):
 
 
 def build_research_graph(root, snapshot, publish, caller, stop,
-                         start_at='search', document_runner=None, runner_factory=None):
+                         start_at='search', document_runner=None, runner_factory=None, schedule_projection=None):
     """Build the autonomous workflow, including explicit downstream failure gates.
 
     Search feeds the first round. Later rounds follow selected links through the
-    same document/review stages; only the last round advances to reporting.
+    same document/review stages. At reporting, a graph-only job is scheduled on an
+    independent worker; neither its completion nor success gates report generation.
     Each node owns one stage attempt. LangGraph, not the HTTP/session layer, decides
     whether its saved outcome permits the next stage. A completed or partial stage
     may continue; failure or cancellation ends this invocation without replay.
@@ -310,6 +327,8 @@ def build_research_graph(root, snapshot, publish, caller, stop,
             injected there for offline production-entry-point tests.
         runner_factory: Optional SourceCollection factory reused for later rounds;
             production uses the same acquisition policy and offline tests inject I/O.
+        schedule_projection: Optional nonblocking callback that queues graph evidence
+            from a frozen snapshot. Reporting never waits for the queued job.
     Returns:
         Compiled LangGraph. Construction makes no model calls. Invocation runs
         stage workers and publishes failures without promoting failed evidence.
@@ -519,7 +538,16 @@ def build_research_graph(root, snapshot, publish, caller, stop,
         Returns:
             Unchanged identity after success or recorded failure. Report generation
             performs no further collection and this is the graph's final work node.
+            A fresh report queues the independent evidence projection but never
+            waits for Neo4j. Report retries reuse their prior graph independently.
         """
+        if schedule_projection is not None and start_at != 'report':
+            try:
+                schedule_projection(snapshot)
+            except Exception:
+                snapshot['knowledge_graph'] = {'status': 'failed',
+                    'error': 'Could not schedule the graph update. Report generation continues.'}
+                publish(snapshot)
         return run_stage(state, 'report', ReportRun,
                          'Could not prepare report inputs. Original knowledge is retained.')
 
