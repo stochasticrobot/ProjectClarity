@@ -14,6 +14,7 @@ from typing import Literal
 from pydantic import BaseModel, ConfigDict
 from projectclarity.knowledge_extraction.knowledge_extraction import Entity, validate_response
 from projectclarity.model_access.model_ledger import mark_validation
+from projectclarity.knowledge_extraction.entity_output_normalization import normalize_entity_echoes
 
 
 class LinkDecision(BaseModel):
@@ -65,7 +66,10 @@ def repair_omissions(parsed, source, caller, sid, stage, stopped):
         stopped: Predicate preventing a new review call after cancellation.
     Returns:
         Derived parsed records and an audit containing originals, candidates, model
-        request/reply, accepted patches and unresolved decisions. No candidates
+        request/reply, accepted patches and unresolved decisions. Exact echoes of
+        already-validated entities are removed only after strict schema validation,
+        with an entity_normalization audit and normalized_review retained. Changed
+        definitions or repeated proposal IDs still fail. No candidates
         means no call. Stop, malformed replies and provider failures retain original
         evidence; failures remain explicit and are never retried. At most one call
         is made, with no search, acquisition or direct filesystem writes.
@@ -86,7 +90,7 @@ def repair_omissions(parsed, source, caller, sid, stage, stopped):
         definition.pop('title', None)
     request = {'model': caller.model, 'max_tokens': 8192,
                'system': (Path(__file__).resolve().parents[1] / 'prompts/repair_entity_omissions.txt').read_text(),
-               'output_config': {'format': {'type': 'json_schema', 'schema': schema}},
+               'response_schema': schema,
                'messages': [{'role': 'user', 'content': json.dumps({
                    'document_chunk': source, 'entities': parsed['entities'],
                    'assertions': pending}, ensure_ascii=False)}]}
@@ -95,6 +99,10 @@ def repair_omissions(parsed, source, caller, sid, stage, stopped):
         raw = caller(stage, request, sid)
         audit['raw_text'] = raw
         review = LinkReview.model_validate_json(raw)
+        normalized_review, changes = normalize_entity_echoes(review.model_dump(), parsed['entities'])
+        audit['entity_normalization'] = changes
+        audit['normalized_review'] = normalized_review
+        review = LinkReview.model_validate(normalized_review)
         ids = [d.id for d in review.decisions]
         if len(ids) != len(set(ids)) or set(ids) != {p['id'] for p in pending}:
             raise ValueError('Review must address every candidate exactly once.')

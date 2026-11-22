@@ -44,7 +44,7 @@ function render(state){
  el('start').hidden=!!p||!['completed','partial','cancelled','interrupted'].includes(state.triage?.status);el('stop').hidden=p?.status!=='running';el('stop').disabled=!!state.stop_requested;
  el('upstream').textContent=`Source collection: ${state.run?.status}. Selection: ${state.selection?.status}. Triage: ${state.triage?.status}. ${p?.triage_unreviewed||0} claims unreviewed by triage are outside this investigation.`;
  el('counts').replaceChildren();for(const [label,value] of [['Flagged',total],['Accepted',p?.accepted||0],['Rejected',p?.rejected||0],['Failed',p?.failed||0],['Remaining',Math.max(0,total-finished)],['Report Knowledge',p?.report_knowledge??state.triage?.report_knowledge??0]]){const d=node('div','');d.append(node('strong',value),node('span',label));el('counts').append(d);}
- el('resume-investigation-controls').hidden=!!state.link_ranking||!!state.report||!p?.artifact_directory||!['cancelled','interrupted','failed','partial'].includes(p?.status);
+ el('resume-investigation-controls').hidden=active||!!state.link_ranking||!!state.report||!p?.artifact_directory||!['cancelled','interrupted','failed','partial'].includes(p?.status);
  el('current').textContent=p?.active_claims?.length?p.active_claims.map(c=>`${c.status==='collecting'?'Collecting evidence':'Reviewing'}: ${c.statement}`).join('\n'):(p?.current_claim?`Reviewing: ${p.current_claim}`:'');el('progress').max=Math.max(1,total);el('progress').value=finished;el('progress-label').textContent=`${finished}/${total} claims processed (includes failed attempts)`;
  el('progress').setAttribute('aria-label',el('progress-label').textContent);
 }
@@ -76,8 +76,10 @@ function renderRecords(){
 /** Poll only saved results; refresh cannot replay any investigation.
  * Args: none.
  * Returns: promise; retries status reads on failure, never automatic POSTs.
+ * Keeps polling until the owner stage leaves its active state, even when the
+ * investigation progress is already partial/completed, so Continue can appear.
  */
-async function refresh(){clearTimeout(timer);try{const state=await api();if(followCurrentRound(state))return;render(state);const p=state.investigation,key=JSON.stringify([p?.status,p?.claims_finished,p?.current_claim,p?.model_calls,p?.events?.length,p?.active_claims]);if(key!==revision){const data=await api('/investigation-records');records=data.records;report=data.report_facts;renderRecords();revision=key;}if(p?.status==='running'||state.status==='triage_running')timer=setTimeout(refresh,1200);}catch(e){showActivityIssue(true);el('status').textContent=e.message+' Retrying status…';timer=setTimeout(refresh,3000);}}
+async function refresh(){clearTimeout(timer);try{const state=await api();if(followCurrentRound(state))return;render(state);const p=state.investigation,key=JSON.stringify([p?.status,p?.claims_finished,p?.current_claim,p?.model_calls,p?.events?.length,p?.active_claims]);if(key!==revision){const data=await api('/investigation-records');records=data.records;report=data.report_facts;renderRecords();revision=key;}if(p?.status==='running'||state.status.endsWith('_running')||['working','search_working'].includes(state.status))timer=setTimeout(refresh,1200);}catch(e){showActivityIssue(true);el('status').textContent=e.message+' Retrying status…';timer=setTimeout(refresh,3000);}}
 /** Start or stop only after an explicit click.
  * Args: suffix — fixed API endpoint; button — clicked button.
  * Returns: promise; shows errors and restores the action button on rejection.
@@ -87,19 +89,16 @@ el('back').href=`/triage/${sid}?stay=1`;
 el('start').addEventListener('click',()=>action('/investigation',el('start')));el('stop').addEventListener('click',()=>action('/stop',el('stop')));
 for(const id of ['filter','find'])el(id).addEventListener('input',renderRecords);
 const resumeControls=node('section','');resumeControls.id='resume-investigation-controls';resumeControls.hidden=true;
-const resumeLabel=node('label','Concurrent investigation calls');resumeLabel.htmlFor='resume-investigation-limit';
-const resumeLimit=node('input','');resumeLimit.id='resume-investigation-limit';resumeLimit.type='number';resumeLimit.min='1';resumeLimit.max='16';resumeLimit.step='1';resumeLimit.value='6';
 const resumeButton=node('button','Resume claim investigation →');resumeButton.id='resume-investigation';
-resumeControls.append(resumeLabel,resumeLimit,resumeButton,node('p','Reuses completed reviews; retries failed or unfinished claims. Earlier research stages are not repeated.'));
+resumeControls.append(resumeButton,node('p','Reuses completed reviews; retries failed or unfinished claims. Earlier research stages are not repeated.'));
 el('stop').after(resumeControls);
 /** Resume a stopped claim-review attempt after an explicit click.
- * Args: none; reads displayed attempt token and bounded worker limit.
+ * Args: none; reads the attempt token and saved run concurrency; no tuning control.
  * Returns: promise; refreshes saved progress or shows a rejection without replay.
  */
 async function resumeInvestigation(){
- if(!resumeLimit.reportValidity())return;
  resumeButton.disabled=true;
- try{await api('/investigation/resume',true,{previous_artifact:currentState.investigation.artifact_directory,concurrency:Number(resumeLimit.value)});await refresh();}
+ try{await api('/investigation/resume',true,{previous_artifact:currentState.investigation.artifact_directory,concurrency:currentState.investigation_concurrency??currentState.investigation.concurrency??6});await refresh();}
  catch(error){showActivityIssue();el('status').textContent=error.message;}
  finally{resumeButton.disabled=false;}
 }

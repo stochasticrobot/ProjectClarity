@@ -34,7 +34,7 @@ class LedgerTests(unittest.TestCase):
         Args: None.
         Returns: None; checks exact counts/cache totals and no receipt double count.
         """
-        with TemporaryDirectory() as tmp,patch.dict('os.environ',{'ANTHROPIC_API_KEY':'fixture-secret'}),patch('projectclarity.model_access.model_client.Anthropic') as client:
+        with TemporaryDirectory() as tmp,patch.dict('os.environ',{'ANTHROPIC_API_KEY':'fixture-secret'}),patch('projectclarity.model_access.providers.anthropic_provider.Anthropic') as client:
             root=Path(tmp);sid='session';(root/sid).mkdir();caller=ModelCalls(root,root/'unused')
             client.return_value.__enter__.return_value.messages.create.side_effect=[response(),response('bad-json'),TimeoutError('fixture'),response('{}','max_tokens')]
             request={'model':'fixture-model','max_tokens':12,'system':'No secrets','messages':[]}
@@ -58,7 +58,7 @@ class LedgerTests(unittest.TestCase):
         Returns: None; validates historical imports without rewrites and interrupted
             attempts with unknown usage rather than manufactured zero-token calls.
         """
-        with TemporaryDirectory() as tmp,patch.dict('os.environ',{'ANTHROPIC_API_KEY':''}),patch('projectclarity.model_access.model_client.dotenv_values',return_value={}):
+        with TemporaryDirectory() as tmp,patch.dict('os.environ',{'ANTHROPIC_API_KEY':''}),patch('projectclarity.model_access.providers.registry.dotenv_values',return_value={}):
             root=Path(tmp);sid='session';folder=root/sid;folder.mkdir();caller=ModelCalls(root,root/'unused')
             with self.assertRaises(RuntimeError):caller('define',{'model':'fixture'},sid)
             self.assertEqual(read_ledger(folder)['totals']['attempted'],0)

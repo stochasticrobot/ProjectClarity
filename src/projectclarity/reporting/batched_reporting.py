@@ -8,6 +8,7 @@ attempts are retained. This checks coverage and citations, not semantic accuracy
 """
 import json
 from collections import defaultdict
+from projectclarity.model_access.output_recovery import validated_output
 from projectclarity.knowledge_extraction.knowledge_extraction import save
 from projectclarity.model_access.model_client import request_for
 from projectclarity.model_access.model_ledger import checked_call
@@ -31,6 +32,9 @@ class BoundedReportBuilder:
             raw task receipts from this session only, including failed responses that
             the recovery policy can salvage. Invalid cache files are
             ignored; responses are revalidated against current inputs before reuse.
+            Reuse is limited to the same provider, model, output-contract identity
+            and request fingerprint. Legacy tasks without a matching contract are
+            retained but are not silently reused by a new real provider caller.
         """
         self.owner = owner
         self.evidence_hash = evidence_hash
@@ -39,6 +43,7 @@ class BoundedReportBuilder:
         self.cache = {}
         self.splits = 0
         self.retained_fragments = []
+        self.split_failures = []
         for prior in owner.state.get('report_history', []):
             relative = prior.get('artifact_directory')
             if not relative:
@@ -49,7 +54,7 @@ class BoundedReportBuilder:
             for path in (folder / 'tasks').glob('*.json'):
                 try:
                     receipt = json.loads(path.read_text())
-                    if receipt.get('status') in ('checks_pass', 'response_received', 'failed') and receipt.get('evidence_sha256') == evidence_hash and digest(receipt['request']) == receipt['request_sha256']:
+                    if receipt.get('contract_id') == getattr(owner.caller, 'contract_id', None) and receipt.get('provider', 'anthropic') == getattr(owner.caller, 'provider', 'anthropic') and receipt.get('status') in ('checks_pass', 'response_received', 'failed') and receipt.get('evidence_sha256') == evidence_hash and digest(receipt['request']) == receipt['request_sha256']:
                         self.cache[receipt['request_sha256']] = {**receipt, '_source_artifact': str(path.relative_to(owner.session_root))}
                 except (ValueError, KeyError, OSError):
                     continue
@@ -93,14 +98,14 @@ class BoundedReportBuilder:
         return request
 
     def groups(self, kind, items):
-        """Pack whole records with byte-based headroom before exact preflight checks.
+        """Pack whole records with byte-based headroom before adapter admission checks.
 
         Args:
             kind: Task kind selecting request shape and maximum records.
             items: Ordered full facts or findings, never truncated.
         Returns: Ordered groups with each item present once. UTF8 bytes/2 plus 1024
             is only a planning estimate, not a token guarantee; dispatch checks the
-            provider count and splits again if needed. Single oversized items are
+            adapter count (explicitly estimated for Nova) and splits again if needed. Single oversized items are
             retained here so dispatch can explain the failure without data loss.
         """
         maximum = MAX_BATCH_FACTS if kind == 'facts' else MAX_MERGE_ITEMS
@@ -140,11 +145,14 @@ class BoundedReportBuilder:
             items: Whole input records for this tentative request.
             recovery: True for the single allowed omitted-fact recovery pass.
         Returns: List of accepted task outputs (more than one after splitting).
-            Live transports use Anthropic's full-request token count. Offline test
+            Live transports use the adapter's full-request count or labelled estimate. Offline test
             transports without a counter use UTF8 bytes plus overhead, explicitly
             labelled as an offline bound. Count failures prevent generation. An
             oversized single record fails without truncation. At most one targeted recovery pass assesses omitted facts; failed
-            or still-incomplete recovery requires an explicit user retry.
+            or still-incomplete recovery requires an explicit user retry. Item-mode split
+            children continue independently after output failures. Opted-in item
+            calls retry rejected output once using the identical counted request;
+            both attempts consume budget and retain separate receipts.
         """
         owner = self.owner
         if owner.stop.is_set():
@@ -152,9 +160,13 @@ class BoundedReportBuilder:
         request = self.request(kind, items)
         key = digest(request)
         receipt = {'request': request, 'request_sha256': key,
+                   'provider': getattr(owner.caller, 'provider', 'anthropic'),
+                   'contract_id': getattr(owner.caller, 'contract_id', None),
                    'evidence_sha256': self.evidence_hash, 'kind': kind,
                    'status': 'failed', 'input_items': len(items), 'attempted_calls': 0}
         cached = self.cache.get(key)
+        partial_outputs=[]
+        preserved_outputs=[]
         try:
             if cached:
                 try:
@@ -171,6 +183,17 @@ class BoundedReportBuilder:
                 except (ValueError, KeyError):
                     cached = None
             if cached:
+                receipt['output_attempts']=cached.get('output_attempts',[])
+                for prior_attempt in receipt['output_attempts']:
+                    prior_text=prior_attempt.get('raw_text')
+                    if not prior_text or prior_text==cached['raw_text']:
+                        continue
+                    try:
+                        prior_output=self.validate(prior_text,kind,items)
+                    except ValueError:
+                        continue
+                    if prior_output.get('_issues') and all(digest(part)!=digest(prior_output) for part in partial_outputs):
+                        partial_outputs.append(prior_output)
                 receipt.update(raw_text=cached['raw_text'], reused=True, reused_from=cached['_source_artifact'],
                                input_tokens=cached.get('input_tokens'), count_method=cached.get('count_method'))
                 owner.progress['reused_tasks'] += 1
@@ -179,7 +202,7 @@ class BoundedReportBuilder:
                 count = counter(request) if counter else request_size(request) + 1024
                 if not isinstance(count, int) or isinstance(count, bool) or count < 0:
                     raise ValueError('Input token count was not a nonnegative integer.')
-                method = 'provider_count' if counter else 'offline_utf8_bound'
+                method = (getattr(owner.caller, 'count_method', None) or 'provider_count') if counter else 'offline_utf8_bound'
                 receipt.update(input_tokens=count, count_method=method)
                 if count > INPUT_TOKEN_LIMIT:
                     self.splits += 1
@@ -190,13 +213,37 @@ class BoundedReportBuilder:
                     middle = len(items) // 2
                     if kind == 'facts':
                         owner.progress['batches_total'] += 1
-                    return self.dispatch(kind, items[:middle], recovery) + self.dispatch(kind, items[middle:], recovery)
+                    results=[]
+                    failures_before=len(self.split_failures)
+                    for child in (items[:middle], items[middle:]):
+                        retained_before=len(self.retained_fragments)
+                        try:
+                            results.extend(self.dispatch(kind, child, recovery))
+                        except Exception as error:
+                            if (not getattr(self, 'allow_partial', False)
+                                    or isinstance(error, (InterruptedError, OSError)) or owner.stop.is_set()):
+                                raise
+                            # Failure belongs to this child, not its unattempted sibling.
+                            # Retain validated parent/recovery fragments once, in input order.
+                            results.extend(self.retained_fragments[retained_before:])
+                            self.split_failures.append(str(error))
+                    receipt['status']='split_with_failures' if len(self.split_failures)>failures_before else 'split_before_generation'
+                    return results
                 if owner.stop.is_set():
                     raise InterruptedError('Stopped after token counting, before generation.')
                 owner.progress['largest_counted_input'] = max(owner.progress['largest_counted_input'], count)
-                receipt['attempted_calls'] = 1
-                owner.progress['model_calls'] += 1
-                owner.publish(owner.state)
+                def before_call():
+                    """Check cancellation and count each explicit generation attempt.
+
+                    Args: None.
+                    Returns: None; updates private progress before dispatch. Raises
+                        InterruptedError on stop; caller budgets gate actual requests.
+                    """
+                    if owner.stop.is_set():
+                        raise InterruptedError('Stopped before report output retry.')
+                    receipt['attempted_calls'] += 1
+                    owner.progress['model_calls'] += 1
+                    owner.publish(owner.state)
                 def validate(text):
                     """Checkpoint returned text before checking it, retaining failures.
 
@@ -205,9 +252,36 @@ class BoundedReportBuilder:
                     """
                     receipt.update(raw_text=text, status='response_received')
                     self.checkpoint(receipt)
-                    return self.validate(text, kind, items)
-                result = checked_call(owner.caller, f'report-{owner.root.name}-{kind}-{key[:12]}',
-                                      request, owner.state['session_id'], validate)
+                    output=self.validate(text, kind, items)
+                    if getattr(self, 'recover_invalid_output', False) and output.get('_issues'):
+                        if all(digest(part)!=digest(output) for part in partial_outputs):
+                            partial_outputs.append(output)
+                        raise ValueError('Report output contains malformed fields; valid cited fields are retained for recovery.')
+                    return output
+                label=f'report-{owner.root.name}-{kind}-{key[:12]}'
+                if getattr(self, 'recover_invalid_output', False):
+                    def record(attempt):
+                        """Retain each rejected/successful output before any retry.
+
+                        Args: attempt: Completed attempt audit from output recovery.
+                        Returns: None; saves history without altering earlier ledger calls.
+                        """
+                        receipt.setdefault('output_attempts', []).append(attempt)
+                        self.checkpoint(receipt)
+                    result = validated_output(owner.caller, label, request,
+                        owner.state['session_id'], validate, before_call, record)
+                else:
+                    before_call()
+                    result = checked_call(owner.caller, label, request, owner.state['session_id'], validate)
+            # A valid reassessment may omit an earlier valid contribution. Preserve
+            # those contributions too; assembly retains alternatives/conflicts.
+            for partial in partial_outputs:
+                preserved={k:v for k,v in partial.items() if k not in ('_issues','_recovery')}
+                preserved_outputs.append(preserved)
+                self.retained_fragments.append(preserved)
+            if partial_outputs:
+                receipt['superseded_field_issues']=[issue for part in partial_outputs for issue in part.get('_issues',[])]
+                receipt['preserved_outputs']=preserved_outputs
             receipt['result_sha256'] = digest(result)
             details = result.pop('_recovery', None) if kind == 'facts' else None
             missing = details['missing_fact_ids'] if details else []
@@ -227,8 +301,14 @@ class BoundedReportBuilder:
                 owner.progress['facts_accounted'] += len(items) - len(missing)
             else:
                 owner.progress['merge_tasks_finished'] += 1
-            return [result] + recovered
+            return preserved_outputs + [result] + recovered
         except Exception as error:
+            if partial_outputs and not preserved_outputs:
+                # Both attempts may fail. Publish only the already validated subset,
+                # retain unresolved-field diagnostics, and never invent exclusions.
+                for partial in partial_outputs:
+                    self.retained_fragments.append({k:v for k,v in partial.items() if k!='_recovery'})
+                receipt['retained_partial_outputs']=partial_outputs
             receipt['status'] = 'failed'
             receipt['error'] = {'type': type(error).__name__, 'message': str(error)[:500]}
             raise

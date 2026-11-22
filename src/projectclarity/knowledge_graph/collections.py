@@ -78,11 +78,12 @@ class Collections:
             return row
 
     def default(self):
-        """Reuse the shared collection so ordinary research needs no collection choice.
+        """Preserve the historical shared collection for legacy graph routes.
 
         Args: None.
         Returns: Persisted default metadata. Creates it atomically on first use;
-            other collections are never renamed, merged or selected by their name.
+            new research does not use this collection unless explicitly selected.
+            Other collections are never renamed, merged or selected by their name.
             The reentrant lock prevents duplicate defaults in this application.
         """
         with self.lock:

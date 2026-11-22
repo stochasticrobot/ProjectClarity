@@ -16,7 +16,8 @@ class SelectedField(BaseModel):
     """A brief field value with the evidence actually supporting it."""
     model_config=ConfigDict(extra='forbid',strict=True)
     requirement_id:str
-    value:str
+    # Explicit absence is permitted only for insufficient fields by validation below.
+    value:str | None
     status:Literal['supported','insufficient','conflicting']
     fact_ids:list[str]
 
@@ -25,8 +26,9 @@ class SelectedItem(BaseModel):
     """One candidate or explicitly ruled-out item from this evidence batch."""
     model_config=ConfigDict(extra='forbid',strict=True)
     label:str
-    distinguishing_detail:str
-    order_key:str
+    # Both keys remain required; null means the optional qualifier/order is absent.
+    distinguishing_detail:str | None
+    order_key:str | None
     disposition:Literal['candidate','excluded']
     fact_ids:list[str]
     fields:list[SelectedField]
@@ -53,7 +55,7 @@ def selection_request(packet, facts, model):
     request=request_for('prepare_report_batch.txt',compact_packet(packet,facts),SelectedItems,model)
     contract=(Path(__file__).resolve().parents[1]/'prompts/prepare_report.txt').read_text()
     request['system']=contract.strip()+'\n\n'+request['system'].strip()
-    schema=request['output_config']['format']['schema'];ids=[f['id'] for f in facts]
+    schema=request['response_schema'];ids=[f['id'] for f in facts]
     schema['properties']['unused_fact_ids']['items']['enum']=ids
     for name in ('SelectedField','SelectedItem'):
         schema['$defs'][name]['properties']['fact_ids']['items']['enum']=ids
@@ -71,9 +73,13 @@ def validate_selection(text, packet, facts):
         facts: Exact facts offered to this task.
     Returns:
         Report-compatible fragments plus item tags and omission metadata.
+        Explicit null detail/order metadata becomes the existing empty-string
+        absence representation, with paths recorded in _recovery. Missing keys,
+        other types and null identity/evidence fields are not repaired.
         Invalid item identities fail. Invalid or uncited fields are withheld and
         recorded as retryable issues, never published as supported values. Uncited fields marked
-        insufficient are withheld in the audit, not published or given invented
+        insufficient (including explicit null values with or without citations)
+        are withheld in the audit, not published or given invented
         citations; other cited fields survive. Repeated contributions are combined
         without losing distinct values or citations. Unused facts
         are explicit exclusions; omitted facts enter the existing bounded recovery.
@@ -84,11 +90,18 @@ def validate_selection(text, packet, facts):
     # Validate item identities separately from fields: one malformed/missing field
     # must not discard otherwise attributable items or their batch siblings.
     result=SelectedItems.model_validate({**raw,'items':[]}).model_dump()
-    invalid=[]
-    for raw_item in raw['items']:
+    invalid=[]; metadata_normalization=[]
+    for index, raw_item in enumerate(raw['items']):
         if not isinstance(raw_item,dict):
             raise ValueError('Expected an answer item object.')
         item=SelectedItem.model_validate({**raw_item,'fields':[]}).model_dump()
+        # The wire contract allows explicit absence, while assembly uses text keys.
+        # Normalize only these declared metadata fields, never labels or evidence.
+        for key in ('distinguishing_detail', 'order_key'):
+            if item[key] is None:
+                item[key]=''
+                metadata_normalization.append({'path':f'/items/{index}/{key}',
+                    'operation':'absent_metadata_to_empty_string','original':None,'normalized':''})
         raw_fields=raw_item.get('fields',[])
         if not isinstance(raw_fields,list):
             invalid.append({'label':item['label'],'error':'Fields were not a list.'})
@@ -98,6 +111,11 @@ def validate_selection(text, packet, facts):
                 field=SelectedField.model_validate(raw_field).model_dump()
                 field=normalize_references(field,[f['id'] for f in facts],
                     [r['id'] for r in packet['requirements']])
+                if field['value'] is None:
+                    if field['status']!='insufficient':
+                        raise ValueError('Supported/conflicting field values must contain text.')
+                    item['fields'].append(field)
+                    continue
                 if (not field['value'].strip() or not field['fact_ids']) and not (
                         field['status']=='insufficient' and not field['fact_ids']):
                     raise ValueError('Selected value needs text and supporting facts.')
@@ -118,7 +136,7 @@ def validate_selection(text, packet, facts):
             # omit unsupported fields. Rejecting the entire batch loses its useful
             # cited items. Withhold only explicitly insufficient, uncited fields;
             # never publish their prose or borrow the item's citations as support.
-            if field['status']=='insufficient' and not field['fact_ids']:
+            if field['status']=='insufficient' and (not field['fact_ids'] or field['value'] is None):
                 withheld.append({'label':item['label'], **field})
                 continue
             if not field['value'].strip() or not field['fact_ids']:raise ValueError('Selected value needs supporting facts.')
@@ -148,4 +166,5 @@ def validate_selection(text, packet, facts):
         **({'_issues':invalid} if invalid else {}),
         '_recovery':{'missing_fact_ids':[f['id'] for f in facts if f['id'] not in used|unused],
                      'withheld_uncited_summary':[],
+                     **({'metadata_normalization':metadata_normalization} if metadata_normalization else {}),
                      **({'withheld_insufficient_fields':withheld} if withheld else {})}}

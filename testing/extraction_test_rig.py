@@ -18,8 +18,6 @@ import json
 import os
 from pathlib import Path
 
-from anthropic import Anthropic
-from dotenv import dotenv_values
 
 from projectclarity.knowledge_extraction.knowledge_extraction import save, validate_response, extraction_request
 from projectclarity.question_definition.requirements_definition import planning_request, validate_plan
@@ -60,30 +58,31 @@ def call_step(client, request, chunk=None):
     """Call and validate one step while retaining complete provider evidence.
 
     Args:
-        client: Anthropic client configured with retries disabled.
+        client: Registered provider adapter configured with retries disabled.
         request: Exact request dictionary to send once.
         chunk: Source text for extraction validation, or None for planner validation.
 
     Returns:
         Receipt with request, raw response/text and parsed data on success. Errors
-        retain their message/body and return status=failed without retry. A valid
+        retain their message/body and return status=failed without retry. The shared
+        response gate rejects incomplete or undecodable output before validation. A valid
         extraction's status covers structure/references/quotes, not factual truth.
         Caller must save this through the credential-redacting private writer.
     """
     receipt = {"request": request, "status": "failed"}
     try:
-        response = client.messages.create(**request)
-        receipt["response"] = response.model_dump(mode="json")
-        text = "".join(block.text for block in response.content if block.type == "text")
+        prepared = client.prepare(request)
+        receipt["wire_request"] = prepared.wire
+        response = client.generate(prepared)
+        receipt["response"] = response.receipt()
+        text = response.completed_text()
         receipt["raw_text"] = text
-        if response.stop_reason != "end_turn":
-            raise ValueError(f"Incomplete response: {response.stop_reason}")
         parsed = validate_plan(text) if chunk is None else validate_response(text, chunk)
         receipt.update(parsed=parsed.model_dump(), status="checks_pass")
     except Exception as error:
         receipt["error"] = {"type": type(error).__name__, "message": str(error)}
         if getattr(error, "response", None) is not None:
-            receipt["error"]["body"] = error.response.text
+            receipt["error"]["body"] = getattr(error.response, "text", error.response)
     return receipt
 
 
@@ -120,10 +119,12 @@ def main(argv=None):
     Returns:
         Zero if all selected steps pass checks, one for provider/validation failure.
         Invalid inputs/budgets exit through argparse before calls. Dry-run makes no
-        calls and reads no credentials. A failed planner stops combined mode before
+        calls; configuration is read privately and credentials are not printed. A failed planner stops combined mode before
         extraction. Live mode creates a private run folder; no automatic retries,
         resume, search, cross-chunk identity resolution or claim validation occurs.
     """
+    from projectclarity.model_access.providers.registry import resolve_config, create_provider
+
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument("mode", choices=["plan", "extract", "combined"])
     parser.add_argument("documents", nargs="*", type=Path)
@@ -131,13 +132,16 @@ def main(argv=None):
     parser.add_argument("--requirements", type=Path)
     parser.add_argument("--chunk-chars", type=int, default=0)
     parser.add_argument("--max-calls", type=int, default=8, help="Total calls, including planning")
-    parser.add_argument("--model", default=DEFAULT_MODEL)
+    parser.add_argument("--model")
+    parser.add_argument("--provider")
     parser.add_argument("--plan-max-tokens", type=int, default=4096)
     parser.add_argument("--extract-max-tokens", type=int, default=8192)
     parser.add_argument("--env-file", type=Path, default=ROOT / ".env")
     parser.add_argument("--output-root", type=Path, default=ROOT / "runs")
     parser.add_argument("--dry-run", action="store_true")
     args = parser.parse_args(argv)
+    config = resolve_config(args.env_file, args.provider, args.model)
+    args.model = config.model
     needs_plan = args.mode in ("plan", "combined")
     if needs_plan and (not args.question or not args.question.strip()):
         parser.error("plan and combined modes require --question")
@@ -176,32 +180,30 @@ def main(argv=None):
                           "pending_extraction_chunks": chunks if needs_plan else [],
                           "note": "Combined extraction requests are built only after a valid planner response."}, ensure_ascii=False, indent=2))
         return 0
-    key = (os.environ.get("ANTHROPIC_API_KEY") or dotenv_values(args.env_file).get("ANTHROPIC_API_KEY") or "").strip()
-    if not key:
-        parser.error("Provide ANTHROPIC_API_KEY or --env-file")
+    client = create_provider(config)
+    key = client.redaction_values
     folder = args.output_root / datetime.now(timezone.utc).strftime("rig-%Y%m%dT%H%M%S%fZ")
     folder.mkdir(parents=True, mode=0o700)
     save(folder / "manifest.json", {"mode": args.mode, "question": args.question, "planned_calls": call_count,
          "model": args.model, "chunks": chunks, "requirements_source": str(args.requirements) if args.requirements else None}, key)
     print(f"Results: {folder.resolve()}", flush=True)
     statuses = []
-    with Anthropic(api_key=key, base_url="https://api.anthropic.com", max_retries=0, timeout=90) as client:
-        if needs_plan:
-            receipt = call_step(client, plan_request)
-            save(folder / "plan.json", receipt, key)
-            statuses.append({"step": "plan", "status": receipt["status"]})
-            print(f"Plan: {receipt['status']}", flush=True)
-            if receipt["status"] == "checks_pass":
-                requirements = receipt["parsed"]["information_needed"]
-        if not needs_plan or statuses[0]["status"] == "checks_pass":
-            save(folder / "requirements.json", {"information_needed": requirements}, key)
-            for index, chunk in enumerate(chunks):
-                request = extraction_request(chunk["text"], requirements, args.model, args.extract_max_tokens)
-                receipt = call_step(client, request, chunk["text"])
-                receipt.update({k: v for k, v in chunk.items() if k != "text"})
-                save(folder / f"chunk-{index:04d}.json", receipt, key)
-                statuses.append({"step": f"chunk-{index:04d}", "status": receipt["status"]})
-                print(f"Chunk {index}: {receipt['status']}", flush=True)
+    if needs_plan:
+        receipt = call_step(client, plan_request)
+        save(folder / "plan.json", receipt, key)
+        statuses.append({"step": "plan", "status": receipt["status"]})
+        print(f"Plan: {receipt['status']}", flush=True)
+        if receipt["status"] == "checks_pass":
+            requirements = receipt["parsed"]["information_needed"]
+    if not needs_plan or statuses[0]["status"] == "checks_pass":
+        save(folder / "requirements.json", {"information_needed": requirements}, key)
+        for index, chunk in enumerate(chunks):
+            request = extraction_request(chunk["text"], requirements, args.model, args.extract_max_tokens)
+            receipt = call_step(client, request, chunk["text"])
+            receipt.update({k: v for k, v in chunk.items() if k != "text"})
+            save(folder / f"chunk-{index:04d}.json", receipt, key)
+            statuses.append({"step": f"chunk-{index:04d}", "status": receipt["status"]})
+            print(f"Chunk {index}: {receipt['status']}", flush=True)
     failed = any(s["status"] != "checks_pass" for s in statuses)
     save(folder / "summary.json", {"mode": args.mode, "question": args.question, "planned_calls": call_count,
          "attempted_calls": len(statuses), "status": "failed" if failed else "checks_pass", "steps": statuses,

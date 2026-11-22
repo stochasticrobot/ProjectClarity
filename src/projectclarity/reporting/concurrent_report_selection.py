@@ -31,6 +31,7 @@ def assess_batch(builder, batch, inbox):
     worker.owner = owner
     worker.splits = 0
     worker.retained_fragments = []
+    worker.split_failures = []
     owner.progress = deepcopy(builder.owner.progress)
     owner.state = {**builder.owner.state, 'report': owner.progress}
     previous = {key: owner.progress[key] for key in COUNTERS}
@@ -61,7 +62,8 @@ def assess_batch(builder, batch, inbox):
     owner.publish = publish
     worker.checkpoint = checkpoint
     try:
-        return worker.dispatch('facts', batch), worker.splits, None
+        output=worker.dispatch('facts', batch)
+        return output, worker.splits, '; '.join(worker.split_failures) or None
     except Exception as error:
         if not getattr(builder, 'allow_partial', False):
             raise

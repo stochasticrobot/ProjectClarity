@@ -1,0 +1,322 @@
+{
+  "date": "2026-11-22",
+  "scope": "Production extraction worker; not full live autonomous research or deployment",
+  "default_output": "json_prefill_v1",
+  "regression": {
+    "run": 211,
+    "passed": 208,
+    "skipped": 3
+  },
+  "documentation_audit": {
+    "initial_files": 31,
+    "final_files": 37,
+    "canonical_schemas": 44,
+    "prompt_files": 16,
+    "both_documentation_only_passes_unchanged": true,
+    "canonical_schemas_and_prompt_files_unchanged_from_task_start": true,
+    "wire_instructions_intentionally_changed": true
+  },
+  "current_live": {
+    "documents": 4,
+    "initial_schema_valid_extractions": 4,
+    "decoded_replies": 8,
+    "full_worker_passes": 3,
+    "heldout_documents": 3,
+    "heldout_full_worker_passes": 2
+  },
+  "remaining_failure": "literal-attributes omission review proposed an unsupported entity reference (1998); existing checks rejected it and retained partial status. Valid structure is not semantic correctness.",
+  "deployment": "No running service restarted or switched; Anthropic remains default.",
+  "trials": [
+    {
+      "run": "development-d5ef70dd1a1a",
+      "results": [
+        {
+          "case": "acme-original",
+          "provider": "bedrock",
+          "model": "us.amazon.nova-micro-v1:0",
+          "status": "checks_partial",
+          "passed_structural_check": false,
+          "accepted_facts": 1,
+          "artifact_directory": "runs/provider-structures/development-d5ef70dd1a1a/c0414c16-d1ef-4054-986a-0731bc48be47",
+          "initial_rejections": 1,
+          "entity_issues": 2,
+          "unresolved": 1,
+          "calls": [
+            {
+              "stage": "extract-doc1-chunk0",
+              "outcome": "response_received",
+              "validation": "rejected",
+              "response_format": "nullable_list_v1",
+              "structure_status": "decoded",
+              "conversion_count": 3,
+              "usage": {
+                "input_tokens": 1658,
+                "output_tokens": 198
+              }
+            },
+            {
+              "stage": "extract-repair-doc1-chunk0",
+              "outcome": "response_received",
+              "validation": "rejected",
+              "response_format": "nullable_list_v1",
+              "structure_status": "decoded",
+              "conversion_count": 3,
+              "usage": {
+                "input_tokens": 1660,
+                "output_tokens": 138
+              }
+            },
+            {
+              "stage": "extract-omissions-doc1-chunk0",
+              "outcome": "response_received",
+              "validation": "rejected",
+              "response_format": "nullable_list_v1",
+              "structure_status": "decoded",
+              "conversion_count": 2,
+              "usage": {
+                "input_tokens": 1302,
+                "output_tokens": 87
+              }
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "run": "development-3a930c62426a",
+      "results": [
+        {
+          "case": "acme-original",
+          "provider": "bedrock",
+          "model": "us.amazon.nova-micro-v1:0",
+          "status": "checks_pass",
+          "passed_structural_check": false,
+          "accepted_facts": 0,
+          "artifact_directory": "runs/provider-structures/development-3a930c62426a/7a6e0333-79ec-4d92-8299-4804482e5be5",
+          "initial_rejections": 0,
+          "entity_issues": 0,
+          "unresolved": 0,
+          "calls": [
+            {
+              "stage": "extract-doc1-chunk0",
+              "outcome": "response_received",
+              "validation": "accepted",
+              "response_format": "nullable_list_v1",
+              "structure_status": "decoded",
+              "conversion_count": 0,
+              "usage": {
+                "input_tokens": 1743,
+                "output_tokens": 18
+              }
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "run": "development-6ed3d2a98e9e",
+      "results": [
+        {
+          "case": "acme-original",
+          "provider": "bedrock",
+          "model": "us.amazon.nova-micro-v1:0",
+          "status": "checks_partial",
+          "passed_structural_check": false,
+          "accepted_facts": 2,
+          "artifact_directory": "runs/provider-structures/development-6ed3d2a98e9e/3f094db8-605a-4295-a554-e7ef3cc2d0fe",
+          "initial_rejections": 0,
+          "entity_issues": 0,
+          "unresolved": 0,
+          "calls": [
+            {
+              "stage": "extract-doc1-chunk0",
+              "outcome": "response_received",
+              "validation": "accepted",
+              "response_format": "json_prefill_v1",
+              "structure_status": "decoded",
+              "conversion_count": 1,
+              "usage": {
+                "input_tokens": 1188,
+                "output_tokens": 293
+              }
+            },
+            {
+              "stage": "extract-omissions-doc1-chunk0",
+              "outcome": "response_received",
+              "validation": "rejected",
+              "response_format": "json_prefill_v1",
+              "structure_status": "decoded",
+              "conversion_count": 1,
+              "usage": {
+                "input_tokens": 955,
+                "output_tokens": 238
+              }
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "run": "development-1e776c033d64",
+      "results": [
+        {
+          "case": "acme-original",
+          "provider": "bedrock",
+          "model": "us.amazon.nova-micro-v1:0",
+          "status": "checks_pass",
+          "passed_structural_check": true,
+          "accepted_facts": 2,
+          "artifact_directory": "runs/provider-structures/development-1e776c033d64/987de68b-a584-4ee3-bf8a-131647469f85",
+          "initial_rejections": 0,
+          "entity_issues": 0,
+          "unresolved": 0,
+          "calls": [
+            {
+              "stage": "extract-doc1-chunk0",
+              "outcome": "response_received",
+              "validation": "accepted",
+              "response_format": "json_prefill_v1",
+              "structure_status": "decoded",
+              "conversion_count": 1,
+              "usage": {
+                "input_tokens": 1188,
+                "output_tokens": 287
+              }
+            },
+            {
+              "stage": "extract-omissions-doc1-chunk0",
+              "outcome": "response_received",
+              "validation": "accepted",
+              "response_format": "json_prefill_v1",
+              "structure_status": "decoded",
+              "conversion_count": 1,
+              "usage": {
+                "input_tokens": 949,
+                "output_tokens": 232
+              }
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "run": "heldout-7c5905575805",
+      "results": [
+        {
+          "case": "laboratory",
+          "provider": "bedrock",
+          "model": "us.amazon.nova-micro-v1:0",
+          "status": "checks_pass",
+          "passed_structural_check": true,
+          "accepted_facts": 2,
+          "artifact_directory": "runs/provider-structures/heldout-7c5905575805/abe524e3-8483-4db9-bc32-eb19083be2a3",
+          "initial_rejections": 0,
+          "entity_issues": 0,
+          "unresolved": 0,
+          "calls": [
+            {
+              "stage": "extract-doc1-chunk0",
+              "outcome": "response_received",
+              "validation": "accepted",
+              "response_format": "json_prefill_v1",
+              "structure_status": "decoded",
+              "conversion_count": 1,
+              "usage": {
+                "input_tokens": 1189,
+                "output_tokens": 305
+              }
+            },
+            {
+              "stage": "extract-omissions-doc1-chunk0",
+              "outcome": "response_received",
+              "validation": "accepted",
+              "response_format": "json_prefill_v1",
+              "structure_status": "decoded",
+              "conversion_count": 1,
+              "usage": {
+                "input_tokens": 899,
+                "output_tokens": 177
+              }
+            }
+          ]
+        },
+        {
+          "case": "negation",
+          "provider": "bedrock",
+          "model": "us.amazon.nova-micro-v1:0",
+          "status": "checks_pass",
+          "passed_structural_check": true,
+          "accepted_facts": 2,
+          "artifact_directory": "runs/provider-structures/heldout-7c5905575805/eb89d9ae-ad5e-4d2f-869f-69c845c87e2a",
+          "initial_rejections": 0,
+          "entity_issues": 0,
+          "unresolved": 0,
+          "calls": [
+            {
+              "stage": "extract-doc1-chunk0",
+              "outcome": "response_received",
+              "validation": "accepted",
+              "response_format": "json_prefill_v1",
+              "structure_status": "decoded",
+              "conversion_count": 1,
+              "usage": {
+                "input_tokens": 1187,
+                "output_tokens": 257
+              }
+            },
+            {
+              "stage": "extract-omissions-doc1-chunk0",
+              "outcome": "response_received",
+              "validation": "accepted",
+              "response_format": "json_prefill_v1",
+              "structure_status": "decoded",
+              "conversion_count": 1,
+              "usage": {
+                "input_tokens": 866,
+                "output_tokens": 144
+              }
+            }
+          ]
+        },
+        {
+          "case": "literal-attributes",
+          "provider": "bedrock",
+          "model": "us.amazon.nova-micro-v1:0",
+          "status": "checks_partial",
+          "passed_structural_check": false,
+          "accepted_facts": 2,
+          "artifact_directory": "runs/provider-structures/heldout-7c5905575805/7dc04cbd-4098-4d74-83d1-9cdb6d7a306f",
+          "initial_rejections": 0,
+          "entity_issues": 0,
+          "unresolved": 0,
+          "calls": [
+            {
+              "stage": "extract-doc1-chunk0",
+              "outcome": "response_received",
+              "validation": "accepted",
+              "response_format": "json_prefill_v1",
+              "structure_status": "decoded",
+              "conversion_count": 1,
+              "usage": {
+                "input_tokens": 1189,
+                "output_tokens": 245
+              }
+            },
+            {
+              "stage": "extract-omissions-doc1-chunk0",
+              "outcome": "response_received",
+              "validation": "rejected",
+              "response_format": "json_prefill_v1",
+              "structure_status": "decoded",
+              "conversion_count": 1,
+              "usage": {
+                "input_tokens": 873,
+                "output_tokens": 152
+              }
+            }
+          ]
+        }
+      ]
+    }
+  ]
+}

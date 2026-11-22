@@ -40,6 +40,36 @@ class ItemReportingTests(unittest.TestCase):
         report=assemble_items([fragment],packet)
         return report,fragment
 
+    def test_nullable_metadata_is_audited_without_changing_evidence(self):
+        """Accept absent qualifier/order metadata without manufacturing answer fields.
+
+        Args: None.
+        Returns: None; asserts canonical absence, exact citations, nullable schema
+            and required keys. Literal text is retained; unknown references fail.
+        """
+        item=contribution('Acme','F1','Acme',detail=None,order=None)
+        report,fragment=self.check_items([item],['F2','F3','F4'])
+        self.assertEqual(fragment['entries'][0]['_item'],
+                         {'distinguishing_detail':'','order_key':'','disposition':'candidate'})
+        self.assertEqual(len(fragment['_recovery']['metadata_normalization']),2)
+        self.assertEqual(report['entries'][0]['label_fact_ids'],['F1'])
+        self.assertIsNone(item['distinguishing_detail'])
+        _,literal=self.check_items([contribution('Acme','F1','Acme',detail='null',order='0')],['F2','F3','F4'])
+        self.assertEqual(literal['entries'][0]['_item']['distinguishing_detail'],'null')
+        self.assertNotIn('metadata_normalization',literal['_recovery'])
+        from projectclarity.reporting.answer_item_selection import SelectedItem
+        schema=SelectedItem.model_json_schema()
+        for key in ('distinguishing_detail','order_key'):
+            self.assertIn(key,schema['required'])
+            self.assertIn({'type':'null'},schema['properties'][key]['anyOf'])
+        for key,value in [('label',None),('fact_ids',None),('fact_ids',['F999']),
+                          ('distinguishing_detail',7),('order_key',False)]:
+            with self.subTest(key=key,value=value),self.assertRaises(ValueError):
+                self.check_items([{**item,key:value}],['F2','F3','F4'])
+        for key in ('distinguishing_detail','order_key'):
+            incomplete=dict(item);incomplete.pop(key)
+            with self.assertRaises(ValueError):self.check_items([incomplete],['F2','F3','F4'])
+
     def test_complementary_fields_duplicates_partial_and_irrelevant(self):
         """Combine duplicate names and complementary fields, retaining partials.
 
@@ -100,7 +130,8 @@ class ItemReportingTests(unittest.TestCase):
 
         Args: None.
         Returns: None; one merged answer, no narrative calls, unchanged upstream
-            artifacts and input evidence, stable fact references and CSV export.
+            artifacts and input evidence, stable fact references, nullable metadata audit
+            and CSV export.
         """
         class Caller:
             """Return useful item contributions for the actual filtering schema."""
@@ -126,7 +157,7 @@ class ItemReportingTests(unittest.TestCase):
                 Returns: Item-filter JSON, never a narrative or merged-model response.
                 """
                 self.calls.append((stage,request,sid));data=json.loads(request['messages'][0]['content'])
-                return json.dumps({'items':[contribution('Fixture company',f['id'],'Fixture company',data['requirements'][0]['id']) for f in data['facts']],'unused_fact_ids':[]})
+                return json.dumps({'items':[contribution('Fixture company',f['id'],'Fixture company',data['requirements'][0]['id'],detail=None,order=None) for f in data['facts']],'unused_fact_ids':[]})
         with TemporaryDirectory() as tmp:
             root=Path(tmp);state=many_facts(root,8);state.pop('report_scheme');sid=state['session_id']
             originals={p:p.read_bytes() for p in (root/sid).rglob('*') if p.is_file()}
@@ -143,6 +174,10 @@ class ItemReportingTests(unittest.TestCase):
                     self.assertEqual(report['summary'],[])
                     self.assertEqual(done['report']['facts_accounted'],8)
                     self.assertEqual(done['report']['merge_tasks_finished'],0)
+                    task_receipts=[json.loads(p.read_text()) for p in (root/sid/done['report']['artifact_directory']).rglob('*.json')]
+                    conversions=[r['recovery']['metadata_normalization'] for r in task_receipts
+                                 if r.get('recovery',{}).get('metadata_normalization')]
+                    self.assertEqual(sum(map(len,conversions)),16)
                     self.assertEqual(client.get(f'/api/setup/{sid}/report.csv').status_code,200)
                     for p,raw in originals.items():self.assertEqual(p.read_bytes(),raw)
             finally:sessions.close()

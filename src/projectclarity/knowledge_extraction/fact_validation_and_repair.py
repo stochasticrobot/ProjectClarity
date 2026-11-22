@@ -156,7 +156,7 @@ def recover(text, source, caller, sid, stage, stopped, progress):
     if pending and not stopped():
         schema=Repairs.model_json_schema()
         request={'model':caller.model,'max_tokens':8192,'system':(Path(__file__).resolve().parents[1]/'prompts/repair_extracted_facts.txt').read_text(),
-                 'output_config':{'format':{'type':'json_schema','schema':schema}},
+                 'response_schema':schema,
                  'messages':[{'role':'user','content':json.dumps({'document_chunk':source,'entities':parsed['entities'],
                     'entity_issues':first['entity_issues'],'rejected_facts':pending},ensure_ascii=False)}]}
         repair={'request':request,'status':'failed'}

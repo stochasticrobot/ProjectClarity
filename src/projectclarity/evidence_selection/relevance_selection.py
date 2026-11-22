@@ -22,8 +22,6 @@ import json
 import os
 from pathlib import Path
 
-from anthropic import Anthropic
-from dotenv import dotenv_values
 from pydantic import BaseModel, ConfigDict
 
 from projectclarity.knowledge_extraction.knowledge_extraction import Extraction, save, validate_response
@@ -100,7 +98,7 @@ def selection_request(question, requirements, knowledge, model, max_tokens):
         question: Nonblank research question.
         requirements: Validated Step 1 information_needed list.
         knowledge: Prepared entity catalogue and complete fact batch.
-        model: Anthropic model ID, with no automatic fallback.
+        model: Provider model ID, with no automatic fallback.
         max_tokens: Output token cap for this one request.
 
     Returns:
@@ -117,7 +115,7 @@ def selection_request(question, requirements, knowledge, model, max_tokens):
                       "fact_id": {"type": "string"}, "reason": {"type": "string"}}}}}}
     return dict(model=model, max_tokens=max_tokens,
                 system=(ROOT / "prompts/select_relevant_evidence.txt").read_text(encoding="utf-8"),
-                output_config={"format": {"type": "json_schema", "schema": schema}},
+                response_schema=schema,
                 messages=[{"role": "user", "content": json.dumps({
                     "RESEARCH QUESTION": question, "REQUESTED INFORMATION": requirements,
                     "entities": knowledge["entities"], "facts": knowledge["facts"]}, ensure_ascii=False)}])
@@ -184,17 +182,22 @@ def main(argv=None):
         No upstream step, source lookup, retry, input truncation or original-file
         mutation occurs. Successful relevance selection is not claim validation.
     """
+    from projectclarity.model_access.providers.registry import resolve_config, create_provider
+
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument("knowledge", type=Path)
     parser.add_argument("--question", required=True)
     parser.add_argument("--requirements", type=Path, required=True)
-    parser.add_argument("--model", default="claude-haiku-5-5")
+    parser.add_argument("--model")
+    parser.add_argument("--provider")
     parser.add_argument("--max-tokens", type=int, default=4096)
     parser.add_argument("--max-input-chars", type=int, default=60000)
     parser.add_argument("--env-file", type=Path, default=Path.cwd() / ".env")
     parser.add_argument("--output-root", type=Path, default=Path.cwd() / "runs")
     parser.add_argument("--dry-run", action="store_true")
     args = parser.parse_args(argv)
+    config = resolve_config(args.env_file, args.provider, args.model)
+    args.model = config.model
     if args.max_tokens < 1 or args.max_input_chars < 1:
         parser.error("Input and output limits must be positive")
     try:
@@ -217,11 +220,8 @@ def main(argv=None):
     if args.dry_run:
         print(json.dumps({"planned_calls": int(bool(knowledge["facts"])), "request": request}, ensure_ascii=False, indent=2))
         return 0
-    key = ""
-    if knowledge["facts"]:
-        key = (os.environ.get("ANTHROPIC_API_KEY") or dotenv_values(args.env_file).get("ANTHROPIC_API_KEY") or "").strip()
-        if not key:
-            parser.error("Provide ANTHROPIC_API_KEY or --env-file")
+    client = create_provider(config) if knowledge["facts"] else None
+    key = client.redaction_values if client else ()
     folder = args.output_root / datetime.now(timezone.utc).strftime("relevance-%Y%m%dT%H%M%S%fZ")
     folder.mkdir(parents=True, mode=0o700)
     source_ref = {"path": str(args.knowledge.resolve()), "sha256": digest}
@@ -230,14 +230,13 @@ def main(argv=None):
                "literal_quotes_rechecked": knowledge["literal_quotes_rechecked"]}
     try:
         if knowledge["facts"]:
-            with Anthropic(api_key=key, base_url="https://api.anthropic.com", max_retries=0, timeout=90) as client:
-                receipt["attempted_calls"] = 1
-                response = client.messages.create(**request)
-            receipt["response"] = response.model_dump(mode="json")
-            text = "".join(block.text for block in response.content if block.type == "text")
+            prepared = client.prepare(request)
+            receipt["wire_request"] = prepared.wire
+            receipt["attempted_calls"] = 1
+            response = client.generate(prepared)
+            receipt["response"] = response.receipt()
+            text = response.completed_text()
             receipt["raw_text"] = text
-            if response.stop_reason != "end_turn":
-                raise ValueError(f"Incomplete response: {response.stop_reason}")
         else:
             text = '{"selected_facts": []}'
             receipt["skip_reason"] = "No input facts"
@@ -246,7 +245,7 @@ def main(argv=None):
     except Exception as error:
         receipt["error"] = {"type": type(error).__name__, "message": str(error)}
         if getattr(error, "response", None) is not None:
-            receipt["error"]["body"] = error.response.text
+            receipt["error"]["body"] = getattr(error.response, "text", error.response)
     save(folder / "selection.json", receipt, key)
     if receipt["status"] == "checks_pass":
         store = relevant_knowledge(selection, knowledge)

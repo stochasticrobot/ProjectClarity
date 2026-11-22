@@ -39,13 +39,14 @@ alias resolution, and repeated-looking real-world entities can remain separate.
 
 ## Request limits and concurrency
 
-- Report generation calls require provider-counted input of at most **16,000 tokens**,
+- Report generation calls require adapter-counted or explicitly estimated input of at most **16,000 tokens**,
   including system instructions, messages, and response schema. Count failures block generation.
 - Initial evidence groups contain at most **40 facts**. Packing uses an estimate;
-  provider preflight can split whole-fact groups further. An indivisible oversized
+  adapter preflight can split whole-fact groups further. An indivisible oversized
   fact fails explicitly rather than being truncated.
 - Current item-selection requests allow **16,384 output tokens** and a **180-second**
-  timeout. Input and output limits are separate.
+  timeout. Nova Micro caps the effective output allowance at **10,000 tokens**;
+  receipts retain both requested and effective limits. Input and output limits are separate.
 - `report_selection_concurrency` defaults to **6**, range **1–16**. A worker's splits
   and permitted missing-fact recovery share its slot. Final item assembly runs in code.
 
@@ -70,6 +71,15 @@ saved. Legacy narrative reporting still requires every batch to pass. Stop preve
 new dispatch and saves in-flight responses as they finish. A server restart does not replay calls. **Retry report** starts only reporting
 from the saved reviewed evidence; it does not repeat search, extraction, review, or
 completed ranking. Missing or unusable work may require new model calls.
+
+Item qualifiers (`distinguishing_detail`) and ordering hints (`order_key`) are
+required keys but may explicitly be JSON null when absent. At the report boundary,
+null becomes the assembly layer's empty-string absence representation; each path
+is recorded in `recovery.metadata_normalization` in the task receipt. Missing keys,
+numbers and booleans remain invalid. Literal text `"null"` stays literal text.
+This does not fill missing labels, answer values, source details or references.
+The schema change alters request identity, so older cached requests are not
+silently treated as identical on retry. Original receipts remain intact.
 
 Valid citations take precedence over redundant exclusions after structural checks.
 Unknown or ambiguous IDs still fail reference checks; an affected field is withheld,
@@ -101,3 +111,13 @@ from accepted extraction records. Graph completion, failure or user navigation
 does not gate the report, and report-only retries do not rebuild the graph.
 The graph may therefore contain assertions excluded from report inputs. See
 [storage and ownership](../../../CODE_GUIDE.md#storage-and-ownership).
+
+## Bounded output recovery
+
+Item reports now retry rejected JSON/schema output once within the existing budget,
+including malformed fields while retaining earlier valid cited contributions.
+Failed split leaves no longer skip independent siblings. Explicit insufficient
+null values stay unknown; missing IDs and fabricated values are not repaired.
+See [Nova recovery scope and evidence](../../../docs/NOVA_OUTPUT_RECOVERY.md).
+SDK/network failures are not automatically retried. Final partial reports and
+optional retry remain possible after the bounded recovery is exhausted.

@@ -232,14 +232,14 @@ class BatchedReportTests(unittest.TestCase):
         Returns: None; exact messages/system/schema reach counting, and a failed
             count never turns into a generation call or approximate fallback.
         """
-        with TemporaryDirectory() as tmp,patch.dict('os.environ',{'ANTHROPIC_API_KEY':'fixture'}),patch('projectclarity.model_access.model_client.Anthropic') as provider:
+        with TemporaryDirectory() as tmp,patch.dict('os.environ',{'ANTHROPIC_API_KEY':'fixture'}),patch('projectclarity.model_access.providers.anthropic_provider.Anthropic') as provider:
             caller=ModelCalls(Path(tmp),Path(tmp)/'unused')
             api=provider.return_value.__enter__.return_value.messages
             api.count_tokens.return_value.input_tokens=123
             request={'model':'fixture','system':'instructions','messages':[],
-                     'output_config':{'format':{'type':'json_schema','schema':{}}},'max_tokens':100,'timeout':180}
+                     'response_schema':{},'max_tokens':100,'timeout':180}
             self.assertEqual(caller.count_input_tokens(request),123)
-            self.assertEqual(api.count_tokens.call_args.kwargs,{k:request[k] for k in ('model','system','messages','output_config')})
+            self.assertEqual(api.count_tokens.call_args.kwargs,{**{k:request[k] for k in ('model','system','messages')}, 'output_config':{'format':{'type':'json_schema','schema':{}}}})
             api.count_tokens.side_effect=RuntimeError('failure')
             with self.assertRaises(RuntimeError):caller.count_input_tokens(request)
             api.create.assert_not_called()

@@ -30,6 +30,7 @@ class StartInput(BaseModel):
     """Bounded user input and client-generated ID to make repeat submissions idempotent."""
     model_config = ConfigDict(extra='forbid')
     session_id: UUID
+    # Knowledge-session scope: omitted/null creates fresh; an explicit UUID must exist.
     collection_id: UUID | None = None
     question: str = Field(min_length=1, max_length=8000)
     auto_advance: bool = False
@@ -496,7 +497,8 @@ def main():
     """Launch the new UI separately from the old application.
 
     Args:
-        None. CLI accepts --port, --env-file and --data-dir. Credentials and
+        None. CLI accepts --port, --env-file, --data-dir, --provider and --model.
+        Provider/model options override process and dotenv configuration. Credentials and
         saved data default to .env and runs/web under the working directory;
         packaged pages and scripts are located independently of that directory.
     Returns:
@@ -507,8 +509,10 @@ def main():
     parser.add_argument('--port', type=int, default=8775)
     parser.add_argument('--env-file', type=Path, default=Path.cwd() / '.env')
     parser.add_argument('--data-dir', type=Path, default=Path.cwd() / 'runs/web')
+    parser.add_argument('--provider', help='Registered backend (anthropic or bedrock)')
+    parser.add_argument('--model', help='Backend-specific model ID')
     args = parser.parse_args()
-    sessions = Sessions(args.data_dir, env_file=args.env_file)
+    sessions = Sessions(args.data_dir, env_file=args.env_file, provider=args.provider, model=args.model)
     try:
         uvicorn.run(create_app(sessions), host='127.0.0.1', port=args.port)
     finally:

@@ -1,0 +1,137 @@
+{
+  "date": "2026-11-22",
+  "provider": "bedrock",
+  "model": "us.amazon.nova-micro-v1:0",
+  "region": "us-east-2",
+  "scope": "Live HTTP setup and production extraction worker; offline full-workflow regression. Not a full live research or quality benchmark.",
+  "http_status": 202,
+  "setup_status": "ready",
+  "extraction": {
+    "validated": false,
+    "error_type": "ValidationError"
+  },
+  "calls": [
+    {
+      "stage": "define",
+      "provider": "bedrock",
+      "model": "us.amazon.nova-micro-v1:0",
+      "outcome": "response_received",
+      "validation": "accepted",
+      "usage": {
+        "input_tokens": 595,
+        "output_tokens": 110
+      },
+      "count_method": "local_utf8_estimate",
+      "input_count_estimated": true,
+      "max_output_tokens": 4096
+    },
+    {
+      "stage": "clarify",
+      "provider": "bedrock",
+      "model": "us.amazon.nova-micro-v1:0",
+      "outcome": "response_received",
+      "validation": "accepted",
+      "usage": {
+        "input_tokens": 669,
+        "output_tokens": 16
+      },
+      "count_method": "local_utf8_estimate",
+      "input_count_estimated": true,
+      "max_output_tokens": 4096
+    },
+    {
+      "stage": "extract-live-smoke",
+      "provider": "bedrock",
+      "model": "us.amazon.nova-micro-v1:0",
+      "outcome": "response_received",
+      "validation": "rejected",
+      "usage": {
+        "input_tokens": 1472,
+        "output_tokens": 203
+      },
+      "count_method": "local_utf8_estimate",
+      "input_count_estimated": true,
+      "max_output_tokens": 8192
+    }
+  ],
+  "production_extraction_before_response_guidance": {
+    "entry_point": "knowledge_extraction.concurrent_extraction.extract_chunk",
+    "status": "checks_partial",
+    "accepted_facts": 0,
+    "receipt_directory": "ProjectClarity/runs/provider-verification/cc8245a2-efcb-467d-af47-158f92c6b9e4",
+    "calls": [
+      {
+        "stage": "extract-doc1-chunk0",
+        "provider": "bedrock",
+        "outcome": "response_received",
+        "validation": "rejected",
+        "usage": {
+          "input_tokens": 1472,
+          "output_tokens": 203
+        },
+        "count_method": "local_utf8_estimate"
+      },
+      {
+        "stage": "extract-repair-doc1-chunk0",
+        "provider": "bedrock",
+        "outcome": "response_received",
+        "validation": "rejected",
+        "usage": {
+          "input_tokens": 1496,
+          "output_tokens": 97
+        },
+        "count_method": "local_utf8_estimate"
+      }
+    ]
+  },
+  "diagnosis": "Retained production-worker receipts show Nova omitted required nullable subtype fields; its repair omitted decisions. Validators rejected both. A separate direct extraction attempt passed. No validation rules were relaxed.",
+  "production_extraction_with_response_guidance": {
+    "entry_point": "knowledge_extraction.concurrent_extraction.extract_chunk",
+    "status": "checks_partial",
+    "accepted_facts": 0,
+    "receipt_directory": "ProjectClarity/runs/provider-verification/a87283d1-f3be-440a-96a0-5a343d182ab8",
+    "calls": [
+      {
+        "stage": "extract-doc1-chunk0",
+        "provider": "bedrock",
+        "outcome": "response_received",
+        "validation": "rejected",
+        "usage": {
+          "input_tokens": 1524,
+          "output_tokens": 216
+        },
+        "count_method": "local_utf8_estimate"
+      },
+      {
+        "stage": "extract-repair-doc1-chunk0",
+        "provider": "bedrock",
+        "outcome": "response_received",
+        "validation": "rejected",
+        "usage": {
+          "input_tokens": 1392,
+          "output_tokens": 299
+        },
+        "count_method": "local_utf8_estimate"
+      }
+    ],
+    "diagnosis": "Nova returned the string null rather than JSON null for entity references. Production validators rejected dangling references; repair retained that error. Zero facts accepted. This is a live reliability limitation, not a passing extraction result."
+  },
+  "separate_direct_extraction": {
+    "status": "validated",
+    "facts": 2,
+    "usage": {
+      "input_tokens": 1472,
+      "output_tokens": 218
+    },
+    "receipt_directory": "ProjectClarity/runs/provider-verification/67b8e26c-a493-4eb1-95d4-2ee8a084f96c",
+    "scope": "Single successful call does not establish production reliability."
+  },
+  "offline_regression": {
+    "tests_run": 195,
+    "passed": 192,
+    "skipped": 3,
+    "failures": 0,
+    "followup_focused_tests_passed": 18
+  },
+  "deployment": "Source and local dependencies updated; no running server restarted and no remote deployment."
+}

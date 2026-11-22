@@ -7,3 +7,7 @@ outcome to subdivide source text; unrelated errors must not trigger that recover
 
 class ModelOutputLimitError(RuntimeError):
     """The provider explicitly ended a response with stop_reason=max_tokens."""
+
+
+class ModelOutputStructureError(RuntimeError):
+    """A complete response cannot be decoded using its advertised output format."""

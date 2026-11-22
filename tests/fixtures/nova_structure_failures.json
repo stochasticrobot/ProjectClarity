@@ -1,0 +1,14 @@
+[
+  {
+    "source": "Acme Labs is based in Ottawa. Mira Chen founded Acme Labs in 2020.",
+    "raw_text": "{\"entities\": [{\"id\": \"Acme Labs\", \"name\": \"Acme Labs\", \"type\": \"organization\", \"subtype\": \"company\"}, {\"id\": \"Mira Chen\", \"name\": \"Mira Chen\", \"type\": \"person\"}, {\"id\": \"Ottawa\", \"name\": \"Ottawa\", \"type\": \"location\"}], \"facts\": [{\"subject_id\": \"Acme Labs\", \"predicate\": \"is based in\", \"value\": \"Ottawa\", \"object_id\": \"Ottawa\", \"statement\": \"Acme Labs is based in Ottawa\", \"quote\": \"Acme Labs is based in Ottawa\"}, {\"subject_id\": \"Mira Chen\", \"predicate\": \"founded\", \"value\": \"Acme Labs\", \"object_id\": \"Acme Labs\", \"statement\": \"Mira Chen founded Acme Labs\", \"quote\": \"Mira Chen founded Acme Labs in 2020.\"}]}",
+    "origin": "cc8245a2-efcb-467d-af47-158f92c6b9e4",
+    "status": "checks_partial"
+  },
+  {
+    "source": "Acme Labs is based in Ottawa. Mira Chen founded Acme Labs in 2020.",
+    "raw_text": "{\"entities\": [{\"id\": \"Acme Labs\", \"name\": \"Acme Labs\", \"type\": \"organization\", \"subtype\": \"null\"}, {\"id\": \"Mira Chen\", \"name\": \"Mira Chen\", \"type\": \"person\", \"subtype\": \"null\"}, {\"id\": \"Ottawa\", \"name\": \"Ottawa\", \"type\": \"location\", \"subtype\": \"null\"}], \"facts\": [{\"subject_id\": \"Acme Labs\", \"predicate\": \"is based in\", \"value\": \"Ottawa\", \"object_id\": \"null\", \"statement\": \"Acme Labs is based in Ottawa\", \"quote\": \"Acme Labs is based in Ottawa.\"}, {\"subject_id\": \"Mira Chen\", \"predicate\": \"founded\", \"value\": \"Acme Labs\", \"object_id\": \"null\", \"statement\": \"Mira Chen founded Acme Labs\", \"quote\": \"Mira Chen founded Acme Labs in 2020.\"}]}",
+    "origin": "a87283d1-f3be-440a-96a0-5a343d182ab8",
+    "status": "checks_partial"
+  }
+]

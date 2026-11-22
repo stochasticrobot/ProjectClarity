@@ -104,7 +104,7 @@ class OmissionTests(unittest.TestCase):
         Returns: None; failure and uncertain outcomes remain explicit, with one attempt.
         """
         bad_name=deepcopy(REVIEW);bad_name['entities'][0]['name']='Berlin'
-        redefine=deepcopy(REVIEW);redefine['entities'].append(ENTITIES[0])
+        redefine=deepcopy(REVIEW);redefine['entities'].append({**ENTITIES[0], 'name': ENTITIES[0]['name'] + ' changed'})
         missing=deepcopy(REVIEW);missing['decisions'].pop()
         ambiguous=deepcopy(REVIEW);ambiguous['decisions'][0].update(action='unresolved',object_id=None)
         for review in [RuntimeError('fixture failure'),missing,redefine,bad_name,ambiguous]:

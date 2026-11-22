@@ -46,19 +46,28 @@ class InvestigationDecision(BaseModel):
     citations:list[Citation]
 
 
-def validate_investigation(text, packet):
+def validate_investigation(text, packet, normalizations=None):
     """Check identity and literal citations before routing a model decision.
 
-    Args: text: Raw response JSON; packet: Exact saved input evidence packet.
-    Returns: Validated decision or ValueError. Does not prove semantic entailment.
+    Args: text: Raw response JSON; packet: Exact saved input evidence packet;
+        normalizations: Optional list receiving unique whitespace-only citation
+            conversions, including original quote, passage ID and source span.
+    Returns: Validated decision with exact source quotations, or ValueError. Only
+        uniquely matched whitespace layout may be restored; words, punctuation
+        and passage IDs are never guessed. Does not prove semantic entailment.
     """
     decision=InvestigationDecision.model_validate_json(text)
     if decision.fact_id!=packet['claim']['fact_id'] or not decision.reason.strip():raise ValueError('Invalid claim ID or empty reason.')
     if decision.decision=='accept' and not decision.citations:raise ValueError('Acceptance requires citations.')
     passages={p['passage_id']:p for p in packet['passages']}
-    for citation in decision.citations:
-        if citation.passage_id not in passages or not citation.quote.strip() or citation.quote not in passages[citation.passage_id]['text']:
-            raise ValueError('Citation is not an exact supplied source excerpt.')
+    from projectclarity.claim_review.citation_layout import source_quote
+    for index,citation in enumerate(decision.citations):
+        if citation.passage_id not in passages:
+            raise ValueError('Citation passage ID is not supplied.')
+        exact,audit=source_quote(citation.quote,passages[citation.passage_id]['text'])
+        citation.quote=exact
+        if audit is not None and normalizations is not None:
+            normalizations.append({**audit,'citation_index':index,'passage_id':citation.passage_id})
     return decision
 
 

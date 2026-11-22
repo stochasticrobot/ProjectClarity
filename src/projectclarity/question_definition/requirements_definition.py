@@ -60,7 +60,7 @@ def planning_request(question, model, max_tokens):
 
     Args:
         question: Nonblank research question inserted into the prompt placeholder.
-        model: Anthropic model identifier, without fallback.
+        model: Provider model identifier, without fallback.
         max_tokens: Output token allowance for this planning request.
 
     Returns:
@@ -84,5 +84,5 @@ def planning_request(question, model, max_tokens):
         }}},
     }
     return dict(model=model, max_tokens=max_tokens,
-                output_config={"format": {"type": "json_schema", "schema": schema}},
+                response_schema=schema,
                 messages=[{"role": "user", "content": prompt.replace("{research_question}", question)}])

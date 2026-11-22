@@ -65,7 +65,7 @@ class InvestigationCaller:
         if stage.startswith('report-'):
             self.calls.append((stage,request,sid))
             data=json.loads(request['messages'][0]['content'])
-            if 'items' in request['output_config']['format']['schema']['properties']:
+            if 'items' in request['response_schema']['properties']:
                 return json.dumps({'items':[],'unused_fact_ids':[f['id'] for f in data['facts']]})
             return json.dumps({'summary':[],'entries':[],'gaps':['Fixture contains no complete answer.'],
                 'exclusions':[{'fact_id':f['id'],'reason':'Fixture excluded.'} for f in data['facts']]})
@@ -147,7 +147,11 @@ class InvestigationTests(unittest.TestCase):
                     self.assertEqual([r['status'] for r in records['records']],['accepted','rejected','failed'])
                     self.assertEqual(len(records['report_facts']),1)
                     folder=root/sid/progress['artifact_directory']
-                    for i,(_,request,_) in enumerate([c for c in caller.calls if c[0].startswith('investigate-')],1):
+                    investigation_calls=[c for c in caller.calls if c[0].startswith('investigate-')]
+                    self.assertEqual(len(investigation_calls),4)
+                    self.assertEqual(progress['model_calls'],4)
+                    for stage,request,_ in investigation_calls:
+                        i=int(stage.split('-claim')[-1].split('-')[0])
                         data=json.loads(request['messages'][0]['content'])
                         saved_packet=json.loads((folder/f'packet-{i:04d}.json').read_text());self.assertFalse(saved_packet.pop('credential_redaction_applied',False))
                         self.assertEqual(data,saved_packet)
@@ -157,7 +161,7 @@ class InvestigationTests(unittest.TestCase):
                     self.assertEqual(len(json.loads((folder/'rejected.json').read_text())['facts']),1)
                     self.assertEqual(len(json.loads((folder/'needs_review.json').read_text())['facts']),1)
                     client.post(f'/api/setup/{sid}/investigation');client.get(f'/investigation/{sid}')
-                    self.assertEqual(len(caller.calls),4)
+                    self.assertEqual(len(caller.calls),5)
                     for p,digest in baseline.items():self.assertEqual(hashlib.sha256(p.read_bytes()).hexdigest(),digest)
             finally:sessions.close()
 

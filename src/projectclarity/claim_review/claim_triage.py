@@ -78,7 +78,8 @@ class TriageRun:
             resume_from: Optional prior stopped attempt directory, relative to root.
         Returns:
             None. Creates an isolated triage directory and empty output buckets.
-            Invalid context or duplicate IDs raise before model calls. No record
+            Invalid context, changed provider/model/output contract or duplicate IDs
+            raise before model calls. No record
             filtering, truncation, source downloads or outside searches occur.
         """
         self.state, self.publish, self.caller, self.stop = state, publish, caller, stop
@@ -106,7 +107,7 @@ class TriageRun:
             old=json.loads((previous/'manifest.json').read_text())
             if old['input_sha256']!=hashlib.sha256(raw).hexdigest() or old['research_question']!=state['research_question'] or old['requested_information']!=state['information_needed']:
                 raise ValueError('Recovery inputs changed')
-            if old['prompt_sha256']!=hashlib.sha256(PROMPT.read_bytes()).hexdigest() or old['model']!=caller.model:
+            if old.get('contract_id') != getattr(caller, 'contract_id', None) or old.get('provider', 'anthropic') != getattr(caller, 'provider', 'anthropic') or old['prompt_sha256']!=hashlib.sha256(PROMPT.read_bytes()).hexdigest() or old['model']!=caller.model:
                 raise ValueError('Recovery model or prompt changed; cannot silently reuse decisions')
             self.recovery_root=previous
         self.root = selection_root / ('triage-' + uuid4().hex[:12]); self.root.mkdir(mode=0o700)
@@ -122,7 +123,7 @@ class TriageRun:
         save(self.root / 'manifest.json', {'research_question':state['research_question'],
             'requested_information':state['information_needed'], 'input':store,
             'input_sha256':hashlib.sha256(raw).hexdigest(), 'prompt_sha256':hashlib.sha256(self.prompt.encode()).hexdigest(),
-            'model':caller.model, 'max_output_tokens':8192, 'triage_concurrency':self.triage['concurrency'], 'resumed_from':resume_from, 'scope':'Original-source support and completeness only.'}, '')
+            'provider':getattr(caller, 'provider', 'anthropic'), 'contract_id':getattr(caller, 'contract_id', None), 'model':caller.model, 'max_output_tokens':8192, 'triage_concurrency':self.triage['concurrency'], 'resumed_from':resume_from, 'scope':'Original-source support and completeness only.'}, '')
         self.write_buckets()
 
     def recovered_response(self, batch_id, request):

@@ -74,7 +74,7 @@ class AdaptiveExtractionTests(unittest.TestCase):
         Returns: Detached run, source text, receipts, knowledge, actual dispatch lengths
             and ledger/budget state. All temporary files are inspected before deletion.
         """
-        with TemporaryDirectory() as tmp, patch.dict('os.environ', {'ANTHROPIC_API_KEY': 'fixture'}), patch('projectclarity.model_access.model_client.Anthropic') as provider:
+        with TemporaryDirectory() as tmp, patch.dict('os.environ', {'ANTHROPIC_API_KEY': 'fixture'}), patch('projectclarity.model_access.providers.anthropic_provider.Anthropic') as provider:
             root = Path(tmp); sid = str(uuid4()); folder = root/sid; folder.mkdir()
             state = {'session_id': sid, 'status': 'run_running', 'research_question': 'Fixture facts',
                      'information_needed': [], 'extraction_concurrency': concurrency,

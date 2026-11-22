@@ -19,6 +19,107 @@ from tests.integration.test_research_graph import wait_for_completion
 
 class ResilientReportTests(unittest.TestCase):
     """Exercise missing-field isolation and partial-report retry through production."""
+    def test_nested_split_failure_never_skips_independent_siblings(self):
+        """Fail one leaf twice and still assess every other split leaf through HTTP.
+
+        Args: None; model replies/counts are fixtures, routing and validators real.
+        Returns: None; proves complete dispatch coverage, bounded retry, partial
+            accounting and preserved failed attempts without invented exclusions.
+        """
+        class Caller:
+            """Force admission splitting and a repeatably malformed first leaf."""
+            model='offline';provider='fixture';contract_id='split-failure-test'
+            def __init__(self):
+                """Args: None. Returns: None; initialize dispatched input log."""
+                self.calls=[]
+            def count_input_tokens(self,request):
+                """Args: request: Full input. Returns: High count above two records."""
+                return 17000 if len(json.loads(request['messages'][0]['content'])['facts'])>2 else 100
+            def __call__(self,stage,request,sid):
+                """Args: stage,request,sid: Production call. Returns: JSON or broken text."""
+                facts=json.loads(request['messages'][0]['content'])['facts']
+                ids=[f['id'] for f in facts];self.calls.append(ids)
+                if 'F1' in ids:return '{"items":[]}'
+                return json.dumps({'items':[contribution(f['id'],f['id'],f['fact']['statement']) for f in facts],
+                                   'unused_fact_ids':[]})
+        with TemporaryDirectory() as tmp:
+            root=Path(tmp);state=many_facts(root,6);state.pop('report_scheme',None)
+            caller=Caller();sessions=Sessions(root,caller);sessions.write(state);sid=state['session_id']
+            try:
+                with TestClient(create_app(sessions)) as client:
+                    self.assertEqual(client.post(f'/api/setup/{sid}/report').status_code,202)
+                    done=wait_for_completion(client,sid)
+                    self.assertEqual(done['status'],'report_partial',done.get('report'))
+                    self.assertEqual({fid for ids in caller.calls for fid in ids},{f'F{i}' for i in range(1,7)})
+                    self.assertEqual(sum('F1' in ids for ids in caller.calls),2)
+                    self.assertEqual(done['report']['facts_accounted'],5)
+                    self.assertEqual(done['report']['unreviewed_facts'],1)
+                    self.assertEqual(done['report']['model_calls'],len(caller.calls))
+                    report=client.get(f'/api/setup/{sid}/report-data').json()
+                    self.assertEqual(report['exclusions'],[])
+                    tasks=root/sid/done['report']['artifact_directory']/'tasks'
+                    attempts=[v for p in tasks.glob('*.json') if len((v:=json.loads(p.read_text())).get('output_attempts',[]))==2]
+                    self.assertEqual(len(attempts),1)
+                    self.assertEqual(attempts[0]['status'],'failed')
+            finally:sessions.close()
+
+    def test_null_insufficient_values_are_withheld_not_promoted(self):
+        """Treat explicit absence as unknown, never a supported cited answer.
+
+        Args: None.
+        Returns: None; audits absent values while rejecting supported null values.
+        """
+        packet={'requirements':[{'id':'R1'},{'id':'R2'}],'facts':[{'id':'F1'}]}
+        item=contribution('Acme','F1','Acme')
+        item['fields'].append({'requirement_id':'R2','value':None,'status':'insufficient','fact_ids':['F1']})
+        result=validate_selection(json.dumps({'items':[item],'unused_fact_ids':[]}),packet,packet['facts'])
+        self.assertNotIn('_issues',result)
+        self.assertEqual(result['entries'][0]['fields'][1]['status'],'unknown')
+        self.assertEqual(result['entries'][0]['fields'][1]['fact_ids'],[])
+        self.assertIsNone(result['_recovery']['withheld_insufficient_fields'][0]['value'])
+        item['fields'][1]['status']='supported'
+        invalid=validate_selection(json.dumps({'items':[item],'unused_fact_ids':[]}),packet,packet['facts'])
+        self.assertEqual(len(invalid['_issues']),1)
+        self.assertEqual(invalid['entries'][0]['fields'][1]['status'],'unknown')
+
+    def test_field_retry_retains_earlier_valid_values(self):
+        """Correct malformed fields once without losing already cited contributions.
+
+        Args: None; routes through actual HTTP reporting with fixture generation.
+        Returns: None; confirms two calls, successful recovery and retained conflict.
+        """
+        class Caller:
+            """Return one extra-property failure followed by a changed valid value."""
+            model='offline'
+            def __init__(self):
+                """Args: None. Returns: None; initialize attempt count."""
+                self.calls=0
+            def count_input_tokens(self,request):
+                """Args: request: Actual payload. Returns: Safe fixture input count."""
+                return 100
+            def __call__(self,stage,request,sid):
+                """Args: stage,request,sid: Production call. Returns: Two controlled replies."""
+                self.calls+=1
+                item=contribution('Acme','F1','Original value' if self.calls==1 else 'Corrected value')
+                if self.calls==1:
+                    item['fields'].append({'requirement_id':'R2','value':'Toronto','status':'supported','fact_ids':['F1'],'location':'Toronto'})
+                return json.dumps({'items':[item],'unused_fact_ids':['F2']})
+        with TemporaryDirectory() as tmp:
+            root=Path(tmp);state=many_facts(root,2);state.pop('report_scheme',None)
+            caller=Caller();sessions=Sessions(root,caller);sessions.write(state);sid=state['session_id']
+            try:
+                with TestClient(create_app(sessions)) as client:
+                    client.post(f'/api/setup/{sid}/report');done=wait_for_completion(client,sid)
+                    self.assertEqual(done['status'],'report_completed',done.get('report'))
+                    self.assertEqual(caller.calls,2)
+                    report=client.get(f'/api/setup/{sid}/report-data').json()
+                    field=report['entries'][0]['fields'][0]
+                    self.assertIn('Original value',field['value'])
+                    self.assertIn('Corrected value',field['value'])
+                    self.assertEqual(field['status'],'conflicting')
+                    self.assertEqual(done['report']['model_calls'],2)
+            finally:sessions.close()
+
     def test_missing_invalid_and_uncited_fields_preserve_good_siblings(self):
         """Args: None. Returns: None; invalid values never gain invented citations."""
         packet={'requirements':[{'id':'R1'},{'id':'R2'}], 'facts':[{'id':'F1'},{'id':'F2'}]}

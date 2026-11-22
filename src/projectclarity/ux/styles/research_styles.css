@@ -117,3 +117,7 @@ header .current-page { color:#163f2c; border-left:0; border-bottom:3px solid #24
 #captcha-grid input { width:auto; margin:0; }
 #captcha-dialog button { margin:.75rem .5rem 0 0; }
 #captcha-error { color:#9c322d; }
+
+/* Keep full knowledge-session IDs selectable without overflowing narrow screens. */
+#knowledge-session { width:100%; min-width:0; padding:.6rem; font:inherit; }
+#saved-knowledge-session { overflow-wrap:anywhere; }

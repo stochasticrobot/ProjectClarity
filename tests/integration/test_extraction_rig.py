@@ -42,6 +42,23 @@ def reply(payload, stop_reason="end_turn"):
 class RigContracts(unittest.TestCase):
     """Exercise the real CLI orchestration with provider calls replaced locally."""
 
+    def setUp(self):
+        """Pin offline fixtures to their mocked provider regardless of private config.
+
+        Args: None.
+        Returns: None; temporarily overrides selection and forbids Bedrock client
+            construction. Cleanup restores the process environment after each test.
+            No credentials are read or requests made by this setup.
+        """
+        selection = patch.dict('os.environ', {'PROJECTCLARITY_PROVIDER': 'anthropic',
+                               'PROJECTCLARITY_MODEL': 'claude-haiku-5-5'})
+        selection.start()
+        self.addCleanup(selection.stop)
+        guard = patch('projectclarity.model_access.providers.bedrock_provider.BedrockProvider._client',
+                      side_effect=AssertionError('Offline fixture must not create a Bedrock client.'))
+        guard.start()
+        self.addCleanup(guard.stop)
+
     def execute(self, mode, responses, extra=()):
         """Run one CLI scenario in a temporary directory and retain its artifacts.
 
@@ -62,7 +79,7 @@ class RigContracts(unittest.TestCase):
             if mode in ("plan", "combined"):
                 args += ["--question", "List AI companies."]
             args += ["--output-root", str(root / "runs"), *extra]
-            with patch.dict("os.environ", {"ANTHROPIC_API_KEY": "test-secret"}), patch("testing.extraction_test_rig.Anthropic") as factory, contextlib.redirect_stdout(io.StringIO()):
+            with patch.dict("os.environ", {"ANTHROPIC_API_KEY": "test-secret"}), patch("projectclarity.model_access.providers.anthropic_provider.Anthropic") as factory, contextlib.redirect_stdout(io.StringIO()):
                 client = factory.return_value.__enter__.return_value
                 client.messages.create.side_effect = responses
                 code = extraction_test_rig.main(args)
@@ -161,18 +178,18 @@ class RigContracts(unittest.TestCase):
             self.assertEqual(client.messages.create.call_count, 1)
             self.assertEqual(json.loads(client.messages.create.call_args.kwargs["messages"][0]["content"])["requested_information"], PLAN["information_needed"])
 
-    def test_dry_run_never_reads_secrets_or_calls_provider(self):
+    def test_dry_run_never_calls_provider_or_prints_secrets(self):
         """Prove combined preview stays offline and does not fabricate planner output.
 
         Args: None.
         Returns: None; asserts the preview marks extraction inputs as pending.
         """
         output = io.StringIO()
-        with patch("testing.extraction_test_rig.Anthropic") as client, patch("testing.extraction_test_rig.dotenv_values") as secrets, contextlib.redirect_stdout(output):
+        with patch("projectclarity.model_access.providers.anthropic_provider.Anthropic") as client, patch("projectclarity.model_access.providers.registry.dotenv_values") as secrets, contextlib.redirect_stdout(output):
             code = extraction_test_rig.main(["combined", str(extraction_test_rig.ROOT / "tests/fixtures/business_excerpt.txt"), "--question", "List companies.", "--dry-run"])
         self.assertEqual(code, 0)
         client.assert_not_called()
-        secrets.assert_not_called()
+        self.assertNotIn("ANTHROPIC_API_KEY", output.getvalue())
         self.assertEqual(json.loads(output.getvalue())["extraction_requests"], [])
 
     def test_total_budget_checked_before_planning(self):
@@ -181,7 +198,7 @@ class RigContracts(unittest.TestCase):
         Args: None.
         Returns: None; verifies no provider initialization for an insufficient budget.
         """
-        with patch("testing.extraction_test_rig.Anthropic") as client, contextlib.redirect_stderr(io.StringIO()):
+        with patch("projectclarity.model_access.providers.anthropic_provider.Anthropic") as client, contextlib.redirect_stderr(io.StringIO()):
             with self.assertRaises(SystemExit):
                 extraction_test_rig.main(["combined", str(extraction_test_rig.ROOT / "tests/fixtures/business_excerpt.txt"), "--question", "List companies.", "--max-calls", "1"])
         client.assert_not_called()

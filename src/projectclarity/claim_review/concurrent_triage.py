@@ -41,7 +41,7 @@ def review_batch(owner, batch, records, inbox):
                 raise ValueError('Selected record differs from original extraction.')
         chunk = json.loads(original['request']['messages'][0]['content'])['document_chunk']
         request = {'model':owner.caller.model, 'max_tokens':8192, 'system':owner.prompt,
-            'output_config':{'format':{'type':'json_schema', 'schema':Decisions.model_json_schema()}},
+            'response_schema':Decisions.model_json_schema(),
             'messages':[{'role':'user','content':json.dumps({'research_question':owner.state['research_question'],
                 'requested_information':owner.state['information_needed'], 'document_chunk':chunk,
                 'entities':knowledge['entities'], 'facts':records},ensure_ascii=False)}]}

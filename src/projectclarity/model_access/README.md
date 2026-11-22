@@ -1,28 +1,43 @@
 # Model requests and usage accounting
 
+Provides a common interface to different LLM backend providers. This allows the
+codebase to use Amazon Bedrock Nova Micro or the direct Anthropic API through
+the same interface. A local provider such as Ollama would require a new adapter;
+Ollama is not implemented yet.
+
 Provides the common connection between research stages and the model provider,
 while retaining enough information to inspect what was requested and returned.
 
 - [model_client.py](model_client.py) builds schema-constrained requests, loads the
   provider credential, sends calls, saves responses, and exposes token-count preflight.
 - [model_outcomes.py](model_outcomes.py) distinguishes confirmed output truncation
-  from other failures; only extraction uses it to schedule smaller source pieces.
+  from malformed structured output; only extraction schedules smaller source pieces
+  for confirmed truncation.
 - [research_budget.py](research_budget.py) reserves shared call/token allowance,
   persists usage and pauses requests for an explicit Continue or Quit decision.
 - [model_ledger.py](model_ledger.py) records attempts, outcomes, validation metadata,
   and known token use for the browser's usage panel.
 
-The default web transport uses Anthropic. Credentials come from the configured
-private environment file or the `ANTHROPIC_API_KEY` environment variable; the latter
-has precedence. Keep credentials and generated receipts out of source exports.
+The web transport uses the registered provider selected by
+`PROJECTCLARITY_PROVIDER` or `--provider`; Anthropic remains the default.
+Bedrock Nova Micro is supported through the same interface. Provider SDK code lives
+only in `providers/`; see [provider architecture and configuration](../../../docs/MODEL_PROVIDERS.md).
+Process settings override the private dotenv file; credentials and generated
+receipts stay out of source exports. Provider/model selection is fixed at startup,
+while credentials are reloaded per request. Output-contract settings are pinned
+and cache reuse requires the same contract fingerprint. See
+[structured-output boundaries](../../../docs/STRUCTURED_OUTPUT.md) and the
+[provider reading guide](providers/README.md).
 
 This package does not choose the next workflow stage. A failed or interrupted call
 is not automatically replayed by restarting the server. Explicit stage recovery
 owns any saved-response reuse or new attempt.
 
 Missing usage remains **unknown**, not zero. Recorded tokens are not a complete
-provider bill. Session-backed generation requests reserve provider-counted input
-plus maximum output before dispatch. Input, output and cache counters are summed;
+provider bill. Session-backed generation requests reserve adapter-counted input
+plus effective maximum output before dispatch. Anthropic uses its count API;
+Nova uses an explicitly approved, labelled local UTF-8 estimate because it lacks
+count API support. Input, output and cache counters are summed;
 reasoning is already inside output. Unused reservations are released. A provider
 count is an estimate, so actual usage can still differ; no new generation is
 admitted after the allowance is spent. Token-count API calls are not generation

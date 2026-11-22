@@ -7,6 +7,7 @@ be revalidated on resume without repeating model calls.
 from projectclarity.knowledge_extraction.knowledge_extraction import save
 from projectclarity.model_access.model_client import request_for
 from projectclarity.model_access.model_ledger import mark_validation
+from projectclarity.model_access.output_recovery import validated_output
 
 
 def investigate_claim(owner, collector, row, inbox, cached=None):
@@ -21,7 +22,10 @@ def investigate_claim(owner, collector, row, inbox, cached=None):
     Returns:
         Receipt containing packet, decision and citations, or interrupted/failed
         status. Saves a unique packet before dispatch; never writes shared stores.
-        Stops before new calls, retains in-flight results and never auto-retries.
+        Stops before new calls and retains in-flight results. Invalid output gets
+        at most one identical-request retry within the existing budget; transport
+        failures are not retried. Passage IDs remain strict; unique whitespace-only quote matches are
+        restored to exact source characters and recorded, never paraphrased.
     """
     from projectclarity.claim_review.claim_investigation import InvestigationDecision, validate_investigation
     receipt = {'status':'failed','attempted_calls':0}
@@ -40,19 +44,51 @@ def investigate_claim(owner, collector, row, inbox, cached=None):
             if cached.get('request') != request:
                 raise ValueError('Saved investigation request/evidence changed; cannot reuse review.')
             text = cached['raw_text']; receipt['reused_from'] = cached['_reused_from']
+            receipt['raw_text'] = text
+            receipt['citation_normalization']=[]
+            decision = validate_investigation(text,packet,receipt['citation_normalization'])
         else:
-            owner.cancelled()
-            receipt['attempted_calls'] = 1; inbox.put(('call',row['id'],None))
-            text = owner.caller(label,request,owner.state['session_id'])
-        receipt['raw_text'] = text
-        decision = validate_investigation(text,packet)
+            def before_call():
+                """Check stop and notify the coordinator of each dispatched attempt.
+
+                Args: None.
+                Returns: None; cancellation raises before another call is counted.
+                """
+                owner.cancelled()
+                receipt['attempted_calls'] += 1
+                inbox.put(('call',row['id'],None))
+
+            def validate(text):
+                """Validate passage identity and restore only audited source whitespace.
+
+                Args: text: Completed model output.
+                Returns: Checked decision; rejected text remains in attempt receipts.
+                """
+                receipt['raw_text'] = text
+                receipt['citation_normalization']=[]
+                return validate_investigation(text,packet,receipt['citation_normalization'])
+
+            def record(attempt):
+                """Save each attempt before any further generation is scheduled.
+
+                Args: attempt: Raw output or failure audit from bounded recovery.
+                Returns: None; creates a private, unique claim-attempt receipt.
+                """
+                attempt['citation_normalization']=list(receipt.get('citation_normalization',[]))
+                receipt.setdefault('output_attempts', []).append(attempt)
+                save(owner.root/f'output-{row["id"]:04d}-{attempt["attempt"]}.json',attempt,'')
+
+            decision = validated_output(owner.caller,label,request,owner.state['session_id'],
+                                        validate,before_call,record)
         by_id = {p['passage_id']:p for p in packet['passages']}
         receipt.update(status='checks_pass',assessment=decision.model_dump(),
             supporting_evidence=[{**by_id[c.passage_id],'quote':c.quote} for c in decision.citations])
-        mark_validation(owner.caller,label,owner.state['session_id'],True)
+        if cached is not None:
+            mark_validation(owner.caller,label,owner.state['session_id'],True)
     except InterruptedError:
         receipt['status'] = 'interrupted'
     except Exception as error:
-        mark_validation(owner.caller,label,owner.state['session_id'],False)
+        if not receipt.get('output_attempts'):
+            mark_validation(owner.caller,label,owner.state['session_id'],False)
         receipt['error'] = {'type':type(error).__name__,'message':str(error)[:500]}
     return receipt

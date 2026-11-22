@@ -74,3 +74,8 @@ production extraction worker and document coordinator, retained original receipt
 headquarters/membership/event links, literal counts, cancellation, malformed replies,
 unsupported names and downstream graph projection. Only provider/acquisition replies
 are fixtures; these tests do not establish real-model omission detection quality.
+
+Offline Anthropic extraction-rig, benchmark and budget fixtures pin their provider/model
+and reject Bedrock client construction, so changing the real `.env` backend cannot
+route these mocked tests to AWS. Actual provider smoke calls remain opt-in through
+`python -m testing.live_model_tests --live`.

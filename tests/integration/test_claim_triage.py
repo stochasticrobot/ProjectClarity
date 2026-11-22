@@ -63,7 +63,7 @@ class TriageCaller:
         if stage.startswith('report-'):
             self.calls.append((stage,request,sid))
             data=json.loads(request['messages'][0]['content'])
-            if 'items' in request['output_config']['format']['schema']['properties']:
+            if 'items' in request['response_schema']['properties']:
                 return json.dumps({'items':[],'unused_fact_ids':[f['id'] for f in data['facts']]})
             return json.dumps({'summary':[],'entries':[],'gaps':['Fixture contains no complete answer.'],
                 'exclusions':[{'fact_id':f['id'],'reason':'Fixture excluded.'} for f in data['facts']]})

@@ -118,11 +118,11 @@ class SelectionTests(unittest.TestCase):
             knowledge.write_text('{"entities":[],"facts":[]}')
             requirements.write_text(json.dumps(PLAN))
             before = knowledge.read_bytes()
-            with patch("projectclarity.evidence_selection.relevance_selection.Anthropic") as client, patch("projectclarity.evidence_selection.relevance_selection.dotenv_values") as secrets, contextlib.redirect_stdout(io.StringIO()):
+            with patch("projectclarity.model_access.providers.anthropic_provider.Anthropic") as client, patch("projectclarity.model_access.providers.registry.create_provider") as adapter, contextlib.redirect_stdout(io.StringIO()):
                 code = main([str(knowledge), "--question", "Who funded Acme?", "--requirements", str(requirements), "--output-root", str(root / "runs")])
             self.assertEqual(code, 0)
             client.assert_not_called()
-            secrets.assert_not_called()
+            adapter.assert_not_called()
             folder = next((root / "runs").iterdir())
             self.assertEqual(json.loads((folder / "summary.json").read_text())["attempted_calls"], 0)
             self.assertEqual(json.loads((folder / "relevant_knowledge.json").read_text())["facts"], [])

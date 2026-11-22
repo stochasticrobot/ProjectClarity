@@ -1,0 +1,61 @@
+{
+  "provider": "bedrock",
+  "model": "us.amazon.nova-micro-v1:0",
+  "contract_id": "bded49ea113a9d3304b194b31e6ca1469288b8d91dc8793af1c4e2fbe79e7295",
+  "started_at": "2026-11-22T16:14:31.278313+00:00",
+  "suite_sha256": "6ce4d67211ff51ad04e8ca6b1175e9d85080d43baa2ab7dd0ed0f4a7b084f87e",
+  "maximum_generation_calls": 3,
+  "results": [
+    {
+      "case": "basic-types",
+      "passed": true
+    },
+    {
+      "case": "nested-null",
+      "passed": true
+    },
+    {
+      "case": "source-extraction",
+      "passed": true
+    }
+  ],
+  "passed": true,
+  "credential_redaction_applied": false,
+  "receipt_directory": "runs/live-model-tests/338fddaf-5235-4f65-b649-98bf8b932c47",
+  "verification_scope": "Three real generation calls via ModelCalls; not full research workflow or quality benchmark.",
+  "calls": [
+    {
+      "stage": "live-basic-types",
+      "provider": "bedrock",
+      "model": "us.amazon.nova-micro-v1:0",
+      "outcome": "response_received",
+      "validation": "accepted",
+      "usage": {
+        "input_tokens": 212,
+        "output_tokens": 19
+      }
+    },
+    {
+      "stage": "live-nested-null",
+      "provider": "bedrock",
+      "model": "us.amazon.nova-micro-v1:0",
+      "outcome": "response_received",
+      "validation": "accepted",
+      "usage": {
+        "input_tokens": 314,
+        "output_tokens": 33
+      }
+    },
+    {
+      "stage": "live-source-extraction",
+      "provider": "bedrock",
+      "model": "us.amazon.nova-micro-v1:0",
+      "outcome": "response_received",
+      "validation": "accepted",
+      "usage": {
+        "input_tokens": 1176,
+        "output_tokens": 183
+      }
+    }
+  ]
+}

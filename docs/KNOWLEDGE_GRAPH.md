@@ -22,14 +22,18 @@ assertions by default (adjustable to 500). Selecting a list assertion highlights
 and centers its graph diamond and highlights its connecting edges. The graph
 provides zoom-in and zoom-out controls without changing the search results.
 
-New sessions share one default collection without collection setup. Separate
-collections remain an internal capability. Duplicate names remain separate source
-mentions, not automatically resolved identities.
+New research gets a fresh knowledge session automatically. In expanded Settings,
+choose an existing knowledge-session ID to accumulate evidence deliberately.
+Internally this boundary is `collection_id`; the research `session_id` remains
+a separate lineage identifier. The assigned knowledge ID appears after setup.
+Duplicate names remain separate source mentions, not resolved identities.
 
 ## Acceptance contract
 
-Two ordinary research sessions must accumulate in the persisted default through
-production HTTP. Another collection must remain absent even with matching names.
+Two ordinary research starts must produce different persisted graph collections
+through production HTTP, even for identical questions and entity names. An explicit
+existing selection must accumulate in only that collection. Duplicate submissions
+must retain their assigned ID; invalid IDs fail instead of falling back.
 Every graph assertion retains its source quote and lineage; repeated projection
 must not duplicate records, and saved data must survive reopening the application.
 
@@ -109,3 +113,26 @@ The browser library is vendored at version 3.33.1 with its MIT license in
 `src/projectclarity/ux/scripts/cytoscape.LICENSE`.
 
 See [collection behavior and limitations](../src/projectclarity/knowledge_graph/README.md).
+
+## Fresh-session verification (2026-11-22)
+
+The full regression suite ran 220 tests: 216 passed, 4 database-dependent tests
+skipped. The graph suite separately ran against real Neo4j: all 6 tests passed.
+Three fixture-driven production HTTP runs demonstrated two fresh isolated graphs
+and explicit third-run reuse of the first. Final Cypher results contained exactly
+the intended research-session assertions; the historical default stayed empty.
+Other checks covered duplicate start idempotency, unknown/reassigned IDs,
+persistence, refresh and graph/report independence. Models/search/downloads were
+fixtures for these checks; this is not a new live Bedrock research benchmark.
+
+Headless browser checks exercised expanded Settings, full existing IDs, explicit
+submission, displayed assigned ID, new-question reset, fresh submission, narrow
+layout and unavailable-list handling. The local idle service was then restarted;
+its effective configuration resolved to Bedrock Nova Micro in us-east-2, and its
+served page rendered the fresh default and existing dropdown choices. No user
+research was submitted. An actual user's browser rendering remains unobserved.
+
+During regression, older Anthropic-mocked CLI/budget fixtures inherited the real
+Bedrock `.env` and failed. Those runs are not passing evidence. Fixtures now pin
+their intended provider/model and forbid Bedrock client construction; the final
+suite above ran with the actual Bedrock `.env` still in place.

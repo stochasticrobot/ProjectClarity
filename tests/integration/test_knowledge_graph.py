@@ -61,7 +61,7 @@ class KnowledgeGraphTests(unittest.TestCase):
                     self.assertEqual(sessions.collections.default(), sessions.default_collection)
                     self.assertEqual(client.get('/api/knowledge-graph').status_code, 503)
                     self.assertNotIn('create-collection', client.get('/graph').text)
-                    self.assertNotIn('research-collection', client.get('/').text)
+                    self.assertIn('id="knowledge-session"', client.get('/').text)
                     self.assertEqual(client.post('/api/collections', json={'name': 'No'}, headers={'origin': 'https://example.org'}).status_code, 403)
                     response = client.get(f"/api/collections/{row['id']}/graph")
                     self.assertEqual(response.status_code, 503)
@@ -71,13 +71,92 @@ class KnowledgeGraphTests(unittest.TestCase):
             finally:
                 sessions.close()
 
+    def test_fresh_default_explicit_reuse_and_idempotent_setup(self):
+        """Create isolated knowledge sessions through HTTP unless reuse is explicit.
+
+        Args: None; uses fixture model responses and no Neo4j connection.
+        Returns: None; asserts fresh IDs, unchanged duplicate starts, existing-ID
+            reuse, rejected unknown/reassigned IDs, and persistent membership.
+        """
+        with TemporaryDirectory() as tmp:
+            sessions = Sessions(Path(tmp), FullWorkflowCaller(questions=[]), env_file=Path(tmp)/'absent')
+            try:
+                with TestClient(create_app(sessions)) as client:
+                    states = []
+                    for _ in range(2):
+                        payload = {'session_id': str(uuid4()), 'question': 'Where does Acme build tools?'}
+                        response = client.post('/api/setup', json=payload)
+                        self.assertEqual(response.status_code, 202)
+                        states.append(response.json())
+                        sessions.executor.submit(lambda: None).result(timeout=20)
+                        before = client.get('/api/collections').json()
+                        duplicate = client.post('/api/setup', json=payload)
+                        self.assertEqual(duplicate.json()['collection_id'], states[-1]['collection_id'])
+                        self.assertEqual(client.get('/api/collections').json(), before)
+                    first, second = [state['collection_id'] for state in states]
+                    self.assertNotEqual(first, second)
+                    self.assertNotIn(sessions.default_collection['id'], [first, second])
+                    payload = {'session_id': str(uuid4()), 'question': 'Where does Acme build tools?',
+                               'collection_id': first}
+                    self.assertEqual(client.post('/api/setup', json=payload).json()['collection_id'], first)
+                    sessions.executor.submit(lambda: None).result(timeout=20)
+                    self.assertEqual(client.post('/api/setup', json={**payload, 'collection_id': second}).status_code, 409)
+                    self.assertEqual(client.post('/api/setup', json={**payload, 'session_id': str(uuid4()),
+                                     'collection_id': str(uuid4())}).status_code, 404)
+                    self.assertEqual(len(client.get(f'/api/collections/{first}/sessions').json()), 2)
+                    self.assertEqual(len(client.get(f'/api/collections/{second}/sessions').json()), 1)
+                    self.assertEqual(client.get('/api/knowledge-graph/sessions').json(), [])
+                sessions.close()
+                sessions = Sessions(Path(tmp), FullWorkflowCaller(questions=[]), env_file=Path(tmp)/'absent')
+                self.assertEqual(sessions.read(states[0]['session_id'])['collection_id'], first)
+            finally:
+                sessions.close()
+
+    @unittest.skipUnless(os.environ.get('CLARITY_TEST_NEO4J_ENV'), 'Real Neo4j connection not supplied')
+    def test_fresh_graphs_stay_isolated_until_explicit_reuse(self):
+        """Prove fresh default isolation and chosen accumulation in actual Neo4j.
+
+        Args: None; uses the private test database configuration and fixture models.
+        Returns: None; runs three production HTTP workflows with identical names,
+            checks final persisted assertion membership and an empty legacy default.
+            New UUID collections remain for inspection; existing graph data is untouched.
+        """
+        with TemporaryDirectory() as tmp:
+            sessions = Sessions(Path(tmp), RelationshipCaller(questions=[]),
+                env_file=Path(os.environ['CLARITY_TEST_NEO4J_ENV']), runner_factory=FixtureRun)
+            try:
+                with TestClient(create_app(sessions)) as client:
+                    states = []
+                    for index in range(3):
+                        sid = str(uuid4())
+                        payload = {'session_id': sid, 'question': 'Where does Acme build tools?',
+                                   'auto_advance': True, 'research_rounds': 1}
+                        if index == 2:
+                            payload['collection_id'] = states[0]['collection_id']
+                        self.assertEqual(client.post('/api/setup', json=payload).status_code, 202)
+                        self.assertEqual(wait_for_completion(client, sid)['status'], 'report_completed')
+                        sessions.graph_jobs.executor.submit(lambda: None).result(timeout=30)
+                        state = client.get(f'/api/setup/{sid}').json()
+                        self.assertEqual(state['knowledge_graph']['status'], 'completed')
+                        states.append(state)
+                    self.assertNotEqual(states[0]['collection_id'], states[1]['collection_id'])
+                    for index, expected in [(0, {states[0]['session_id'], states[2]['session_id']}),
+                                            (1, {states[1]['session_id']})]:
+                        cid = states[index]['collection_id']
+                        rows = client.get(f'/api/collections/{cid}/graph').json()['rows']
+                        self.assertEqual({row['assertion']['session_id'] for row in rows}, expected)
+                        self.assertEqual(len(rows), len(expected))
+                    self.assertEqual(client.get('/api/knowledge-graph').json()['rows'], [])
+            finally:
+                sessions.close()
+
     @unittest.skipUnless(os.environ.get('CLARITY_TEST_NEO4J_ENV'), 'Real Neo4j connection not supplied')
     def test_production_http_accumulation_isolation_retry_and_restart(self):
-        """Use actual Neo4j for two default sessions and one explicitly isolated session.
+        """Use actual Neo4j for two explicitly shared sessions and one isolated session.
 
         Args: None; reads only the private connection-file path from the environment.
         Returns: None; asserts automatic projection, explicit relationships, quotes,
-            default reuse, internal isolation, parameterized filtering, retry idempotence, rollback after
+            explicit default reuse, isolation, parameterized filtering, retry idempotence, rollback after
             tampered evidence, and persistence after reopening the application.
         """
         with TemporaryDirectory() as tmp:
@@ -92,7 +171,7 @@ class KnowledgeGraphTests(unittest.TestCase):
                     for cid in (collections[0], collections[0], collections[1]):
                         sid = str(uuid4()); ids.append(sid)
                         response = client.post('/api/setup', json={'session_id': sid,
-                            **({'collection_id': cid} if cid != collections[0] else {}),
+                            'collection_id': cid,
                             'question': 'Where does Acme build tools?', 'auto_advance': True, 'research_rounds': 1})
                         self.assertEqual(response.status_code, 202)
                         self.assertEqual(wait_for_completion(client, sid)['status'], 'report_completed')
@@ -226,7 +305,7 @@ class KnowledgeGraphTests(unittest.TestCase):
                     state = client.get(f'/api/setup/{sid}').json()
                     self.assertEqual(state['status'], 'report_running')
                     self.assertEqual(state['knowledge_graph']['status'], 'completed')
-                    rows = client.get('/api/knowledge-graph').json()['rows']
+                    rows = client.get(f"/api/collections/{state['collection_id']}/graph").json()['rows']
                     self.assertEqual(len(rows), 1)
                     self.assertEqual(rows[0]['assertion']['quote'], 'Acme builds AI tools in Canada.')
                     self.assertNotIn('generate-report', client.get(f'/graph?session={sid}').text)

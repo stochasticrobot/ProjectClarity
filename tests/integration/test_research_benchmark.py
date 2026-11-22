@@ -71,6 +71,23 @@ class FakeProvider:
 class BenchmarkTests(unittest.TestCase):
     """Verify full routing, no-key leakage, failure accounting and score denominators."""
 
+    def setUp(self):
+        """Pin offline fixtures to their mocked provider regardless of private config.
+
+        Args: None.
+        Returns: None; temporarily overrides selection and forbids Bedrock client
+            construction. Cleanup restores the process environment after each test.
+            No credentials are read or requests made by this setup.
+        """
+        selection = patch.dict('os.environ', {'PROJECTCLARITY_PROVIDER': 'anthropic',
+                               'PROJECTCLARITY_MODEL': 'claude-haiku-5-5'})
+        selection.start()
+        self.addCleanup(selection.stop)
+        guard = patch('projectclarity.model_access.providers.bedrock_provider.BedrockProvider._client',
+                      side_effect=AssertionError('Offline fixture must not create a Bedrock client.'))
+        guard.start()
+        self.addCleanup(guard.stop)
+
     def run_fixture(self, root, failure=None, repeat=1):
         """Run the real orchestrator and CLI modules with only provider I/O replaced.
 
@@ -85,7 +102,7 @@ class BenchmarkTests(unittest.TestCase):
         provider = FakeProvider(failure)
         output = io.StringIO()
         with patch.dict(os.environ, {'ANTHROPIC_API_KEY': 'offline-placeholder'}), \
-             patch('testing.extraction_test_rig.Anthropic') as upstream, patch('projectclarity.evidence_selection.relevance_selection.Anthropic') as selector, \
+             patch('projectclarity.model_access.providers.anthropic_provider.Anthropic') as upstream, patch('projectclarity.model_access.providers.anthropic_provider.Anthropic') as selector, \
              contextlib.redirect_stdout(output):
             upstream.return_value.__enter__.return_value = provider
             selector.return_value.__enter__.return_value = provider
@@ -135,7 +152,7 @@ class BenchmarkTests(unittest.TestCase):
         Args: None.
         Returns: None; asserts 39-call preview and 117-call repeat cap behavior.
         """
-        with patch('testing.extraction_test_rig.Anthropic') as client, patch('projectclarity.evidence_selection.relevance_selection.Anthropic') as selector, \
+        with patch('projectclarity.model_access.providers.anthropic_provider.Anthropic') as client, patch('projectclarity.model_access.providers.anthropic_provider.Anthropic') as selector, \
              contextlib.redirect_stdout(io.StringIO()), contextlib.redirect_stderr(io.StringIO()):
             self.assertEqual(research_benchmark.main(['run']), 0)
             self.assertEqual(research_benchmark.main(['run', '--repeat', '3', '--max-calls', '117']), 0)

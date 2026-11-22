@@ -1,4 +1,6 @@
 anthropic==1.17.0
+boto3==1.44.9
+jsonschema==4.26.0
 pydantic==2.14.1
 python-dotenv==1.2.4
 langgraph==1.2.19

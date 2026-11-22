@@ -2,18 +2,31 @@
 
 **Agentic research with inspectable evidence—from a question to a cited answer and an explorable knowledge graph.**
 
-ProjectClarity turns an open-ended research question into explicit answer requirements,
-searches the web, extracts facts from documents, reviews their source support, and
-follows promising links for additional research. It assembles reviewed evidence
-into a cited report you can export as CSV. Separately, it builds a knowledge graph
-from saved extraction records so you can explore entities and their source-backed
-relationships, including assertions not selected for the report.
+ProjectClarity is an agentic research system that automates search, reads documents,
+and performs entity extraction to build knowledge graphs from unstructured data.
+
+It started about a year ago as an experiment with named entity extraction. Basically
+just testing to see how useful an LLM would be at identifying people and places within
+documents. This seemingly simple task was very difficult a few years ago, and now it's
+become mostly trivial.
+
+This version uses LangGraph to manage an agentic workflow. The workflow allows you to
+start with an open-ended research question. From there the system derives explicit answer
+requirements (basically, what information is needed as part of formulating an answer to
+the supplied question), automates web search (you might have to answer a captcha), extracts
+facts from documents, reviews their source support, and follows promising links for additional research.
+
+At the end the system assembles reviewed evidence into a cited report you can export as CSV.
+
+Separately, it builds a knowledge graph from saved extraction records so you can explore entities
+and their source-backed relationships, including assertions not selected for the report.
+Ultimately (for me) the knowledge graph is the goal, and the research request is a way to focus searching.
 
 The engineering focus is **controlled autonomy**: models interpret questions and
 assess evidence; code controls execution, validates references, bounds requests,
 preserves provenance, and assembles the final answer.
 
-**Stack:** Python · LangGraph · Anthropic API · Pydantic · FastAPI · SQLite · Neo4j / Cypher · Cytoscape.js · JavaScript
+**Stack:** Python · LangGraph · Anthropic API / Amazon Bedrock · Pydantic · FastAPI · SQLite · Neo4j / Cypher · Cytoscape.js · JavaScript
 
 [Architecture & code guide](CODE_GUIDE.md) · [Run locally](#run-locally) · [Tests](#testing)
 
@@ -89,7 +102,7 @@ lets the user open the explorer explicitly.
 | Reduce latency without losing recovery | Bounded per-stage worker pools; coordinators save shared progress and retain completed responses when stopped | [Concurrent extraction](src/projectclarity/knowledge_extraction/concurrent_extraction.py) |
 | Handle imperfect model responses | Structured checks, fact-level repair, and bounded adaptive extraction when output is truncated | [Fact validation and repair](src/projectclarity/knowledge_extraction/fact_validation_and_repair.py) |
 | Explore knowledge without changing the report | Rebuildable Neo4j projection, parameterized Cypher and an independent graph worker | [Knowledge graph](src/projectclarity/knowledge_graph/README.md) |
-| Prevent oversized report requests | Provider token-count preflight, bounded evidence batches, and deterministic item assembly instead of model merge calls | [Item reporting](src/projectclarity/reporting/item_reporting.py) · [Item assembly](src/projectclarity/reporting/answer_item_assembly.py) |
+| Prevent oversized report requests | Adapter token-count/estimate preflight, bounded evidence batches, and deterministic item assembly instead of model merge calls | [Item reporting](src/projectclarity/reporting/item_reporting.py) · [Item assembly](src/projectclarity/reporting/answer_item_assembly.py) |
 | Make failures diagnosable | Saved request/response receipts, validation outcomes, token accounting, and explicit retry without automatic crash replay | [Model ledger](src/projectclarity/model_access/model_ledger.py) · [Session management](src/projectclarity/workflow/research_sessions.py) |
 
 See the [code guide](CODE_GUIDE.md) for the complete module map and design boundaries.
@@ -104,10 +117,11 @@ and provenance. Search and zoom help inspect a bounded view—250 assertions by
 default, up to 500—not a claim to display all knowledge at once.
 
 Original extraction records remain authoritative. Neo4j is a derived view that can
-be rebuilt without new searches or model extraction. New research accumulates in
-one default collection; opening the explorer from a report does not automatically
-restrict it to that report's session. Separate collections exist internally, but
-collection management is not exposed yet.
+be rebuilt without new searches or model extraction. New research gets a fresh
+knowledge session by default. Expanded Settings let you select an existing ID to
+add evidence to that graph deliberately. Explore from a report opens its assigned
+knowledge session, including other research explicitly assigned to it. Old graphs
+are preserved; the legacy standalone explorer still shows the historical Default.
 
 Matching names are not automatically merged, and later source-support review is
 not currently overlaid on graph assertions. The graph is an evidence explorer,
@@ -117,9 +131,14 @@ not an independently verified database or a graph-reasoning agent. See the
 
 ## Run locally
 
-**Requirements:** Python 3.12+ (tested on 3.12), an Anthropic API key with access to
-the configured model, and internet access for live research. The commands below
+**Requirements:** Python 3.12+ (tested on 3.12), an Anthropic API key or Bedrock API
+key with access to the configured model, and internet access for live research. The commands below
 use a Unix-style shell and should be run from the project root.
+
+**Backend selection:** Anthropic remains the default. Bedrock Nova Micro is also
+available through the shared provider interface. See [model providers](docs/MODEL_PROVIDERS.md)
+for configuration, capability differences, verification limits and adding future
+providers such as Ollama. Ollama itself is not implemented yet.
 
 ```bash
 python3 -m venv .venv
@@ -157,8 +176,9 @@ workflow then proceeds through research and reporting.
 | Concurrent model calls | 6 per stage | 1–16 independently for extraction, selection, triage, investigation, link ranking, and report selection |
 | Links followed per additional round | Up to 10 | At most 3 from the same source page; previously visited destinations are excluded |
 
-An `ANTHROPIC_API_KEY` environment variable takes precedence over the file.
-The current model is configured in [model_client.py](src/projectclarity/model_access/model_client.py).
+Process environment settings take precedence over the private `.env` file.
+Choose the backend and model with `PROJECTCLARITY_PROVIDER` / `PROJECTCLARITY_MODEL`
+or the `--provider` / `--model` CLI overrides; see [model configuration](docs/MODEL_PROVIDERS.md).
 Live model calls can incur charges. Request/token budgets are usage limits, not
 monetary caps. **Continue** adds another configured allowance without replaying
 completed work. Provider token estimates may differ from actual usage; unconfirmed
@@ -214,7 +234,9 @@ The test command is CI-ready; hosted CI/CD is not configured.
 - **Review is round-local.** Later evidence joins the report but does not reopen
   earlier rejected claims automatically.
 - **Recovery is deliberate.** A server restart does not replay model calls.
-  Explicit retries can reuse matching saved responses; unfinished work may need new calls.
+  Report selection and claim investigation can retry rejected output once within
+  the existing budget. Explicit retries can reuse matching saved responses;
+  unfinished work may need new calls.
 
 Offline tests establish workflow behavior and validation contracts, not general
 research accuracy. Detailed policies live with the implementation:

@@ -94,11 +94,19 @@ with the returned graph. Database setup belongs in the
 
 ## Grouping evidence across research sessions
 
-New research sessions share one persistent default collection, allowing evidence
-from several questions to accumulate. Multiple collections are supported internally
-through `collection_id`, but creation and selection are not exposed in the interface.
-Separate collections can keep unrelated bodies of evidence apart—for example,
-fictional worlds and real-world research.
+New research sessions automatically create a fresh collection, labelled with the
+question. The setup page calls this a **knowledge session**. Expanded Settings
+provide a dropdown containing the fresh default and existing names with their full
+IDs. Select an existing ID deliberately to accumulate evidence across questions.
+The server assigns the fresh UUID at start and the setup result displays it.
+The API continues to use `collection_id`; omitted/null means fresh, an explicit ID
+must already exist. Retrying the same research `session_id` preserves membership.
+The separate research ID remains the provenance and replacement boundary inside
+a collection. Neither ID is chosen by a model.
+
+Old memberships and the historical shared Default collection are preserved, not
+migrated or deleted. The legacy unscoped `/graph` view still shows that Default;
+open Explore from a research session/report to see its assigned knowledge session.
 
 Reads and writes are scoped to a collection. A session-linked explorer uses that
 session's collection; existing memberships are not automatically renamed or merged.

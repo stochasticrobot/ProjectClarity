@@ -1,13 +1,13 @@
 """Pause research before further AI work would exceed its shared allowance.
 
 Every stage and round draws from one call and token budget. Before sending a
-request, the client reserves its counted input plus maximum output, so concurrent
+request, the client reserves its adapter-counted or explicitly estimated input plus
+effective maximum output, so concurrent
 workers cannot each spend the same remaining allowance. A pause keeps those
 workers waiting until the user grants more room or quits. Private accounting is
 saved separately from stage snapshots so progress updates cannot erase it.
 
-Token counts are usage units, not prices. Provider counts are estimates before
-execution; actual usage replaces reservations afterward. Missing usage keeps the
+Token counts are usage units, not prices. Admission counts may be provider-reported or explicitly local estimates; actual usage replaces reservations afterward. Missing usage keeps the
 reservation as an explicit estimate and requires acknowledgement before more work.
 """
 import json
@@ -137,8 +137,8 @@ class ResearchBudgets:
     def reserve(self, sid, ticket, tokens):
         """Wait for room, then reserve one generation request and its token ceiling.
 
-        Args: sid: Session UUID; ticket: Unique ledger call ID; tokens: Provider-
-            counted input plus maximum output, including reasoning allowance.
+        Args: sid: Session UUID; ticket: Unique ledger call ID; tokens: Adapter-counted or explicitly estimated
+            input plus effective maximum output, including reasoning allowance.
         Returns: None after durable admission. Blocks during a budget pause; Quit
             raises BudgetStopped. In-flight calls drain before requesting approval
             so unused reservations do not cause unnecessary permission dialogs.

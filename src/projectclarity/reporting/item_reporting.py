@@ -14,6 +14,7 @@ class ItemReportBuilder(BoundedReportBuilder):
     """Reuse durable bounded execution without the old narrative/merge workflow."""
 
     allow_partial = True
+    recover_invalid_output = True
 
     def request(self, kind, items):
         """Prepare a filtering request, never a model-written report merge.

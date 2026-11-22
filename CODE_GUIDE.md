@@ -23,6 +23,14 @@ source-linked answer and an explorable knowledge graph. For the product overview
 7. [projection_jobs.py](src/projectclarity/knowledge_graph/projection_jobs.py) — why
    graph preparation neither blocks nor supplies report generation.
 
+## Provider and output boundaries
+
+Read [model providers](docs/MODEL_PROVIDERS.md) for configuration and extension,
+then [structured output](docs/STRUCTURED_OUTPUT.md) for codecs, strict validation,
+lossless normalization and bounded live evidence. The
+[provider package guide](src/projectclarity/model_access/providers/README.md)
+identifies the implementation entry points.
+
 ## Execution model
 
 ```mermaid

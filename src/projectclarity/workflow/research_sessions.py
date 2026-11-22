@@ -38,13 +38,15 @@ ACTIVE_STATUSES = ('working', 'search_working', 'run_running', 'selection_runnin
 class Sessions:
     """Durable local sessions and serialized graph work; not a research worker system."""
 
-    def __init__(self, root, caller=None, env_file=Path.cwd() / '.env', runner_factory=SourceCollection):
+    def __init__(self, root, caller=None, env_file=Path.cwd() / '.env', runner_factory=SourceCollection, provider=None, model=None):
         """Initialize private session files and persistent LangGraph checkpoints.
 
         Args:
             root: Directory dedicated to this UI, separate from research_benchmark results.
             caller: Optional provider replacement for deterministic offline tests.
             env_file: Existing credential file for real requests.
+            provider: Optional registered model backend override.
+            model: Optional backend-specific model ID override.
             runner_factory: Real autonomous runner, replaceable for offline API tests.
         Returns:
             None. Creates SQLite checkpoint storage, one research worker and a
@@ -65,7 +67,7 @@ class Sessions:
         self.executor = ThreadPoolExecutor(max_workers=1, thread_name_prefix='research-setup')
         self.connection = sqlite3.connect(root / 'checkpoints.sqlite', check_same_thread=False)
         (root / 'checkpoints.sqlite').chmod(0o600)
-        transport = caller or ModelCalls(root, env_file)
+        transport = caller or ModelCalls(root, env_file, provider=provider, model=model)
         self.transport = transport
         saver = SqliteSaver(self.connection)
         self.graph = build_setup_graph(transport, saver)
@@ -209,7 +211,7 @@ class Sessions:
             extraction_concurrency, selection_concurrency and triage_concurrency fix per-run
             call limits for their respective stages. model_request_budget and
             model_token_budget apply cumulatively across the whole session.
-            An omitted collection uses the persistent shared default;
+            An omitted collection creates a fresh knowledge session named for the question;
             explicit membership must already exist and cannot change on duplicate starts.
         """
         sid, question = str(data.session_id), data.question.strip()
@@ -225,7 +227,7 @@ class Sessions:
             if any(json.loads(p.read_text())['status'] in ACTIVE_STATUSES for p in self.root.glob('*/session.json')):
                 raise HTTPException(409, 'Another setup is still running. Please wait for it to finish.')
             collection = (self.collections.require(str(data.collection_id)) if data.collection_id
-                          else self.default_collection)
+                          else self.collections.create(question[:120]))
             state = {'collection_id': collection['id'], 'session_id': sid, 'original_question': question, 'status': 'working', 'auto_advance': data.auto_advance,
                      'web_query_count': data.web_query_count, 'research_rounds': data.research_rounds, 'current_round': 1,
                      'model_request_budget': data.model_request_budget,

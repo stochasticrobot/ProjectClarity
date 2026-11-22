@@ -58,6 +58,23 @@ def seed(root, calls=2, tokens=1000):
 class BudgetTests(unittest.TestCase):
     """Prove real admission, HTTP decisions and durable retry accounting offline."""
 
+    def setUp(self):
+        """Pin offline fixtures to their mocked provider regardless of private config.
+
+        Args: None.
+        Returns: None; temporarily overrides selection and forbids Bedrock client
+            construction. Cleanup restores the process environment after each test.
+            No credentials are read or requests made by this setup.
+        """
+        selection = patch.dict('os.environ', {'PROJECTCLARITY_PROVIDER': 'anthropic',
+                               'PROJECTCLARITY_MODEL': 'claude-haiku-5-5'})
+        selection.start()
+        self.addCleanup(selection.stop)
+        guard = patch('projectclarity.model_access.providers.bedrock_provider.BedrockProvider._client',
+                      side_effect=AssertionError('Offline fixture must not create a Bedrock client.'))
+        guard.start()
+        self.addCleanup(guard.stop)
+
     def test_parallel_calls_cannot_spend_the_same_request_allowance(self):
         """Hold two provider calls while six real client workers contend for a cap.
 
@@ -65,7 +82,7 @@ class BudgetTests(unittest.TestCase):
         Returns: None; verifies two admissions, draining before pause, explicit
             extension, no replay, and Quit releasing the remaining workers.
         """
-        with TemporaryDirectory() as tmp, patch.dict('os.environ', {'ANTHROPIC_API_KEY': 'fixture'}), patch('projectclarity.model_access.model_client.Anthropic') as provider:
+        with TemporaryDirectory() as tmp, patch.dict('os.environ', {'ANTHROPIC_API_KEY': 'fixture'}), patch('projectclarity.model_access.providers.anthropic_provider.Anthropic') as provider:
             root = Path(tmp); sid = seed(root); caller = ModelCalls(root, root/'unused')
             messages = provider.return_value.__enter__.return_value.messages
             messages.count_tokens.return_value = SimpleNamespace(input_tokens=10)
@@ -113,7 +130,7 @@ class BudgetTests(unittest.TestCase):
         Returns: None; tests actual input/output/cache sums, waiting rather than
             spurious approval, and a pre-dispatch pause for the third request.
         """
-        with TemporaryDirectory() as tmp, patch.dict('os.environ', {'ANTHROPIC_API_KEY': 'fixture'}), patch('projectclarity.model_access.model_client.Anthropic') as provider:
+        with TemporaryDirectory() as tmp, patch.dict('os.environ', {'ANTHROPIC_API_KEY': 'fixture'}), patch('projectclarity.model_access.providers.anthropic_provider.Anthropic') as provider:
             root = Path(tmp); sid = seed(root, calls=20, tokens=55); caller = ModelCalls(root, root/'unused')
             messages = provider.return_value.__enter__.return_value.messages
             messages.count_tokens.return_value = SimpleNamespace(input_tokens=10)
@@ -139,7 +156,7 @@ class BudgetTests(unittest.TestCase):
             defaults, input validation and Quit releasing setup without downstream work.
         """
         for action in ('continue', 'quit'):
-            with self.subTest(action=action), TemporaryDirectory() as tmp, patch.dict('os.environ', {'ANTHROPIC_API_KEY': 'fixture'}), patch('projectclarity.model_access.model_client.Anthropic') as provider:
+            with self.subTest(action=action), TemporaryDirectory() as tmp, patch.dict('os.environ', {'ANTHROPIC_API_KEY': 'fixture'}), patch('projectclarity.model_access.providers.anthropic_provider.Anthropic') as provider:
                 root = Path(tmp); messages = provider.return_value.__enter__.return_value.messages
                 messages.count_tokens.return_value = SimpleNamespace(input_tokens=10)
                 messages.create.side_effect = [response(json.dumps(PLAN)), response(json.dumps({'questions': []}))]
@@ -178,7 +195,7 @@ class BudgetTests(unittest.TestCase):
         """
         from tests.integration.test_document_pipeline import FixtureRun
         from tests.integration.test_research_graph import FullWorkflowCaller
-        with TemporaryDirectory() as tmp, patch.dict('os.environ', {'ANTHROPIC_API_KEY': 'fixture'}), patch('projectclarity.model_access.model_client.Anthropic') as provider:
+        with TemporaryDirectory() as tmp, patch.dict('os.environ', {'ANTHROPIC_API_KEY': 'fixture'}), patch('projectclarity.model_access.providers.anthropic_provider.Anthropic') as provider:
             root = Path(tmp); sid = str(uuid4()); fixtures = FullWorkflowCaller(questions=[])
             messages = provider.return_value.__enter__.return_value.messages
             messages.count_tokens.return_value = SimpleNamespace(input_tokens=10)
@@ -197,7 +214,9 @@ class BudgetTests(unittest.TestCase):
                     ('items', 'report-fixture')] if key in properties)
                 if 'entities' in properties and 'decisions' in properties:
                     stage = 'extract-omissions-fixture'
-                return response(fixtures(stage, request, sid))
+                neutral = {k: v for k, v in request.items() if k != 'output_config'}
+                neutral['response_schema'] = request['output_config']['format']['schema']
+                return response(fixtures(stage, neutral, sid))
 
             messages.create.side_effect = send
             sessions = Sessions(root, runner_factory=FixtureRun)
@@ -230,7 +249,7 @@ class BudgetTests(unittest.TestCase):
         Returns: None; ensures the next transport pauses before sending, retains
             a conservative estimate and permits only an acknowledged continuation.
         """
-        with TemporaryDirectory() as tmp, patch.dict('os.environ', {'ANTHROPIC_API_KEY': 'fixture'}), patch('projectclarity.model_access.model_client.Anthropic') as provider:
+        with TemporaryDirectory() as tmp, patch.dict('os.environ', {'ANTHROPIC_API_KEY': 'fixture'}), patch('projectclarity.model_access.providers.anthropic_provider.Anthropic') as provider:
             root = Path(tmp); sid = seed(root, calls=2, tokens=1000)
             first = ModelCalls(root, root/'unused')
             first.budgets.reserve(sid, 'interrupted', 30)
@@ -260,7 +279,7 @@ class BudgetTests(unittest.TestCase):
         Args: None.
         Returns: None; checks zero provider generations and unchanged read-only files.
         """
-        with TemporaryDirectory() as tmp, patch.dict('os.environ', {'ANTHROPIC_API_KEY': 'fixture'}), patch('projectclarity.model_access.model_client.Anthropic') as provider:
+        with TemporaryDirectory() as tmp, patch.dict('os.environ', {'ANTHROPIC_API_KEY': 'fixture'}), patch('projectclarity.model_access.providers.anthropic_provider.Anthropic') as provider:
             root = Path(tmp); sid = seed(root, tokens=1); caller = ModelCalls(root, root/'unused')
             messages = provider.return_value.__enter__.return_value.messages
             messages.count_tokens.return_value = SimpleNamespace(input_tokens=10)

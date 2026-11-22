@@ -148,7 +148,11 @@ def run_benchmark(args):
          'policy': 'research-packet-v1/manual-semantic-review-v1',
          'scope': 'Three stages to per-chunk Relevant Knowledge stores, not final answers'}, '')
     trials = []
-    common = ['--model', args.model, '--env-file', args.env_file]
+    common = ['--env-file', args.env_file]
+    if args.model:
+        common += ['--model', args.model]
+    if args.provider:
+        common += ['--provider', args.provider]
     for repeat in range(1, args.repeat + 1):
         for question in questions:
             trial_id = f"r{repeat}-{question['id']}"
@@ -459,7 +463,8 @@ def main(argv=None):
     run.add_argument('--live', action='store_true')
     run.add_argument('--repeat', type=int, default=1)
     run.add_argument('--max-calls', type=int, default=39)
-    run.add_argument('--model', default=extraction_test_rig.DEFAULT_MODEL)
+    run.add_argument('--model')
+    run.add_argument('--provider')
     run.add_argument('--env-file', type=Path, default=ROOT / '.env')
     run.add_argument('--output-root', type=Path, default=ROOT / 'runs')
     score = commands.add_parser('assess')

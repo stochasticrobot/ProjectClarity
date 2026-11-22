@@ -18,6 +18,7 @@ if (freshStart) { localStorage.removeItem('clarity.setup'); history.replaceState
 let sessionId = localStorage.getItem('clarity.setup');
 let timer = null;
 let renderedQuestions = '';
+let knowledgeChoicesRevision = 0;
 
 /** Show a user-facing status or error without rendering HTML.
  * Args: text — readable message; error — whether it describes a failure.
@@ -52,12 +53,41 @@ async function api(path, data) {
  */
 function node(tag, text) { const item = document.createElement(tag); item.textContent = text; return item; }
 
+/** Populate knowledge-session choices without creating collections or model calls.
+ * Args: none; uses the existing collection listing endpoint.
+ * Returns: promise; refreshes text-only options with fresh isolation selected.
+ * On listing failure, fresh research remains available with an explicit notice.
+ * A revision guard prevents an older response replacing newer form choices.
+ */
+async function loadKnowledgeSessions() {
+  const revision = ++knowledgeChoicesRevision;
+  const select = $('knowledge-session');
+  const fresh = node('option', 'New knowledge session (automatic ID)'); fresh.value = '';
+  select.replaceChildren(fresh); select.disabled = true;
+  $('knowledge-session-status').textContent = 'Loading existing knowledge sessions…';
+  try {
+    const rows = await api('/api/collections');
+    if (revision !== knowledgeChoicesRevision) return;
+    for (const row of rows) {
+      const option = node('option', `${row.name} — ${row.id}`);
+      option.value = row.id; select.append(option);
+    }
+    $('knowledge-session-status').textContent = '';
+  } catch (error) {
+    if (revision !== knowledgeChoicesRevision) return;
+    $('knowledge-session-status').textContent = 'Existing sessions could not be loaded. New research will still use a fresh knowledge session.';
+  } finally {
+    if (revision === knowledgeChoicesRevision) select.disabled = false;
+  }
+}
+
 /** Render saved state while preserving clarification drafts during polling.
  * Args: state — public session snapshot from the server.
  * Returns: nothing; updates sections and schedules polling only during work.
  */
 function render(state) {
   renderStages(state);
+  $('saved-knowledge-session').textContent = state.collection_id ? `Knowledge session: ${state.collection_id}` : 'This older research has no knowledge-session assignment.';
   clearTimeout(timer);
   if (state.status.startsWith('link_ranking_')) { location.href = `/links/${sessionId}`; return; }
   if (state.status.startsWith('report_')) { location.href = `/report/${sessionId}`; return; }
@@ -125,7 +155,7 @@ async function refresh() {
 /** Submit the research question once with a persistent idempotency identifier.
  * Args: event — browser form submission.
  * Returns: promise; saves budgets and the initial web-query count with the
- * question, starts polling,
+ * question and selected existing knowledge session (or fresh default), starts polling,
  * or restores the form after a rejected request.
  */
 async function submitQuestion(event) {
@@ -134,7 +164,7 @@ async function submitQuestion(event) {
   sessionId = crypto.randomUUID(); localStorage.setItem('clarity.setup', sessionId);
   showActivity({label:'Submitting your question',tone:'working',busy:true});
   message('Defining what’s needed…');
-  try { render(await api('/api/setup', {session_id: sessionId, question: $('question').value, auto_advance: true, web_query_count: Number($('web-query-count').value), model_request_budget: Number($('model-request-budget').value), model_token_budget: Number($('model-token-budget').value), research_rounds: Number($('research-rounds').value), extraction_concurrency: Number($('extraction-concurrency').value), selection_concurrency: Number($('selection-concurrency').value), triage_concurrency: Number($('triage-concurrency').value), investigation_concurrency: Number($('investigation-concurrency').value), link_ranking_concurrency: Number($('link-ranking-concurrency').value), report_selection_concurrency: Number($('report-selection-concurrency').value)})); }
+  try { render(await api('/api/setup', {session_id: sessionId, collection_id: $('knowledge-session').value || null, question: $('question').value, auto_advance: true, web_query_count: Number($('web-query-count').value), model_request_budget: Number($('model-request-budget').value), model_token_budget: Number($('model-token-budget').value), research_rounds: Number($('research-rounds').value), extraction_concurrency: Number($('extraction-concurrency').value), selection_concurrency: Number($('selection-concurrency').value), triage_concurrency: Number($('triage-concurrency').value), investigation_concurrency: Number($('investigation-concurrency').value), link_ranking_concurrency: Number($('link-ranking-concurrency').value), report_selection_concurrency: Number($('report-selection-concurrency').value)})); }
   catch (error) { message(error.message, true); }
   finally { button.disabled = false; }
 }
@@ -153,16 +183,19 @@ async function submitAnswers(event) {
 
 /** Reset only the visible form, preserving saved sessions and provider receipts.
  * Args: none.
- * Returns: nothing; clears the active-session pointer and cancels local polling.
+ * Returns: nothing; clears the active-session pointer, cancels local polling,
+ * and resets knowledge-session selection to fresh while reloading existing IDs.
  */
 function newQuestion() {
   clearTimeout(timer); localStorage.removeItem('clarity.setup'); sessionId = null; renderedQuestions = ''; renderStages();
   $('intro').hidden = false; $('result').hidden = true; $('question').value = ''; message(''); $('question').focus();
+  loadKnowledgeSessions();
 }
 $('question-form').addEventListener('submit', submitQuestion);
 $('answer-form').addEventListener('submit', submitAnswers);
 $('new-question').addEventListener('click', newQuestion);
 if (sessionId) refresh();
+else loadKnowledgeSessions();
 
 /** Prepare queries once from the server's saved finalized definition.
  * Args: none.
