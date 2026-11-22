@@ -3,7 +3,9 @@
 **Agentic research with inspectable evidence—from a question to a cited answer and an explorable knowledge graph.**
 
 ProjectClarity is an agentic research system that automates search, reads documents,
-and performs entity extraction to build knowledge graphs from unstructured data.
+and performs entity extraction to build knowledge graphs from unstructured data. 
+The UX is a web form that starts by asking you want you want to research, and ends
+with a human readable report (exportable to CSV) and a knowledge graph explorer.
 
 It started about a year ago as an experiment with named entity extraction. Basically
 just testing to see how useful an LLM would be at identifying people and places within
