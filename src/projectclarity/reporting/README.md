@@ -1,18 +1,29 @@
 # Build a cited answer from reviewed evidence
 
 Turns the finalized question, answer requirements, and reviewed facts into a set of
-answer items. The default path filters evidence in bounded model calls, then
-assembles the final table and CSV in code. It does not write narrative summaries,
+answer items or a single-entity profile, according to the plan saved during
+clarification. The directory path filters evidence in bounded model calls, then
+assembles the final table and CSV in code. The directory path does not write narrative summaries,
 make model merge calls, or collect missing evidence.
+
+## Type routing
+
+[contracts.py](contracts.py) defines saved intent; [registry.py](registry.py) resolves
+only implemented formats. [directory](directory/README.md) owns the existing list
+algorithm. [entity_profile](entity_profile/README.md) owns profile identity checks,
+source-cited overview/sections and CSV. Shared batching, concurrency and receipt
+modules remain at this package root. The details below describe directory behavior
+unless stated otherwise. See [report types](../../../docs/REPORT_TYPES.md) for profile
+contracts, historical compatibility and explicit unsupported-format handling.
 
 ## Reading order
 
 | File | Responsibility |
 |---|---|
 | [report_generation.py](report_generation.py) | Load reviewed evidence, enforce final field/citation/accounting checks, save report and spreadsheet-safe CSV. |
-| [item_reporting.py](item_reporting.py) | Coordinate the current item-first path using the shared bounded dispatcher. |
-| [answer_item_selection.py](answer_item_selection.py) | Request and validate cited answer contributions, uncertainty tags, and unused facts. |
-| [answer_item_assembly.py](answer_item_assembly.py) | Combine compatible exact-label contributions and preserve missing or conflicting fields without model calls. |
+| [directory/builder.py](directory/builder.py) | Coordinate the current item-first path using the shared bounded dispatcher. |
+| [directory/selection.py](directory/selection.py) | Request and validate cited answer contributions, field evidence statuses, and unused facts. |
+| [directory/assembly.py](directory/assembly.py) | Combine compatible exact-label contributions and preserve missing or conflicting fields without model calls. |
 | [report_payloads.py](report_payloads.py) | Compact whole facts and shared evidence without prefix-truncating their contents. |
 | [batched_reporting.py](batched_reporting.py) | Shared token preflight, task receipts, bounded omission recovery, and exact-request reuse; also retains the legacy builder. |
 | [concurrent_report_selection.py](concurrent_report_selection.py) | Bounded workers, coordinator-acknowledged checkpoints, and deterministic result ordering. |

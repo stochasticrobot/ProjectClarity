@@ -87,6 +87,7 @@ async function loadKnowledgeSessions() {
  */
 function render(state) {
   renderStages(state);
+  $('saved-report-plan').textContent=state.report_plan?`Report format: ${state.report_plan.report_type.replaceAll('_',' ')} — ${state.report_plan.reason}`:'';
   $('saved-knowledge-session').textContent = state.collection_id ? `Knowledge session: ${state.collection_id}` : 'This older research has no knowledge-session assignment.';
   clearTimeout(timer);
   if (state.status.startsWith('link_ranking_')) { location.href = `/links/${sessionId}`; return; }

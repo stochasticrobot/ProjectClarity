@@ -90,3 +90,11 @@ Restart marks unfinished graph jobs interrupted; refresh is explicit, not crash 
 See the [knowledge graph architecture](../../../CODE_GUIDE.md#knowledge-graph-architecture)
 for storage ownership, collection scope and the difference between source assertions
 and reviewed report evidence.
+
+## Saved report intent
+
+Clarification selects a report plan and refinement revises it with the bound answers.
+This uses the existing calls, not a new planning call or confirmation screen. The plan
+is saved before search and consumed by query generation and the report registry.
+Unsupported formats stop before acquisition; historical sessions without a plan
+retain directory behavior. See [report types](../../../docs/REPORT_TYPES.md).

@@ -21,6 +21,7 @@ import hashlib
 import json
 from pathlib import Path
 from typing import Literal
+from projectclarity.claim_review.support_diagnostics import FailureCategory, failure_categories_field
 from uuid import uuid4
 from concurrent.futures import ThreadPoolExecutor, wait, FIRST_COMPLETED
 from queue import Queue, Empty
@@ -43,6 +44,7 @@ class InvestigationDecision(BaseModel):
     fact_id:str
     decision:Literal['accept','reject']
     reason:str
+    failure_categories: list[FailureCategory] = failure_categories_field()
     citations:list[Citation]
 
 
@@ -52,7 +54,8 @@ def validate_investigation(text, packet, normalizations=None):
     Args: text: Raw response JSON; packet: Exact saved input evidence packet;
         normalizations: Optional list receiving unique whitespace-only citation
             conversions, including original quote, passage ID and source span.
-    Returns: Validated decision with exact source quotations, or ValueError. Only
+    Returns: Validated decision with exact source quotations and descriptive
+        remaining support categories, or ValueError. Legacy labels default empty. Only
         uniquely matched whitespace layout may be restored; words, punctuation
         and passage IDs are never guessed. Does not prove semantic entailment.
     """

@@ -20,6 +20,9 @@ from langgraph.types import Command
 from projectclarity.workflow.research_graph import build_setup_graph as build_graph
 from projectclarity.ux.web_app import Sessions, create_app
 
+DIRECTORY_PLAN = {'report_type':'directory','reason':'The question requests a list of companies.',
+                  'subject':None,'subject_kind':None,'subject_scope':None}
+
 PLAN = {'information_needed': [{'kind':'entity_type','name':'Company','description':'Identify companies that develop AI products.'}]}
 
 
@@ -59,9 +62,9 @@ class FakeCaller:
         if stage == 'define':
             return json.dumps(PLAN)
         if stage == 'clarify':
-            return json.dumps({'questions': self.questions})
+            return json.dumps({'questions': self.questions, 'report_plan': DIRECTORY_PLAN})
         data = json.loads(request['messages'][0]['content'])
-        return json.dumps({'research_question': 'AI companies headquartered in Canada. ' + data['answers'][0]['answer'], **PLAN})
+        return json.dumps({'research_question': 'AI companies headquartered in Canada. ' + data['answers'][0]['answer'], **PLAN, 'report_plan': DIRECTORY_PLAN})
 
 
 class SetupTests(unittest.TestCase):

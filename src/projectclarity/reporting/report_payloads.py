@@ -73,6 +73,7 @@ def compact_packet(packet, facts):
         rows.append({'id': record['id'], 'fact': record['fact'],
                      'entities': entity_refs, 'evidence': evidence_refs})
     return {**{key: packet[key] for key in ('research_question', 'requirements', 'coverage')},
+            **({'report_plan': packet['report_plan']} if 'report_plan' in packet else {}),
             'facts': rows, 'entity_definitions': entities, 'evidence_passages': evidence}
 
 

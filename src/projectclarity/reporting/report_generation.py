@@ -3,7 +3,9 @@
 Earlier steps gather and check individual claims. This final research step gives
 the AI the report's saved facts and the answer requirements defined at the start,
 asking it to filter bounded batches into cited answer items. Code combines those
-items and presents the requested fields without narrative or model merge calls.
+directory items or a single-entity profile through the saved type registry. Each
+type owns its validation, assembly and export; shared execution bounds calls. There
+is no final unbounded model merge for either implemented type.
 Legacy report artifacts remain readable. For a list of companies, those original
 requirements determine what information each company entry should contain.
 
@@ -122,7 +124,7 @@ def csv_value(value):
 
 
 def report_csv(report):
-    """Render all entries with the same requirement columns as the readable report.
+    """Render directory/legacy entries with the same requirement columns as their report.
 
     Args: report: Validated report artifact with requirements and entries.
     Returns: UTF8-ready CSV text; includes completeness, statuses and citations.
@@ -150,10 +152,18 @@ class ReportRun:
             publish: Atomic state writer; caller: Shared audited model transport;
             stop: Cooperative cancellation event.
         Returns: None; writes immutable manifest. Invalid context, duplicate fact
-            IDs or missing requirements fail initialization. No external work yet.
+            IDs, missing requirements or invalid/unsupported report plans fail
+            initialization. Historical sessions without a plan retain directory
+            behavior. The saved plan enters request fingerprints and manifests; no external work yet.
         """
         self.state,self.publish,self.caller,self.stop=state,publish,caller,stop
         self.item_report = state.get('report_scheme') != 'legacy'
+        from projectclarity.reporting.contracts import saved_report_plan
+        from projectclarity.reporting.registry import report_type
+        self.report_plan = saved_report_plan(state)
+        self.report_type = report_type(self.report_plan['report_type'])
+        if not self.item_report and self.report_type.name != 'directory':
+            raise ValueError('Legacy narrative mode cannot override a saved profile plan.')
         self.session_root = root
         from projectclarity.workflow.research_rounds import report_evidence
         folder, expected_facts, round_coverage = report_evidence(root, state)
@@ -178,6 +188,7 @@ class ReportRun:
             facts.append({'id':f'F{i+1}','original_fact_id':record['fact_id'],'fact':record['fact'],
                           'entities':record.get('entities',[]),'evidence':evidence})
         self.packet={'research_question':state['research_question'],'requirements':self.requirements,'facts':facts,
+            **({'report_plan': self.report_plan} if 'report_plan' in state else {}),
             'coverage':{k:state.get(k,{}).get('status','not_started') for k in ('run','selection','triage','investigation')}}
         self.packet['coverage']['unreviewed_investigation']=state['investigation'].get('claims_total',0)-state['investigation'].get('accepted',0)-state['investigation'].get('rejected',0)
         self.packet['coverage']['unreviewed_triage']=state['investigation'].get('triage_unreviewed',0)
@@ -186,20 +197,21 @@ class ReportRun:
             for key in ('unreviewed_investigation', 'unreviewed_triage'):
                 self.packet['coverage'][key] = sum(item[key] for item in round_coverage)
         self.progress={'status':'running','artifact_directory':str(self.root.relative_to(root)),
-            'concurrency':state.get('report_selection_concurrency',6),
+            'concurrency':state.get('report_selection_concurrency',6),'report_type':self.report_type.name,
             'facts_total':len(facts),'facts_accounted':0,'entries':0,'complete_entries':0,'incomplete_entries':0,
             'model_calls':0,'started_at':datetime.now(timezone.utc).isoformat()}
         state['report']=self.progress
         prompt_root = Path(__file__).resolve().parents[1] / 'prompts'
         self.prompt_hashes = {name: hashlib.sha256((prompt_root / name).read_bytes()).hexdigest()
-                              for name in (('prepare_report.txt','prepare_report_batch.txt') if self.item_report else ('legacy_prepare_report_batch.txt', 'merge_report_entries.txt', 'merge_report_summary.txt'))}
+                              for name in (self.report_type.prompts if self.item_report else ('legacy_prepare_report_batch.txt', 'merge_report_entries.txt', 'merge_report_summary.txt'))}
         save(self.root/'manifest.json',{'input_sha256':hashlib.sha256(raw).hexdigest(),'original_records':records,
              'packet':self.packet,'prompt_sha256':self.prompt_hashes,
              'report_selection_concurrency':self.progress['concurrency'],
-             'policy':'V3: bounded evidence filters; code-only item assembly; no narrative or model merges.' if self.item_report else 'V2: legacy bounded narrative reporting.'},'')
+             'report_plan': self.report_plan,
+             'policy':('V4: saved report type; bounded evidence contributions; type-specific validated assembly.' if 'report_plan' in state else 'V3: historical directory reporting.') if self.item_report else 'V2: legacy bounded narrative reporting.'},'')
 
     def prepare(self, graph_state):
-        """Generate cited answer items through bounded filters and code-only assembly.
+        """Generate the saved report type through bounded assessment and local assembly.
 
         Explicit legacy fixtures retain the previous narrative/merge path.
         
@@ -217,7 +229,7 @@ class ReportRun:
             findings without a model call. generation.json records success or failure,
             with a safe failure reason. Individual task receipts retain raw replies,
             token counts, request hashes and reuse provenance even on rejection.
-            Cancellation before dispatch raises InterruptedError. Item-mode batch errors
+            Cancellation before dispatch raises InterruptedError. Directory/profile batch errors
             permit explicitly partial output; unusable input and file errors propagate
             to execute. Only an explicit retry can reuse
             earlier validated tasks and resend failed work; input is never truncated.
@@ -225,21 +237,26 @@ class ReportRun:
         if self.stop.is_set():raise InterruptedError('Stopped before report request.')
         receipt={'status':'failed','attempted_calls':0}
         try:
-            if self.packet['facts']:
+            if self.packet['facts'] or self.report_type.name == 'entity_profile':
                 from projectclarity.reporting.batched_reporting import BoundedReportBuilder
-                from projectclarity.reporting.item_reporting import ItemReportBuilder
-                builder = ItemReportBuilder if self.item_report else BoundedReportBuilder
+                builder = self.report_type.builder if self.item_report else BoundedReportBuilder
                 result = builder(self, self.evidence_hash).build()
                 receipt['attempted_calls'] = self.progress['model_calls']
             else:
                 result={'summary':[],'entries':[],'gaps':['No source-supported knowledge is available to answer the requested fields.'],'exclusions':[]}
-            report={**result,'presentation':'items' if self.item_report else 'legacy','research_question':self.state['research_question'],'requirements':self.requirements,
+            report={**result,'presentation':self.report_type.presentation if self.item_report else 'legacy','report_plan':self.report_plan,'research_question':self.state['research_question'],'requirements':self.requirements,
                     'facts':self.packet['facts'],'coverage':self.packet['coverage'],
                     'scope':'Cited synthesis of collected sources; not independently verified truth.'}
             save(self.root/'report.json',report,'')
-            path=self.root/'report.csv';path.write_text(report_csv(report),encoding='utf-8-sig');path.chmod(0o600)
+            from projectclarity.reporting.registry import export_csv
+            path=self.root/'report.csv';path.write_text(export_csv(report),encoding='utf-8-sig');path.chmod(0o600)
             complete=sum(all(f['status']=='supported' for f in e['fields']) for e in result['entries'])
             self.progress.update(facts_accounted=len(self.packet['facts'])-self.progress.get('unreviewed_facts',0),entries=len(result['entries']),complete_entries=complete,incomplete_entries=len(result['entries'])-complete)
+            if self.report_type.name == 'entity_profile':
+                sections = result['profile']['sections']
+                self.progress.update(sections_total=len(sections),
+                    supported_sections=sum(s['status'] == 'supported' for s in sections),
+                    unknown_sections=sum(s['status'] == 'unknown' for s in sections))
             receipt['status']='checks_pass'
         except Exception as error:
             receipt['error']={'type':type(error).__name__,'message':str(error)[:500]};raise
@@ -252,7 +269,8 @@ class ReportRun:
         """Run the report stage once, publishing only validated results.
 
         Args: None.
-        Returns: None; completed/partial/failed/cancelled state. No automatic retries or dropped input.
+        Returns: None; completed/partial/failed/cancelled state. No stage replay or dropped input.
+            Type-specific builders may use the shared single output-validation retry.
             A finished in-flight result is retained if stop was requested mid-call.
         """
         try:

@@ -79,3 +79,19 @@ Offline Anthropic extraction-rig, benchmark and budget fixtures pin their provid
 and reject Bedrock client construction, so changing the real `.env` backend cannot
 route these mocked tests to AWS. Actual provider smoke calls remain opt-in through
 `python -m testing.live_model_tests --live`.
+
+## Report-type coverage
+
+`integration/test_entity_profile_reporting.py` covers actual HTTP/graph routing,
+saved intent, profile identity checks, unknown sections, CSV, split recovery and
+cache reuse. Nova wire-mode tests keep production adapters/codecs/accounting real
+with external replies mocked; they are not live-quality tests.
+
+The opt-in Chromium test runs actual report scripts at desktop and mobile widths:
+
+```bash
+PROJECTCLARITY_TEST_BROWSER=/path/to/chromium .venv/bin/python -m unittest tests.unit.test_entity_profile_page -v
+```
+
+It requires Playwright from `requirements-dev.txt`; its network/API responses are
+fixtures. Without the executable setting it is explicitly skipped by the suite.

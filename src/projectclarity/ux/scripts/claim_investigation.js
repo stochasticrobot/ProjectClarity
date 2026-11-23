@@ -61,6 +61,8 @@ function renderRecords(){
  for(const r of visible){
   const card=node('article','');card.className='evidence-card';const badge=node('span',r.status==='report'?'Report Knowledge':r.status);badge.className='badge '+(['accepted','report'].includes(r.status)?'selected':'unselected');
   card.append(badge,node('h2',r.record.fact.statement),node('p','Review issue: '+r.record.triage_reason),node('blockquote',r.record.fact.quote));
+  if(r.record.triage_failure_categories?.length)card.append(node('p','Initial support issues: '+r.record.triage_failure_categories.map(c=>c.replaceAll('_',' ')).join(', ')));
+  if(r.assessment?.failure_categories?.length)card.append(node('p','Remaining support issues: '+r.assessment.failure_categories.map(c=>c.replaceAll('_',' ')).join(', ')));
   if(r.assessment)card.append(node('strong',r.assessment.decision==='accept'?'Accepted':'Rejected'),node('p',r.assessment.reason));if(r.error)card.append(node('p',r.error));
   const packet=r.packet;if(packet){const info=packet.retrieval;card.append(node('p',`${info.passages_included} passages included from ${info.passages_searched} searched across ${info.documents_searched?.length||0} documents · ${info.characters_included}/${info.character_budget} evidence characters · ${info.omitted_passage_ids.length} omitted by budget · ${info.source_errors.length} source issues.`));
    const details=node('details','');details.append(node('summary','Evidence considered'));

@@ -16,6 +16,7 @@ from projectclarity.model_access.providers.contracts import Capabilities, ModelR
 from projectclarity.model_access.providers.registry import create_provider, register_provider, resolve_config
 from projectclarity.knowledge_extraction.knowledge_extraction import extraction_request, validate_response
 from projectclarity.ux.web_app import Sessions, create_app
+from tests.integration.test_research_setup import DIRECTORY_PLAN
 
 ENV = {'PROJECTCLARITY_PROVIDER': 'bedrock', 'PROJECTCLARITY_MODEL': 'us.amazon.nova-micro-v1:0',
        'PROJECTCLARITY_BEDROCK_OUTPUT': 'tool_nullable', 'AWS_REGION': 'us-east-2', 'AWS_BEARER_TOKEN_BEDROCK': 'offline-secret'}
@@ -89,7 +90,7 @@ class LocalFixtureProvider:
         Returns: Valid deterministic plan or clarification; no SDK dependency.
         """
         properties = prepared.request['response_schema']['properties']
-        payload = {'questions': []} if 'questions' in properties else PLAN
+        payload = {'questions': [], 'report_plan': DIRECTORY_PLAN} if 'questions' in properties else PLAN
         return ModelResponse(json.dumps(payload), 'end_turn', self.model,
                              {'input_tokens': 10, 'output_tokens': 5}, {'fixture': True})
 
@@ -130,7 +131,16 @@ class ProviderIntegrationTests(unittest.TestCase):
         with TemporaryDirectory() as tmp, patch.dict('os.environ', ENV), patch.object(BedrockProvider, '_client') as factory, patch('projectclarity.model_access.providers.anthropic_provider.Anthropic') as anthropic:
             root = Path(tmp)
             sdk = factory.return_value
-            sdk.converse.side_effect = [nova_reply(PLAN), nova_reply({'questions': []})]
+            def setup_reply(**wire):
+                """Return the new clarification plan through Nova's actual wire schema.
+
+                Args: wire: Prepared Converse request, including nullable-list schema.
+                Returns: Native fixture reply; production decoding remains real.
+                """
+                schema = wire['toolConfig']['tools'][0]['toolSpec']['inputSchema']['json']
+                payload = {'questions': [], 'report_plan': DIRECTORY_PLAN} if 'questions' in schema['properties'] else PLAN
+                return nova_reply(fixture_wire_value(payload, schema))
+            sdk.converse.side_effect = setup_reply
             state, ledger = self.run_setup(root, root / 'unused')
             self.assertEqual(sdk.converse.call_count, 2)
             anthropic.assert_not_called()

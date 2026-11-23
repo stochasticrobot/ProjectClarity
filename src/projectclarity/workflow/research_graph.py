@@ -27,11 +27,16 @@ from pydantic import BaseModel, ConfigDict
 from projectclarity.model_access.model_client import request_for
 from projectclarity.model_access.model_ledger import checked_call
 from projectclarity.question_definition.requirements_definition import InformationItem, validate_plan, planning_request
+from projectclarity.reporting.contracts import ReportPlan, validate_report_plan
+from pathlib import Path
+
+REPORT_PLANNING = Path(__file__).resolve().parents[1] / "prompts/report_planning.txt"
 
 class Clarifications(BaseModel):
-    """Only questions for the human; an empty list needs no pause."""
+    """Material user questions and a provisional report choice based on intent."""
     model_config = ConfigDict(extra='forbid', strict=True)
     questions: list[str]
+    report_plan: ReportPlan
 
 
 class Definition(BaseModel):
@@ -39,6 +44,7 @@ class Definition(BaseModel):
     model_config = ConfigDict(extra='forbid', strict=True)
     research_question: str
     information_needed: list[InformationItem]
+    report_plan: ReportPlan
 
 
 class SetupState(TypedDict, total=False):
@@ -49,6 +55,7 @@ class SetupState(TypedDict, total=False):
     information_needed: list[dict]
     questions: list[str]
     answers: list[dict]
+    report_plan: dict
 
 
 def build_setup_graph(caller, checkpointer):
@@ -60,6 +67,8 @@ def build_setup_graph(caller, checkpointer):
     Returns:
         Compiled graph. Definition and clarification calls happen once before a
         side-effect-free interrupt node; resume runs only the refinement call.
+        Clarification chooses a report plan; refinement updates it from actual answers.
+        This adds no separate model call. The plan is fixed before searches begin.
     """
     def define(state):
         """Use the existing approved planner without changing its contract.
@@ -74,16 +83,17 @@ def build_setup_graph(caller, checkpointer):
         return {'research_question': state['original_question'], **result}
 
     def clarify(state):
-        """Identify material ambiguities and phrase at most two user questions.
+        """Choose a provisional report format and ask at most two material questions.
 
         Args:
             state: Question and validated initial requirements.
         Returns:
-            Validated questions. Excessive or blank questions fail rather than
+            Validated questions and report plan. Excessive or blank questions fail rather than
             silently truncating user decisions. Performs one model call.
         """
         request = request_for('research_clarifications.txt',
                               {k: state[k] for k in ('research_question', 'information_needed')}, Clarifications, caller.model)
+        request['system'] += '\n\n' + REPORT_PLANNING.read_text()
         def validate(text):
             """Validate both the schema and the at-most-two clarification contract.
 
@@ -91,6 +101,7 @@ def build_setup_graph(caller, checkpointer):
             Returns: Valid questions or ValueError; no list truncation or repairs.
             """
             result=Clarifications.model_validate_json(text)
+            validate_report_plan(result.report_plan)
             if len(result.questions)>2 or any(not q.strip() or len(q)>2000 for q in result.questions):
                 raise ValueError('Expected at most two nonblank clarification questions.')
             return result
@@ -123,7 +134,7 @@ def build_setup_graph(caller, checkpointer):
         return {'answers': [{'question': q, 'answer': a} for q, a in zip(state['questions'], answers)]}
 
     def refine(state):
-        """Update the question and requirements once using the actual user's answers.
+        """Update the question, requirements and report choice from actual user answers.
 
         Args:
             state: Original and effective questions, requirements and bound answers.
@@ -132,7 +143,10 @@ def build_setup_graph(caller, checkpointer):
             responses fail without replacing a previously accepted definition.
         """
         data = {k: state[k] for k in ('original_question', 'research_question', 'information_needed', 'answers')}
+        from projectclarity.reporting.contracts import saved_report_plan
+        data['report_plan'] = saved_report_plan(state)
         request = request_for('refine_research_definition.txt', data, Definition, caller.model)
+        request['system'] += '\n\n' + REPORT_PLANNING.read_text()
         def validate(text):
             """Check the refined question and every finalized requirement together.
 
@@ -140,6 +154,7 @@ def build_setup_graph(caller, checkpointer):
             Returns: Complete Definition or raises before ledger acceptance.
             """
             result=Definition.model_validate_json(text)
+            validate_report_plan(result.report_plan)
             if not result.research_question.strip():raise ValueError('The updated research question was blank.')
             validate_plan(json.dumps({'information_needed':[i.model_dump() for i in result.information_needed]}))
             return result
@@ -225,6 +240,8 @@ def build_search_graph(caller, checkpointer):
         """
         data = {k: state.get(k, [] if k == 'answers' else None)
                 for k in ('research_question', 'information_needed', 'answers')}
+        from projectclarity.reporting.contracts import saved_report_plan
+        data['report_plan'] = saved_report_plan(state)
         count = state.get('web_query_count', 2)
         data['web_query_count'] = count
         request = request_for('search_queries.txt', data, SearchQueries, caller.model)

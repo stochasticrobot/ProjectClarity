@@ -21,7 +21,7 @@ from projectclarity.model_access.model_client import ModelCalls
 from projectclarity.model_access.model_ledger import read_ledger, write_entry
 from projectclarity.ux.web_app import create_app, StartInput
 from projectclarity.workflow.research_sessions import Sessions
-from tests.integration.test_research_setup import PLAN
+from tests.integration.test_research_setup import PLAN, DIRECTORY_PLAN
 from tests.unit.test_model_ledger import response
 
 REQUEST = {'model': 'offline', 'max_tokens': 20, 'messages': []}
@@ -159,7 +159,7 @@ class BudgetTests(unittest.TestCase):
             with self.subTest(action=action), TemporaryDirectory() as tmp, patch.dict('os.environ', {'ANTHROPIC_API_KEY': 'fixture'}), patch('projectclarity.model_access.providers.anthropic_provider.Anthropic') as provider:
                 root = Path(tmp); messages = provider.return_value.__enter__.return_value.messages
                 messages.count_tokens.return_value = SimpleNamespace(input_tokens=10)
-                messages.create.side_effect = [response(json.dumps(PLAN)), response(json.dumps({'questions': []}))]
+                messages.create.side_effect = [response(json.dumps(PLAN)), response(json.dumps({'questions': [], 'report_plan': DIRECTORY_PLAN}))]
                 sessions = Sessions(root); sid = str(uuid4())
                 try:
                     with TestClient(create_app(sessions)) as client:

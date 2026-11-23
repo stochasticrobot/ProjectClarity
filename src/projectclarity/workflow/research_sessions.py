@@ -162,6 +162,8 @@ class Sessions:
             sanitized failures with no automatic provider retry. Opted-in web sessions
             advance ready definitions to query preparation and prepared queries to
             acquisition; clarification still pauses and reopening pages never starts work.
+            Unsupported saved report types stop before search with an explicit error,
+            preserving the model-selected intent rather than substituting a directory.
             Setup shares the run-wide budget and cancellation event; Quit prevents
             automatic handoff even when an already-sent response completes.
         """
@@ -175,6 +177,10 @@ class Sessions:
             snapshot = graph.get_state(config)
             state.update(snapshot.values)
             state['status'] = 'queries_ready' if search else ('clarification' if snapshot.next else 'ready')
+            if state['status'] == 'ready':
+                from projectclarity.reporting.contracts import saved_report_plan
+                from projectclarity.reporting.registry import report_type
+                report_type(saved_report_plan(state)['report_type'])
         except Exception as error:
             state['status'] = 'search_failed' if search else 'failed'
             state['error'] = (str(error) if isinstance(error, RuntimeError) else

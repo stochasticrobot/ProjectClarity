@@ -33,3 +33,9 @@ whose object reference is missing. It distinguishes literal attributes from name
 entity relationships and requires uncertain cases to remain unresolved. The schema
 permits only entity definitions and link decisions, not rewritten fact text. The
 web extraction worker makes at most one such call per affected chunk.
+
+`report_planning.txt` adds intent-based format/subject selection to clarification
+and refinement. `prepare_entity_profile_batch.txt` assesses subject identity and
+proposes cited profile contributions. Profile schemas and validators live in
+[entity_profile](../reporting/entity_profile/README.md); neither prompt authorizes
+changing the saved type based on returned evidence.

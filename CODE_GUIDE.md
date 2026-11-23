@@ -14,8 +14,8 @@ source-linked answer and an explorable knowledge graph. For the product overview
    supplied URLs become saved documents, extraction receipts, and usable facts.
 4. [research_rounds.py](src/projectclarity/workflow/research_rounds.py) — how selected
    links start another round without losing earlier reviewed evidence.
-5. [item_reporting.py](src/projectclarity/reporting/item_reporting.py) — how bounded
-   model assessments feed a final report assembled by code.
+5. [reporting/registry.py](src/projectclarity/reporting/registry.py) — how the saved report choice selects a directory or profile builder,
+   both using bounded assessment and code-only final assembly.
 
 6. [evidence_projection.py](src/projectclarity/knowledge_graph/evidence_projection.py)
    and [neo4j_store.py](src/projectclarity/knowledge_graph/neo4j_store.py) — how saved
@@ -106,7 +106,8 @@ Each package README describes its inputs, outputs, and important boundaries.
 1. `web_app.create_app` sends a browser action to `Sessions`.
 2. The service checks eligibility, saves state, and schedules work. Reading a page
    or polling progress does not queue research.
-3. Definition and clarification establish the question and requested answer fields.
+3. Definition and clarification establish the question, requested answer fields and
+   saved report plan; refinement can update the plan from the user's actual answers.
    Query preparation then hands off to the autonomous research graph.
 4. Stage workers save artifacts and publish progress. The graph continues only
    after eligible outcomes and when no stop has been requested.
@@ -286,3 +287,10 @@ The one-use session-bound API rejects stale decisions. A successful answer is no
 counted as search success until actual result URLs are parsed. Skip proceeds to
 the normal provider chain; cancellation and application shutdown terminate the
 worker. No model call is made to interpret challenge images.
+
+## Report types
+
+See [report type architecture](docs/REPORT_TYPES.md). Directory and entity-profile
+implementations live in separate subpackages and share bounded execution. New
+formats require their own schema, validator, assembly, presentation and export;
+registration does not imply live quality or semantic identity resolution.

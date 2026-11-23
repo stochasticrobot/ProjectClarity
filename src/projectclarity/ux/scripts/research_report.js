@@ -43,7 +43,9 @@ function readableRequirements(text){const names=new Map((report?.requirements||[
  * Returns: nothing; never changes qualification status or stored report data.
  */
 function renderEntries(){
- if(!report)return;const filter=el('filter').value,query=el('find').value.toLowerCase();
+ if(!report)return;
+ if(report.presentation==='entity_profile'){el('shown').textContent=`${report.profile.sections.length} profile sections`;renderEntityProfile(report,el('entries'),node,citations);return;}
+ const filter=el('filter').value,query=el('find').value.toLowerCase();
  const rows=report.entries.filter(e=>{const complete=e.fields.every(f=>f.status==='supported');return(filter==='all'||(filter==='complete'?complete:!complete))&&`${e.label} ${e.fields.map(f=>f.value).join(' ')}`.toLowerCase().includes(query);});
  el('shown').textContent=`${rows.length} entries shown`;el('entries').replaceChildren();
  if(el('report-view').value==='table'){
@@ -90,14 +92,16 @@ function renderEntries(){
  */
 function renderReport(data){
  report=data;el('report-content').hidden=false;
- el('summary').parentElement.hidden=data.presentation==='items';
+ el('summary').parentElement.hidden=['items','entity_profile'].includes(data.presentation);
+ el('filters').hidden=data.presentation==='entity_profile';
+ el('report-plan').textContent=data.report_plan?`Report format: ${data.report_plan.report_type.replaceAll('_',' ')} — ${data.report_plan.reason}`:'';
  el('gaps').parentElement.hidden=data.presentation==='items'&&!data.gaps.length;el('csv').href=`/api/setup/${sid}/report.csv`;
  el('coverage').textContent=`Source collection: ${data.coverage.run}; selection: ${data.coverage.selection}; triage: ${data.coverage.triage}; investigation: ${data.coverage.investigation}. ${data.coverage.unreviewed_triage} triage claims and ${data.coverage.unreviewed_investigation} investigation claims remain unreviewed. Report coverage is limited to collected evidence.`;
  if(data.coverage.rounds)el('coverage').textContent=`${data.coverage.rounds.length} research rounds combined. `+data.coverage.rounds.map(r=>`Round ${r.round}: sources ${r.run}, selection ${r.selection}, triage ${r.triage}, investigation ${r.investigation}.`).join(' ')+` ${data.coverage.unreviewed_triage} triage claims and ${data.coverage.unreviewed_investigation} investigation claims remain unreviewed. Report coverage is limited to collected evidence.`;
  el('summary').replaceChildren();for(const part of data.summary){const p=node('p',readableRequirements(part.text));citations(p,part.fact_ids);el('summary').append(p);}
  if(!data.summary.length)el('summary').append(node('p','No supporting context was produced. See gaps and exclusions.'));
  el('gaps').replaceChildren();for(const gap of data.gaps)el('gaps').append(node('li',readableRequirements(gap)));
- el('excluded').replaceChildren();for(const x of data.exclusions){const p=node('p',readableRequirements(x.reason));citations(p,[x.fact_id]);el('excluded').append(p);}
+ el('excluded').replaceChildren();for(const x of data.exclusions){const p=node('p',readableRequirements(x.reason));if(x.failure_categories?.length)p.append(node('span',' Support issues: '+x.failure_categories.map(c=>c.replaceAll('_',' ')).join(', ')));citations(p,[x.fact_id]);el('excluded').append(p);}
  el('sources').replaceChildren();for(const f of data.facts){const card=node('article','');card.id='source-'+f.id;card.append(node('h3',`${f.id}: ${f.fact.statement}`));for(const e of f.evidence){const a=node('a',`${e.source_url}${e.pages.length?' · PDF page(s) '+e.pages.join(', '):''}`);a.href=e.source_url;a.target='_blank';a.rel='noopener noreferrer';card.append(a,node('blockquote',e.quote));}el('sources').append(card);}
  if(data.coverage.unreviewed_report||data.coverage.withheld_invalid_fields)el('coverage').textContent=`PARTIAL REPORT: ${data.coverage.unreviewed_report||0} input facts remain unreviewed; ${data.coverage.withheld_invalid_fields||0} invalid fields withheld. `+el('coverage').textContent;
  renderEntries();
@@ -120,7 +124,7 @@ function renderProgress(progress){
  region.hidden=!progress;if(!progress)return;
  const total=progress.batches_total||0,finished=progress.batches_finished||0;
  const completed=progress.status==='completed';
- const combining=progress.phase?.startsWith('Combining')||progress.phase==='Saving final report'||progress.phase==='Assembling answer items';
+ const combining=progress.phase?.startsWith('Combining')||progress.phase==='Saving final report'||progress.phase==='Assembling answer items'||progress.phase==='Assembling entity profile';
  let text;
  if(completed){bar.max=1;bar.value=1;text='Report complete';}
  else if(progress.status==='running'&&(combining||!total)){
@@ -143,7 +147,7 @@ async function refresh(){clearTimeout(timer);try{const state=await api();if(foll
  el('retry').textContent=p?.status==='partial'?'Retry unresolved report work':'Retry report';
  el('question').textContent=state.research_question;el('start').hidden=!!p||!['completed','partial','cancelled','interrupted'].includes(state.investigation?.status);el('stop').hidden=p?.status!=='running';el('stop').disabled=!!state.stop_requested;
  el('status').textContent=p?(p.error||(p.status==='running'?`${p.phase||'Preparing report'} · ${p.batches_finished||0}/${p.batches_total||0} evidence batches complete · ${p.merge_tasks_finished||0} merge tasks complete · ${p.reused_tasks||0} saved tasks reused`:`Report ${p.status}.`)):'Ready to prepare your report from Report Knowledge.';
- el('counts').replaceChildren();for(const [label,value] of [['Input facts',p?.facts_total??state.investigation?.report_knowledge??0],['Accounted for',p?.facts_accounted||0],['Supported matches',p?.complete_entries||0],['Incomplete candidates',p?.incomplete_entries||0]]){const d=node('div','');d.append(node('strong',value),node('span',label));el('counts').append(d);}
+ el('counts').replaceChildren();for(const [label,value] of [['Input facts',p?.facts_total??state.investigation?.report_knowledge??0],['Accounted for',p?.facts_accounted||0],[p?.report_type==='entity_profile'?'Supported sections':'Supported matches',p?.report_type==='entity_profile'?p?.supported_sections||0:p?.complete_entries||0],[p?.report_type==='entity_profile'?'Unknown sections':'Incomplete candidates',p?.report_type==='entity_profile'?p?.unknown_sections||0:p?.incomplete_entries||0]]){const d=node('div','');d.append(node('strong',value),node('span',label));el('counts').append(d);}
  if(['completed','partial'].includes(p?.status)&&!report){const data=await api('/report-data');if(data)renderReport(data);}
  if(p?.status==='running'||['queued','running'].includes(state.knowledge_graph?.status)||['investigation_running','link_ranking_running'].includes(state.status))timer=setTimeout(refresh,1200);
  }catch(e){showActivityIssue(true);el('status').textContent=e.message+' Retrying status…';timer=setTimeout(refresh,3000);}}

@@ -19,6 +19,7 @@ import hashlib
 import json
 from pathlib import Path
 from typing import Literal
+from projectclarity.claim_review.support_diagnostics import FailureCategory, failure_categories_field
 from uuid import uuid4
 from concurrent.futures import ThreadPoolExecutor, wait, FIRST_COMPLETED
 from queue import Queue, Empty
@@ -37,6 +38,7 @@ class Decision(BaseModel):
     fact_id: str
     bucket: Literal['needs_verification', 'report_knowledge']
     reason: str
+    failure_categories: list[FailureCategory] = failure_categories_field()
 
 
 class Decisions(BaseModel):
@@ -52,7 +54,8 @@ def validate_decisions(text, records):
         text: Unmodified model response JSON.
         records: Complete selected fact batch supplied to this request.
     Returns:
-        Validated decision list. Raises ValueError on invalid/incomplete coverage;
+        Validated decisions including descriptive support categories (empty for
+        historical unclassified replies). Raises ValueError on invalid/incomplete coverage;
         does not establish that the model's semantic judgment is correct.
     """
     result = Decisions.model_validate_json(text).decisions
@@ -241,7 +244,8 @@ class TriageRun:
                         decisions = {d['fact_id']:d for d in receipt['decisions']}
                         results[batch['id']] = [{**record,
                             'triage_bucket':decisions[record['fact_id']]['bucket'],
-                            'triage_reason':decisions[record['fact_id']]['reason']} for record in records]
+                            'triage_reason':decisions[record['fact_id']]['reason'],
+                            'triage_failure_categories':decisions[record['fact_id']].get('failure_categories', [])} for record in records]
                         self.decided = [record for key in sorted(results) for record in results[key]]
                         for record in results[batch['id']]:
                             self.triage[record['triage_bucket']] += 1

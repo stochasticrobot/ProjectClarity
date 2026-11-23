@@ -59,3 +59,38 @@ files. No credentials were removed from history because none were detected.
 These are text/byte-level checks, not a guarantee that every possible secret format
 is recognized or that text embedded in images is absent. They cover reachable Git
 history, not unreachable objects, other repositories, or remote GitHub artifacts.
+
+## Report types and support diagnostics — follow-up release review
+
+Reviewed the pending changes from base `2fa4e7c`: intent-selected directory and
+entity-profile reporting, directory module relocation with compatibility imports,
+partial profile recovery, setup compatibility fixes, support-problem categories,
+UI rendering, exports and regression fixtures. Preserved the author's README
+introduction edits. Corrected stale documentation describing non-profile target
+metadata and whole-batch rejection. Executable Python ASTs were unchanged by
+this cleanup; response schemas and prompt instructions were not edited during
+the review.
+
+Verification:
+
+- Full suite with Chromium enabled: **247 tests, 243 passed, 4 skipped**.
+- All authored pending Python functions include purpose, Args and Returns
+  documentation; relative Markdown links resolve; diff whitespace checks pass.
+- Secret checks covered **274 release files**: default detect-secrets scan found
+  no matches; an exact scan against three locally configured credential values
+  found none. Unfiltered pattern findings were reviewed as synthetic test
+  credentials, a rejected test URL and a public-IP reference in a source fixture.
+  This is detection evidence, not a guarantee that all possible secrets are absent.
+- Credentials, private runs, environment dependencies and build output remain
+  Git-ignored. Previously reviewed history is unchanged at this release's base.
+- The application environment lacks setuptools, so its pip build attempt failed.
+  The host's existing setuptools built the wheel successfully without changing
+  application dependencies. Wheel contents match all **151 expected application
+  files**, with no unexpected application files or private paths.
+
+Known limitations remain explicit: Nova can misattribute entities, source
+selection can drift, a supported field does not imply independent verification,
+fact accounting is not search completeness, and partial reports may offer retries.
+Support categories are descriptive model judgments, not automatic resolution.
+No live provider requests, research retries or user-run edits were made for this
+review. Local scan/build/test artifacts are outside Git.

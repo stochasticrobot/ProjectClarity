@@ -7,7 +7,7 @@ and performs entity extraction to build knowledge graphs from unstructured data.
 The UX is a web form that starts by asking you want you want to research, and ends
 with a human readable report (exportable to CSV) and a knowledge graph explorer.
 
-It started about a year ago as an experiment with named entity extraction. Basically
+This project started about a year ago as an experiment with named entity extraction. Basically
 just testing to see how useful an LLM would be at identifying people and places within
 documents. This seemingly simple task was very difficult a few years ago, and now it's
 become mostly trivial.
@@ -130,6 +130,18 @@ not currently overlaid on graph assertions. The graph is an evidence explorer,
 not an independently verified database or a graph-reasoning agent. See the
 [graph implementation guide](src/projectclarity/knowledge_graph/README.md) and
 [Neo4j setup and validation](docs/KNOWLEDGE_GRAPH.md).
+
+## Report formats
+
+Clarity chooses a report format from the question and clarified requirements before
+searching. **List/directory** retains the existing cited cards/table. **Entity profile**
+produces a cited overview and requested sections for one company, person or
+organization, with missing information and uncertain identity explicit. Profiles
+have a section-oriented CSV export.
+
+Comparison, timeline and topic overview are recognized but not implemented; requests
+requiring them stop explicitly instead of silently becoming directories. Existing
+saved runs keep their original format. See [report architecture and boundaries](docs/REPORT_TYPES.md).
 
 ## Run locally
 

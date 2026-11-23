@@ -176,7 +176,7 @@ def create_app(sessions):
         Returns:
             Static response, or HTTP 404 for every other filename.
         """
-        if name not in ('research_captcha.js', 'knowledge_graph.js', 'knowledge_graph.css', 'cytoscape.min.js', 'research_setup.js', 'research_styles.css', 'document_pipeline.js', 'evidence_selection.js', 'claim_triage.js', 'workflow_navigation.js', 'model_usage.js', 'research_budget.js', 'stage_review.js', 'claim_investigation.js', 'research_report.js', 'link_ranking.js'):
+        if name not in ('research_captcha.js', 'knowledge_graph.js', 'knowledge_graph.css', 'cytoscape.min.js', 'research_setup.js', 'research_styles.css', 'document_pipeline.js', 'evidence_selection.js', 'claim_triage.js', 'workflow_navigation.js', 'model_usage.js', 'research_budget.js', 'stage_review.js', 'claim_investigation.js', 'research_report.js', 'entity_profile_report.js', 'link_ranking.js'):
             raise HTTPException(404)
         return FileResponse(ROOT / 'ux' / ('styles' if name.endswith('.css') else 'scripts') / name)
 
